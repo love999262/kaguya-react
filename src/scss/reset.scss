@@ -1,0 +1,10 @@
+@import './global.scss';
+* {
+    margin: 0;
+    padding: 0;
+    color: $color-font-black;
+}
+
+ul, li {
+    list-style-type: none;
+}
