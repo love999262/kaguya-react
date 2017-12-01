@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const OpenBrowserPlugin = require('open-browser-webpack-plugin');
 const ENV = process.env.NODE_ENV;
 
 const plugins = [
@@ -13,7 +14,11 @@ const plugins = [
         }
     }),
 ];
-
+if(ENV === 'dev') {
+    plugins.push(new OpenBrowserPlugin({
+        url: 'http://localhost:8080/webpack-dev-server/index-dev.html'
+    }));
+}
 const config = {
     entry: {
         app: [
