@@ -44,23 +44,18 @@ const config = {
                 'sass-loader'
             ]
         }, {
-            enforce: 'pre',
-            exclude: /node_modules/,
             test: /\.tsx?$/,
-            loader: 'tslint-loader',
+            exclude: /node_modules/,
+            use: [
+                'babel-loader',
+                'ts-loader',
+                'tslint-loader',
+            ],
         }, {
-            test: /\.tsx?$/,
-            exclude: /node_modules/,
-            use: 'ts-loader'
-        },/*  {
             enforce: 'pre',
             test: /\.jsx?$/,
             exclude: /node_modules/,
             loader: 'eslint-loader',
-        },  */{
-            test: /\.tsx$/,
-            exclude: /node_modules/,
-            loader: 'babel-loader',
         }, {
             test: /\.(png|jpg|gif|ttf|eot|svg|woff)$/,
             use: [
