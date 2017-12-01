@@ -1,0 +1,30 @@
+@import './global.scss';
+#root, .#{$kaguya} {
+    display: flex;
+    justify-content: center;
+    background-color: rgba($dark, .85);
+    opacity: 0.85;
+    &-img {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-repeat: no-repeat;
+        background-size: cover;
+        z-index: -99999;
+    }
+    &-video {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-repeat: no-repeat;
+        background-size: cover;
+        z-index: -99998;
+        object-fit: fill;
+        width: 100%;
+        height: 100%;
+    }
+}
