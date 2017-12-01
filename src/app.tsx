@@ -1,10 +1,27 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-// import './scss/index.scss';
-class App extends React.Component {
-    render() {
-        return <h1>hello kaguya</h1>;  
+import * as React from 'react';
+import { render } from 'react-dom';
+
+
+interface InterfaceA {
+    asd: number;
+}
+class A {
+    // config: InterfaceA;
+    constructor(a: InterfaceA) {
+        console.log(console.log(a.asd));
     }
 }
 
-ReactDOM.render(<App />, document.querySelectorAll('root'));
+const aaa = new A({ asd: 123 });
+
+// class App extends React.Component {
+//   render(): JSX.Element {
+//     return (
+//       <div>
+//         Hello world
+//       </div>
+//     );
+//   }
+// }
+
+// render(<App />, document.getElementById('app'));

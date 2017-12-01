@@ -47,34 +47,17 @@ const config = {
             enforce: 'pre',
             exclude: /node_modules/,
             test: /\.tsx?$/,
-            use: [
-                {
-                    loader: 'tslint-loader',
-                    options: {
-                        emitErrors: true,
-                        failOnHint: true,
-                        typeCheck: false,
-                    }
-                }
-            ],
+            loader: 'tslint-loader',
         }, {
             test: /\.tsx?$/,
             exclude: /node_modules/,
             use: 'ts-loader'
-        }, {
-            test: /\.jsx?$/,
-            use: [
-                {
-                    loader: 'eslint-loader',
-                    options: {
-                        emitError: false,
-                        failOnError: true
-                    }
-                }
-            ],
+        },/*  {
             enforce: 'pre',
-            exclude: /node_modules/
-        }, {
+            test: /\.jsx?$/,
+            exclude: /node_modules/,
+            loader: 'eslint-loader',
+        },  */{
             test: /\.tsx$/,
             exclude: /node_modules/,
             loader: 'babel-loader',
