@@ -27,9 +27,7 @@ class Background extends React.Component <Props, any> {
     }
     
     componentDidMount() {
-        // setInterval(() => {
-        //     this.getBackground();
-        // }, 5000);
+        this.getBackground();
     }
 
     componentWillUnmount() {}

@@ -10,4 +10,4 @@ class App extends React.Component {
     }
 }
 
-render(<App />, document.getElementById('kaguya'));
+render(<App />, document.querySelectorAll('#kaguya')[0]);

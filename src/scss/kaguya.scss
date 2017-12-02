@@ -1,5 +1,5 @@
 @import './global.scss';
-#root, .#{$kaguya} {
+.#{$kaguya} {
     display: flex;
     justify-content: center;
     background-color: rgba($dark, .85);
