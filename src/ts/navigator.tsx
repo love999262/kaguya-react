@@ -2,10 +2,9 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
 import SearchEngle from './searchengle';
-
+import Navigates from './navigates';
 interface StateInterface {
     prefix: string;
-    searchArray: string[];
 }
 
 class Navigator extends React.Component <Props, any> {
@@ -15,7 +14,6 @@ class Navigator extends React.Component <Props, any> {
         super(props, context);
         this.state = {
             prefix: `${this.props.prefix}-search`,
-            searchArray: [],
         };
     }
 
@@ -36,10 +34,12 @@ class Navigator extends React.Component <Props, any> {
     render(): JSX.Element {
         return(
             <div className={`${this.props.prefix}-search`}>
-                <SearchEngle prefix={this.state.prefix}/>
+                <SearchEngle prefix={this.state.prefix} />
+                <Navigates prefix={this.state.prefix} />
             </div>
         );
     }
 }
 
 export default  Navigator;
+export { StateInterface };

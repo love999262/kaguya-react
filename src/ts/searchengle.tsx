@@ -1,9 +1,7 @@
 import * as React from 'react';
 import { render } from 'react-dom';
-import { KaguyaProps as Props } from './kaguya';
+import { StateInterface as Props } from './navigator';
 import searchEngineList, { SearchEngleInterface } from './searchengle-list';
-
-
 
 interface DropMenuStyleInterface {
     display: string;
@@ -128,11 +126,14 @@ class SearchEngle extends React.Component <Props, any> {
         });
     }
     private handleInputBlur() {
-        this.setState({
-            historyPanelStyle: {
-                display: 'none',
-            },
-        });
+        setTimeout(() => {
+            this.setState({
+                historyPanelStyle: {
+                    display: 'none',
+                },
+            });
+        }, 100);
+
     }
     private renderSearchEngles(engine: SearchEngleInterface): JSX.Element {
         const list = <li 
