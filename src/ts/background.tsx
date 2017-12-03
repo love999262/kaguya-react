@@ -21,7 +21,7 @@ class Background extends React.Component <Props, any> {
             isLocal: false,
             bgImgStyle: {},
             totalPic: 713,
-            qiniuURL: 'http://omltgvp37.bkt.clouddn.com/',
+            qiniuURL: 'https://omltgvp37.bkt.clouddn.com/',
             localPicDir: '../img',
         };
     }
