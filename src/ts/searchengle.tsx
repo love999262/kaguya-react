@@ -2,6 +2,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
 import searchEngineList, { SearchEngleInterface } from './searchengle-list';
+import Utils from './utils';
 
 interface DropMenuStyleInterface {
     display: string;
@@ -51,7 +52,7 @@ class SearchEngle extends React.Component <Props, any> {
                 display: 'none',
             },
             searchBtnStyle: {
-                
+                backgroundColor: Utils.getRandomColor(),
             },
             historyPanelStyle: {
 
@@ -62,11 +63,25 @@ class SearchEngle extends React.Component <Props, any> {
 
     componentWillMount() {
 
-        
     }
     
     componentDidMount() {
-
+        document.addEventListener('click', (e: any) => {
+            if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
+                this.setState({
+                    dropmenuStyle: {
+                        display: 'none',
+                    },
+                });
+            }
+        });
+        document.addEventListener('keydown', (e: any) => {
+            if (e.keyCode !== 192) {
+                if (document.activeElement.className !== `${this.props.prefix}-search-bar-input`) {
+                    document.querySelectorAll('input')[0].focus();
+                }
+            }
+        });
     }
 
     componentWillUnmount() {}
@@ -97,6 +112,9 @@ class SearchEngle extends React.Component <Props, any> {
     }
     private handleSearchEvent(e: any) {
         if ((e.type === 'keydown' && e.keyCode === 13) || e.type === 'click') {
+            if (!this.state.inputVal) {
+                return;
+            }
             window.open(this.state.search.searchInterface + this.state.inputVal);
             const searchHistory = this.state.searchArray.slice();
             for (let i = 0; i < searchHistory.length; i++) {

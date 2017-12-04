@@ -21,18 +21,27 @@ class Background extends React.Component <Props, any> {
             isLocal: false,
             bgImgStyle: {},
             totalPic: 713,
-            qiniuURL: 'https://omltgvp37.bkt.clouddn.com/',
+            qiniuURL: 'http://omltgvp37.bkt.clouddn.com/',
             localPicDir: '../img',
         };
     }
     
     componentDidMount() {
-        this.getBackground();
+        this.setBackground();
+        document.addEventListener('keydown', (e: any) => {
+            if (e.keyCode === 192) {
+                if (document.activeElement.className !== `${this.props.prefix}-search-bar-input`) {
+                    this.setBackground();
+                }
+            }
+        });
     }
 
-    componentWillUnmount() {}
+    componentWillUnmount() {
 
-    private getBackground() {
+    }
+
+    private setBackground() {
         const num = Math.round(Math.random() * this.state.totalPic);
         let style: object;
         let assets: string;
@@ -44,7 +53,6 @@ class Background extends React.Component <Props, any> {
             imgIndex: num,
             bgImgStyle: style,
         });
-        console.log('state', this.setState);
     }
 
     render(): JSX.Element {

@@ -2,12 +2,10 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
 import websites from './websites';
+import utils from './utils';
 
 interface StateInterface {
     websites: any;
-    titleStyle: {
-        backgroundColor?: string;
-    };
 }
 
 class Navigates extends React.Component <Props, any> {
@@ -17,21 +15,21 @@ class Navigates extends React.Component <Props, any> {
         super(props, context);
         this.state = {
             websites: websites,
-            titleStyle: {},
         };
         // this.handleEngleClick = this.handleEngleClick.bind(this);
     }
 
     componentWillMount() {
 
-        
     }
     
     componentDidMount() {
 
     }
 
-    componentWillUnmount() {}
+    componentWillUnmount() {
+
+    }
 
     handleNavClick(href: string) {
         window.open(href);
@@ -43,7 +41,7 @@ class Navigates extends React.Component <Props, any> {
         for (const i in this.state.websites) {
             if (i) {
                 listContainer = [];
-                const title = <li className={`${this.props.prefix}-panel-nav-list-title`} style={this.state.titleStyle}>{i}</li>;
+                const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
                 listContainer.push(title);
                 for (const j in this.state.websites[i]) {
                     if (j) {

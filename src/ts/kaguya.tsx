@@ -14,6 +14,9 @@ class Kaguya extends React.Component <any, any> {
             prefix: 'kaguya',
         };
     }
+    componentDidMount() {
+        
+    }
     render(): JSX.Element {
         return (
             <div className='kaguya'>
