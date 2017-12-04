@@ -3,18 +3,25 @@ const path = require('path');
 const OpenBrowserPlugin = require('open-browser-webpack-plugin');
 const ENV = process.env.NODE_ENV;
 
-const plugins = [
+const plugins = (ENV === 'production') ? [
     new webpack.ProgressPlugin(),
+    new webpack.DefinePlugin({
+        'process.env': {
+            NODE_ENV: JSON.stringify('production')
+        }
+    }),
     new webpack.optimize.UglifyJsPlugin({
         sourceMap: true,
         compress: {
-            warnings: false,
-            drop_debugger: (ENV === 'dev' || ENV === 'watch') ? false : true,
-            drop_console: (ENV === 'dev' || ENV === 'watch') ? false : true
+            warnings: true,
+            drop_debugger: true,
+            drop_console: true
         }
     }),
+] : [
+    new webpack.ProgressPlugin(),
 ];
-if(ENV === 'dev') {
+if (ENV === 'dev') {
     plugins.push(new OpenBrowserPlugin({
         url: 'http://localhost:8080/webpack-dev-server/index-dev.html'
     }));
@@ -30,7 +37,7 @@ const config = {
         publicPath: '/assets/',
         filename: 'kaguya.min.js'
     },
-    devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'inline-source-map',
+    devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'source-map',
     devServer: {
         contentBase: './dist/',
         historyApiFallback: true,

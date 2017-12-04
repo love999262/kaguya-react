@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
+import privateWebsites from './private-websites';
 import websites from './websites';
 import utils from './utils';
 
@@ -14,7 +15,7 @@ class Navigates extends React.Component <Props, any> {
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
-            websites: websites,
+            websites: privateWebsites.length > 0 ? privateWebsites[0] : websites[0],
         };
         // this.handleEngleClick = this.handleEngleClick.bind(this);
     }

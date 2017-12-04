@@ -4,7 +4,7 @@
   "description": "my first react project.",
   "main": "webpack.config.js",
   "scripts": {
-    "build": "cross-env NODE_ENV=build webpack",
+    "build": "cross-env NODE_ENV=production webpack",
     "dev": "cross-env NODE_ENV=dev webpack-dev-server",
     "watch": "cross-env NODE_ENV=watch webpack --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
