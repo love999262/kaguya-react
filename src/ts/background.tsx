@@ -2,10 +2,14 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
 
+interface ImgStyleInterface {
+    backgroundImage?: string;
+}
+
 interface StateInterface {
     imgIndex: number;
     isLocal: boolean;
-    bgImgStyle: any;
+    bgImgStyle: ImgStyleInterface;
     totalPic: number;
     qiniuURL: string;
     localPicDir: string;
