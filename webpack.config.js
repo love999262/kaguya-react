@@ -37,7 +37,7 @@ const config = {
         publicPath: '/assets/',
         filename: 'kaguya.min.js'
     },
-    devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'source-map',
+    devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'inline-source-map',
     devServer: {
         contentBase: './dist/',
         historyApiFallback: true,
