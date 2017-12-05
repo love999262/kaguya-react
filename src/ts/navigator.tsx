@@ -25,7 +25,9 @@ class Navigator extends React.Component <Props, any> {
 
     }
 
-    componentWillUnmount() {}
+    componentWillUnmount() {
+        
+    }
 
     handleSearchEvent() {
 

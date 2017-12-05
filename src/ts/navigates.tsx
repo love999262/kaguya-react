@@ -17,25 +17,20 @@ class Navigates extends React.Component <Props, any> {
         this.state = {
             websites: privateWebsites.length > 0 ? privateWebsites[0] : websites[0],
         };
-        // this.handleEngleClick = this.handleEngleClick.bind(this);
     }
 
     componentWillMount() {
-
     }
     
     componentDidMount() {
-
     }
 
     componentWillUnmount() {
-
     }
 
     handleNavClick(href: string) {
         window.open(href);
     }
-    
     renderWebSites() {
         let listContainer = [];
         const nav = [];
