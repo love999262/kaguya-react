@@ -23,6 +23,11 @@ interface SearchInterface {
     searchBtnName: string;
 }
 
+interface HistoryListStyleInterface {
+    backgroundColor?: string;
+    color?: string;
+}
+
 interface StateInterface {
     search: SearchInterface;
     currentDate: string;
@@ -31,11 +36,13 @@ interface StateInterface {
     searchBtnStyle: SearchBtnStyleInterface;
     inputVal: string;
     historyPanelStyle: HistoryPanelInterface;
+    historyListStyle: HistoryListStyleInterface;
 }
 
 class SearchEngle extends React.Component <Props, any> {
     state: StateInterface;
-
+    input: HTMLElement;
+    historyLists: JSX.Element[];
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
@@ -55,6 +62,9 @@ class SearchEngle extends React.Component <Props, any> {
                 backgroundColor: Utils.getRandomColor(),
             },
             historyPanelStyle: {
+
+            },
+            historyListStyle: {
 
             },
         };
@@ -77,17 +87,21 @@ class SearchEngle extends React.Component <Props, any> {
         });
         document.addEventListener('keydown', (e: any) => {
             if (e.keyCode !== 192) {
-                if (document.activeElement.className !== `${this.props.prefix}-search-bar-input`) {
-                    document.querySelectorAll('input')[0].focus();
+                if (document.activeElement.className !== `${this.props.prefix}-bar-input`) {
+                    this.input.focus();
                 }
+            }
+            if (document.activeElement.className === `${this.props.prefix}-bar-input`) {
+                this.highlightHistoryPanel();
             }
         });
     }
 
-    componentWillUnmount() {}
+    componentWillUnmount() {
+
+    }
 
     private handleEngleClick(engine: SearchEngleInterface) {
-        console.log('state', this.state);
         this.setState({
             search: {
                 searchInterface: engine.url,
@@ -153,6 +167,25 @@ class SearchEngle extends React.Component <Props, any> {
         }, 100);
 
     }
+    private highlightHistoryPanel() {
+        const inputVal = new RegExp(this.state.inputVal, 'g');
+        this.historyLists.map((item) => {
+            if (inputVal.test(item.props.children)) {
+                this.setState({
+                    historyListStyle: {
+                        backgroundColor: '#62e092',
+                        color: '#fff',
+                    },
+                });
+            } else {
+                this.setState({
+                    historyListStyle: {
+                    },
+                });
+            }
+        
+        });
+    }
     private renderSearchEngles(engine: SearchEngleInterface): JSX.Element {
         const list = <li 
                         key={engine.name} 
@@ -166,15 +199,14 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private getSearchHistoryPanel() {
-        console.log(this.state.searchArray);
-        const historyLists = this.state.searchArray.map((item) => {
+        this.historyLists = this.state.searchArray.map((item) => {
             return this.renderHistoryPanel(item);
         });
-        return historyLists;
+        return this.historyLists;
     }
 
     private renderHistoryPanel(listInfo: string) {
-        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
+        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.state.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
         return list;
     }
 
@@ -196,7 +228,7 @@ class SearchEngle extends React.Component <Props, any> {
                 </ul>
                 <button className={`${this.props.prefix}-bar-container-panel`} onClick={() => { this.handleContainerPanelClick(); }}></button>
                 <div>
-                    <input type='text' className={`${this.props.prefix}-bar-input`} onFocus={() => { this.handleInputFocus(); }} onBlur={() => { this.handleInputBlur(); }} onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
+                    <input type='text' ref={(ele) => { this.input = ele; }} className={`${this.props.prefix}-bar-input`} onFocus={() => { this.handleInputFocus(); }} onBlur={() => { this.handleInputBlur(); }} onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
                     <ul className={`${this.props.prefix}-bar-search-history`} style={this.state.historyPanelStyle}>
                         {this.getSearchHistoryPanel()}
                     </ul>
