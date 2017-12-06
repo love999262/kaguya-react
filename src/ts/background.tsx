@@ -38,7 +38,7 @@ class Background extends React.Component <Props, any> {
                             ];
         this.state = {
             imgIndex: 0,
-            isLocal: false,
+            isLocal: true,
             bgImgStyle: {},
             totalPic: 830,
             qiniuURL: 'http://omltgvp37.bkt.clouddn.com/',

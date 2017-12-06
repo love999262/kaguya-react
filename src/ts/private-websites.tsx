@@ -43,6 +43,8 @@ const privateWebsites: any = [
             speedtest: 'http://www.speedtest.net/',
             gitbooks: 'https://www.gitbook.com/',
             bandwagon: 'https://bwh1.net/',
+            imooc: 'http://www.imooc.com',
+            study163: 'http://study.163.com/',
             stackoverflow: 'http://stackoverflow.com/',
             typescript: 'https://www.typescriptlang.org/',
             tscn: 'https://www.tslang.cn/',
