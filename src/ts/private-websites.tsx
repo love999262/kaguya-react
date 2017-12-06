@@ -37,6 +37,7 @@ const privateWebsites: any = [
             linkedin: 'https://www.linkedin.com/',
             weixin: 'https://wx.qq.com/',
             V2EX: 'https://www.v2ex.com/',
+            gmail: 'https://mail.google.com/mail/u/0/#inbox',
         },
         Techonology: {
             github: 'https://github.com/love999262',
@@ -60,8 +61,12 @@ const privateWebsites: any = [
             webpackDoc: 'http://webpack.github.io/docs/',
             ReactCN: 'https://doc.react-china.org/',
             React: 'https://facebook.github.io/react/',
+            'React-Router': 'http://react-guide.github.io/react-router-cn/',
+            Redux: 'http://www.redux.org.cn/',
             pythonDoc: 'https://docs.python.org/3/',
             owasp: 'https://www.owasp.org',
+            alexa: 'http://www.alexa.com/',
+            qiniu: 'https://portal.qiniu.com/',
 
         },
         Shopping: {
@@ -84,22 +89,6 @@ const privateWebsites: any = [
             reddit: 'https://www.reddit.com/',
             imdb: 'http://www.imdb.com/',
             nypost: 'http://www.nypost.com/',
-        },
-        Others: {
-            exmail: 'https://exmail.qq.com/',
-            hotmail: 'https://outlook.live.com/owa/',
-            reddit: 'https://www.reddit.com/',
-            xvcams: 'http://xvcams.com',
-            icloud: 'https://www.icloud.com',
-            myfreecams: 'https://www.myfreecams.com/',
-            gmail: 'https://mail.google.com/mail/u/0/#inbox',
-            'iconfont.cn': 'http://www.iconfont.cn/',
-            tinypng: 'https://tinypng.com/',
-            giphy: 'http://giphy.com/',
-            alexa: 'http://www.alexa.com/',
-            qiniu: 'https://portal.qiniu.com/',
-            v2porn: 'http://email.v2dizhi.at.gmail.com.wvp2.space/',
-            '91pron': 'http://91porn.com/index.php',
         },
     },
 ];

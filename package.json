@@ -50,6 +50,8 @@
   },
   "dependencies": {
     "@types/react-dom": "^16.0.3",
+    "@types/react-router": "^4.0.19",
+    "@types/react-router-dom": "^4.2.3",
     "react": "^16.2.0",
     "react-dom": "^16.2.0"
   }

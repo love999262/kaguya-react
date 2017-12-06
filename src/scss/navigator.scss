@@ -112,7 +112,7 @@
                     height: 32px;
                     line-height: 32px;
                     &:hover {
-                        background-color: $b-blue;
+                        background-color: $b-blue !important;
                         color: $white;
                         cursor: pointer;
                     }
