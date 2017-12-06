@@ -43,6 +43,7 @@ class SearchEngle extends React.Component <Props, any> {
     state: StateInterface;
     input: HTMLElement;
     historyLists: JSX.Element[];
+    private historyListStyle: HistoryListStyleInterface;
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
@@ -90,9 +91,6 @@ class SearchEngle extends React.Component <Props, any> {
                 if (document.activeElement.className !== `${this.props.prefix}-bar-input`) {
                     this.input.focus();
                 }
-            }
-            if (document.activeElement.className === `${this.props.prefix}-bar-input`) {
-                this.highlightHistoryPanel();
             }
         });
     }
@@ -167,24 +165,17 @@ class SearchEngle extends React.Component <Props, any> {
         }, 100);
 
     }
-    private highlightHistoryPanel() {
+    private highlightHistoryPanel(val: string) {
         const inputVal = new RegExp(this.state.inputVal, 'g');
-        this.historyLists.map((item) => {
-            if (inputVal.test(item.props.children)) {
-                this.setState({
-                    historyListStyle: {
-                        backgroundColor: '#62e092',
-                        color: '#fff',
-                    },
-                });
-            } else {
-                this.setState({
-                    historyListStyle: {
-                    },
-                });
-            }
-        
-        });
+        if (this.state.inputVal && inputVal.test(val)) {
+            this.historyListStyle = {
+                backgroundColor: '#62e092',
+                color: '#fff',
+            };
+        } else {
+            this.historyListStyle = {
+            };
+        }
     }
     private renderSearchEngles(engine: SearchEngleInterface): JSX.Element {
         const list = <li 
@@ -206,7 +197,8 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private renderHistoryPanel(listInfo: string) {
-        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.state.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
+        this.highlightHistoryPanel(listInfo);
+        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
         return list;
     }
 
