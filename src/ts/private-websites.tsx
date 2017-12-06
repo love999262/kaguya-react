@@ -86,7 +86,6 @@ const privateWebsites: any = [
             imdb: 'http://www.imdb.com/',
             nypost: 'http://www.nypost.com/',
         },
-
     },
 ];
 
