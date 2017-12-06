@@ -59,6 +59,8 @@ const privateWebsites: any = [
             webpackDoc: 'http://webpack.github.io/docs/',
             ReactCN: 'https://doc.react-china.org/',
             React: 'https://facebook.github.io/react/',
+            'React-Router': 'http://react-guide.github.io/react-router-cn/',
+            Redux: 'http://www.redux.org.cn/',
             pythonDoc: 'https://docs.python.org/3/',
             owasp: 'https://www.owasp.org',
             alexa: 'http://www.alexa.com/',

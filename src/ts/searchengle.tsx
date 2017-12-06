@@ -166,7 +166,11 @@ class SearchEngle extends React.Component <Props, any> {
 
     }
     private highlightHistoryPanel(val: string) {
-        const inputVal = new RegExp(this.state.inputVal, 'g');
+        const inputValTransFerred = val.split('').map((item) => {
+            item.replace(item, `\\${item}`);
+        }).join('');
+        const inputVal = new RegExp(inputValTransFerred, 'g');
+        console.log(inputValTransFerred);
         if (this.state.inputVal && inputVal.test(val)) {
             this.historyListStyle = {
                 backgroundColor: '#62e092',
@@ -190,6 +194,7 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private getSearchHistoryPanel() {
+        console.log('getSearchHistoryPanel');
         this.historyLists = this.state.searchArray.map((item) => {
             return this.renderHistoryPanel(item);
         });
@@ -201,12 +206,6 @@ class SearchEngle extends React.Component <Props, any> {
         const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
         return list;
     }
-
-    // private renderDropMenu() {
-    //     return(
-
-    //     );
-    // }
 
     render(): JSX.Element {
         const dropList = searchEngineList.map((engine: SearchEngleInterface) => {
