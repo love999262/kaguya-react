@@ -167,10 +167,10 @@ class SearchEngle extends React.Component <Props, any> {
     }
     private highlightHistoryPanel(val: string) {
         const inputValTransFerred = val.split('').map((item) => {
-            item.replace(item, `\\${item}`);
+            return item.replace(item, `\\${item}`);
         }).join('');
         const inputVal = new RegExp(inputValTransFerred, 'g');
-        console.log(inputValTransFerred);
+        console.log(inputValTransFerred, inputVal, inputVal.test(val));
         if (this.state.inputVal && inputVal.test(val)) {
             this.historyListStyle = {
                 backgroundColor: '#62e092',
@@ -202,7 +202,7 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private renderHistoryPanel(listInfo: string) {
-        this.highlightHistoryPanel(listInfo);
+        // this.highlightHistoryPanel(listInfo);
         const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
         return list;
     }
