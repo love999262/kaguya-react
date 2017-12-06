@@ -2,5 +2,5 @@ node_modules
 /src/images
 /img
 src/ts/private-websites.tsx
-dist/kaguya.min.js
+# dist/kaguya.min.js
 dist/kaguya.min.js.map
