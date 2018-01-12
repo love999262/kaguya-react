@@ -127,7 +127,8 @@ class SearchEngle extends React.Component <Props, any> {
             if (!this.state.inputVal) {
                 return;
             }
-            window.open(this.state.search.searchInterface + this.state.inputVal);
+            console.log('inputVal', this.state.inputVal);
+            window.open(this.state.search.searchInterface + encodeURIComponent(this.state.inputVal));
             const searchHistory = this.state.searchArray.slice();
             for (let i = 0; i < searchHistory.length; i++) {
                 if (this.state.inputVal === searchHistory[i]) {
@@ -194,7 +195,6 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private getSearchHistoryPanel() {
-        console.log('getSearchHistoryPanel');
         this.historyLists = this.state.searchArray.map((item) => {
             return this.renderHistoryPanel(item);
         });
