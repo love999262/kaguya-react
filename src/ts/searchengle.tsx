@@ -163,8 +163,7 @@ class SearchEngle extends React.Component <Props, any> {
                     display: 'none',
                 },
             });
-        }, 100);
-
+        }, 600);
     }
     private highlightHistoryPanel(val: string) {
         const inputValTransFerred = val.split('').map((item) => {
