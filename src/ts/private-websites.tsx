@@ -2,6 +2,7 @@ const privateWebsites: any = [
     {
         ACG: {
             bilibili: 'http://www.bilibili.com',
+            douyu: 'https://www.douyu.com/',
             niconico: 'http://www.nicovideo.jp/',
             u2b: 'https://www.youtube.com/',
             '4chan': 'http://www.4chan.org/',
