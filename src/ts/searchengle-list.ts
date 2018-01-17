@@ -25,6 +25,10 @@ const searchEngineList: SearchEngleInterface[] = [
         'name': 'bilibili', 
         'url': 'http://search.bilibili.com/all?keyword=', 
         'href': 'http://search.bilibili.com/',
+    }, {
+        'name': 'xianyu', 
+        'url': 'https://s.2.taobao.com/list/list.htm?q=', 
+        'href': 'https://2.taobao.com/',
     }, { 
         'name': 'github', 
         'url': 'https://github.com/search?utf8=%E2%9C%93&q=', 
