@@ -122,13 +122,15 @@ class SearchEngle extends React.Component <Props, any> {
             },
         });
     }
-    private handleSearchEvent(e: any) {
+    private handleSearchEvent(e: any, listInfo?: string) {
         if ((e.type === 'keydown' && e.keyCode === 13) || e.type === 'click') {
             if (!this.state.inputVal) {
                 return;
             }
             console.log('inputVal', this.state.inputVal);
-            window.open(this.state.search.searchInterface + encodeURIComponent(this.state.inputVal));
+            const val = typeof listInfo === 'string' ? encodeURIComponent(listInfo) : encodeURIComponent(this.state.inputVal);
+            console.log('val', val);
+            window.open(this.state.search.searchInterface + val);
             const searchHistory = this.state.searchArray.slice();
             for (let i = 0; i < searchHistory.length; i++) {
                 if (this.state.inputVal === searchHistory[i]) {
@@ -202,7 +204,7 @@ class SearchEngle extends React.Component <Props, any> {
 
     private renderHistoryPanel(listInfo: string) {
         // this.highlightHistoryPanel(listInfo);
-        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e); }}>{listInfo}</li>;
+        const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e, listInfo); }}>{listInfo}</li>;
         return list;
     }
 
