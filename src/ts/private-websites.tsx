@@ -43,6 +43,7 @@ const privateWebsites: any = [
         Techonology: {
             github: 'https://github.com/love999262',
             speedtest: 'http://www.speedtest.net/',
+            leetcode: 'https://leetcode.com/',
             gitbooks: 'https://www.gitbook.com/',
             bandwagon: 'https://bwh1.net/',
             stackoverflow: 'http://stackoverflow.com/',
@@ -91,7 +92,6 @@ const privateWebsites: any = [
             imdb: 'http://www.imdb.com/',
             nypost: 'http://www.nypost.com/',
         },
-
     },
 ];
 

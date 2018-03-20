@@ -1,6 +1,5 @@
 const webpack = require('webpack');
 const path = require('path');
-const OpenBrowserPlugin = require('open-browser-webpack-plugin');
 const ENV = process.env.NODE_ENV;
 
 const plugins = (ENV === 'production') ? [
@@ -21,11 +20,6 @@ const plugins = (ENV === 'production') ? [
 ] : [
     new webpack.ProgressPlugin(),
 ];
-if (ENV === 'dev') {
-    plugins.push(new OpenBrowserPlugin({
-        url: 'http://localhost:8080/webpack-dev-server/index-dev.html'
-    }));
-}
 const config = {
     entry: {
         app: [
@@ -42,6 +36,10 @@ const config = {
         contentBase: './dist/',
         historyApiFallback: true,
         inline: true,
+        host: 'localhost',
+        port: 8080,
+        open: true,
+        openPage: 'webpack-dev-server/index-dev.html',
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.jsx', '.js']

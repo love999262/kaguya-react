@@ -37,6 +37,7 @@ interface StateInterface {
     inputVal: string;
     historyPanelStyle: HistoryPanelInterface;
     historyListStyle: HistoryListStyleInterface;
+    showDropMenu: boolean;
 }
 
 class SearchEngle extends React.Component <Props, any> {
@@ -68,6 +69,7 @@ class SearchEngle extends React.Component <Props, any> {
             historyListStyle: {
 
             },
+            showDropMenu: false,
         };
         // this.handleEngleClick = this.handleEngleClick.bind(this);
     }
@@ -151,22 +153,22 @@ class SearchEngle extends React.Component <Props, any> {
         });
 
     }
-    private handleInputFocus() {
-        this.setState({
-            historyPanelStyle: {
-                display: 'block',
-            },
-        });
-    }
-    private handleInputBlur() {
-        setTimeout(() => {
-            this.setState({
-                historyPanelStyle: {
-                    display: 'none',
-                },
-            });
-        }, 300);
-    }
+    // private handleInputFocus() {
+    //     this.setState({
+    //         historyPanelStyle: {
+    //             display: 'block',
+    //         },
+    //     });
+    // }
+    // private handleInputBlur() {
+    //     setTimeout(() => {
+    //         this.setState({
+    //             historyPanelStyle: {
+    //                 display: 'none',
+    //             },
+    //         });
+    //     }, 300);
+    // }
     private highlightHistoryPanel(val: string) {
         const inputValTransFerred = val.split('').map((item) => {
             return item.replace(item, `\\${item}`);
@@ -207,6 +209,23 @@ class SearchEngle extends React.Component <Props, any> {
         const list = <li className={`${this.props.prefix}-bar-search-history-list`} key={listInfo} title={listInfo} style={this.historyListStyle} onClick={(e) => { this.handleSearchEvent(e, listInfo); }}>{listInfo}</li>;
         return list;
     }
+    private handleSpreadClick() {
+        if (this.state.showDropMenu) {
+            this.setState({
+                showDropMenu: false,
+                historyPanelStyle: {
+                    display: 'none',
+                },
+            });
+        } else {
+            this.setState({
+                showDropMenu: true,
+                historyPanelStyle: {
+                    display: 'block',
+                },
+            });
+        }
+    }
 
     render(): JSX.Element {
         const dropList = searchEngineList.map((engine: SearchEngleInterface) => {
@@ -220,7 +239,8 @@ class SearchEngle extends React.Component <Props, any> {
                 </ul>
                 <button className={`${this.props.prefix}-bar-container-panel`} onClick={() => { this.handleContainerPanelClick(); }}></button>
                 <div>
-                    <input type='text' ref={(ele) => { this.input = ele; }} className={`${this.props.prefix}-bar-input`} onFocus={() => { this.handleInputFocus(); }} onBlur={() => { this.handleInputBlur(); }} onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
+                    <input type='text' ref={(ele) => { this.input = ele; }} className={`${this.props.prefix}-bar-input`} /* onFocus={() => { this.handleInputFocus(); }} */ /* onBlur={() => { this.handleInputBlur(); }} */ onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
+                    <div className={`${this.props.prefix}-bar-spread`} onClick={() => { this.handleSpreadClick(); }}><i className={`${this.props.prefix}-bar-spread-icon`}></i></div>
                     <ul className={`${this.props.prefix}-bar-search-history`} style={this.state.historyPanelStyle}>
                         {this.getSearchHistoryPanel()}
                     </ul>
