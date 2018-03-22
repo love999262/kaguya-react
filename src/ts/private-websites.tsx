@@ -35,6 +35,7 @@ const privateWebsites: any = [
             quora: 'https://www.quora.com/#',
             douban: 'https://www.douban.com/',
             twitter: 'https://twitter.com/',
+            facebook: 'https://www.facebook.com/',
             linkedin: 'https://www.linkedin.com/',
             weixin: 'https://wx.qq.com/',
             V2EX: 'https://www.v2ex.com/',
@@ -42,6 +43,8 @@ const privateWebsites: any = [
         },
         Techonology: {
             github: 'https://github.com/love999262',
+            UC: 'http://crop-answer.sm.cn/answer/index?activity=million&from=smball#/match/million',
+            leetcode: 'https://leetcode.com/',
             speedtest: 'http://www.speedtest.net/',
             gitbooks: 'https://www.gitbook.com/',
             bandwagon: 'https://bwh1.net/',
