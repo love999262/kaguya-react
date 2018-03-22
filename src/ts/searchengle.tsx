@@ -79,15 +79,15 @@ class SearchEngle extends React.Component <Props, any> {
     }
     
     componentDidMount() {
-        document.addEventListener('click', (e: any) => {
-            if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
-                this.setState({
-                    dropmenuStyle: {
-                        display: 'none',
-                    },
-                });
-            }
-        });
+        // document.addEventListener('click', (e: any) => {
+        //     if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
+        //         this.setState({
+        //             dropmenuStyle: {
+        //                 display: 'none',
+        //             },
+        //         });
+        //     }
+        // });
         document.addEventListener('keydown', (e: any) => {
             if (e.keyCode !== 192) {
                 if (document.activeElement.className !== `${this.props.prefix}-bar-input`) {
@@ -240,7 +240,7 @@ class SearchEngle extends React.Component <Props, any> {
                 <button className={`${this.props.prefix}-bar-container-panel`} onClick={() => { this.handleContainerPanelClick(); }}></button>
                 <div>
                     <input type='text' ref={(ele) => { this.input = ele; }} className={`${this.props.prefix}-bar-input`} /* onFocus={() => { this.handleInputFocus(); }} */ /* onBlur={() => { this.handleInputBlur(); }} */ onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
-                    <div className={`${this.props.prefix}-bar-spread`} onClick={() => { this.handleSpreadClick(); }}><i className={`${this.props.prefix}-bar-spread-icon`}></i></div>
+                    <div className={`${this.props.prefix}-bar-spread`} style={{ display: (this.getSearchHistoryPanel().length > 0 ? 'block' : 'none') }} onClick={() => { this.handleSpreadClick(); }}><i className={`${this.props.prefix}-bar-spread-icon`}></i></div>
                     <ul className={`${this.props.prefix}-bar-search-history`} style={this.state.historyPanelStyle}>
                         {this.getSearchHistoryPanel()}
                     </ul>
