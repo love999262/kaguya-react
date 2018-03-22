@@ -76,6 +76,22 @@
                 color: $dark;
                 // border: 1px solid $gray;
                 text-indent: .5rem;
+                padding-right: 24px;
+            }
+            &-spread {
+                float: right;
+                height: 36px;
+                position: absolute;
+                right: 0px;
+                cursor: pointer;
+                &-icon {
+                    display: inline-block;
+                    width: 24px;
+                    height: 24px;
+                    background: url('./../images/more.svg');
+                    background-size: 24px;
+                    top: 6px;
+                }
             }
             &-btn {
                 width: $h;

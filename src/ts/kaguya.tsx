@@ -21,7 +21,7 @@ class Kaguya extends React.Component <any, any> {
         return (
             <div className='kaguya'>
                 <Background prefix={this.state.prefix} />
-                <Navigator prefix={this.state.prefix}/>
+                <Navigator prefix={this.state.prefix} />
             </div>
         );
     }

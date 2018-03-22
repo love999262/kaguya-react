@@ -46,6 +46,7 @@ const privateWebsites: any = [
             UC: 'http://crop-answer.sm.cn/answer/index?activity=million&from=smball#/match/million',
             leetcode: 'https://leetcode.com/',
             speedtest: 'http://www.speedtest.net/',
+            leetcode: 'https://leetcode.com/',
             gitbooks: 'https://www.gitbook.com/',
             bandwagon: 'https://bwh1.net/',
             stackoverflow: 'http://stackoverflow.com/',
@@ -94,7 +95,6 @@ const privateWebsites: any = [
             imdb: 'http://www.imdb.com/',
             nypost: 'http://www.nypost.com/',
         },
-
     },
 ];
 
