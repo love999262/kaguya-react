@@ -37,7 +37,7 @@ interface StateInterface {
     inputVal: string;
     historyPanelStyle: HistoryPanelInterface;
     historyListStyle: HistoryListStyleInterface;
-    showDropMenu: boolean;
+    showHistoryPanel: boolean;
 }
 
 class SearchEngle extends React.Component <Props, any> {
@@ -69,7 +69,7 @@ class SearchEngle extends React.Component <Props, any> {
             historyListStyle: {
 
             },
-            showDropMenu: false,
+            showHistoryPanel: false,
         };
         // this.handleEngleClick = this.handleEngleClick.bind(this);
     }
@@ -79,15 +79,15 @@ class SearchEngle extends React.Component <Props, any> {
     }
     
     componentDidMount() {
-        // document.addEventListener('click', (e: any) => {
-        //     if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
-        //         this.setState({
-        //             dropmenuStyle: {
-        //                 display: 'none',
-        //             },
-        //         });
-        //     }
-        // });
+        document.addEventListener('click', (e: any) => {
+            if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
+                this.setState({
+                    dropmenuStyle: {
+                        display: 'none',
+                    },
+                });
+            }
+        });
         document.addEventListener('keydown', (e: any) => {
             if (e.keyCode !== 192) {
                 if (document.activeElement.className !== `${this.props.prefix}-bar-input`) {
@@ -210,16 +210,16 @@ class SearchEngle extends React.Component <Props, any> {
         return list;
     }
     private handleSpreadClick() {
-        if (this.state.showDropMenu) {
+        if (this.state.showHistoryPanel) {
             this.setState({
-                showDropMenu: false,
+                showHistoryPanel: false,
                 historyPanelStyle: {
                     display: 'none',
                 },
             });
         } else {
             this.setState({
-                showDropMenu: true,
+                showHistoryPanel: true,
                 historyPanelStyle: {
                     display: 'block',
                 },
