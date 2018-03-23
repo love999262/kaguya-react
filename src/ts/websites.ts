@@ -39,6 +39,7 @@ const websites = [
         Techonology: {
             github: 'https://github.com/love999262',
             gitbooks: 'https://www.gitbook.com/',
+            leetcode: 'https://leetcode.com/',
             imooc: 'http://www.imooc.com',
             study163: 'http://study.163.com/',
             bandwagon: 'https://bwh1.net/',
