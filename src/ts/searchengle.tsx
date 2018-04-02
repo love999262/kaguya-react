@@ -133,7 +133,7 @@ class SearchEngle extends React.Component <Props, any> {
             const val = typeof listInfo === 'string' ? encodeURIComponent(listInfo) : encodeURIComponent(this.state.inputVal);
             console.log('val', val);
             window.open(this.state.search.searchInterface + val);
-            if (!val) {
+            if (!this.state.inputVal) {
                 return;
             }
             const searchHistory: string[] = JSON.parse(localStorage.getItem('searchHistory')) ? JSON.parse(localStorage.getItem('searchHistory')) : [];
