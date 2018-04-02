@@ -55,7 +55,7 @@ class SearchEngle extends React.Component <Props, any> {
                 searchEngleList: searchEngineList,
             },
             currentDate: new Date().toString(),
-            searchArray: [],
+            searchArray: JSON.parse(localStorage.getItem('searchHistory')) ? JSON.parse(localStorage.getItem('searchHistory')) : [],
             inputVal: '',
             dropmenuStyle: {
                 display: 'none',
@@ -126,20 +126,25 @@ class SearchEngle extends React.Component <Props, any> {
     }
     private handleSearchEvent(e: any, listInfo?: string) {
         if ((e.type === 'keydown' && e.keyCode === 13) || e.type === 'click') {
-            if (!this.state.inputVal) {
-                return;
-            }
+            // if (!this.state.inputVal) {
+            //     return;
+            // }
             console.log('inputVal', this.state.inputVal);
             const val = typeof listInfo === 'string' ? encodeURIComponent(listInfo) : encodeURIComponent(this.state.inputVal);
             console.log('val', val);
             window.open(this.state.search.searchInterface + val);
-            const searchHistory = this.state.searchArray.slice();
+            if (!val) {
+                return;
+            }
+            const searchHistory: string[] = JSON.parse(localStorage.getItem('searchHistory')) ? JSON.parse(localStorage.getItem('searchHistory')) : [];
             for (let i = 0; i < searchHistory.length; i++) {
+                // Sticky Post
                 if (this.state.inputVal === searchHistory[i]) {
-                    return;
+                    searchHistory.splice(i, 1);
                 }
             }
-            searchHistory.push(this.state.inputVal);
+            searchHistory.unshift(this.state.inputVal);
+            localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
             this.setState({
                 searchArray: searchHistory,
             });
