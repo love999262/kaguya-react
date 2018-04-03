@@ -143,6 +143,13 @@ class SearchEngle extends React.Component <Props, any> {
                     searchHistory.splice(i, 1);
                 }
             }
+            const visualArray = (total: number) => {
+                if (searchHistory.length > total) {
+                    searchHistory.splice(total - 1);
+                }
+            };
+            // only record recent 30 records.
+            visualArray(30);
             searchHistory.unshift(this.state.inputVal);
             localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
             this.setState({
