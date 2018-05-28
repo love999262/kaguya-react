@@ -54,6 +54,7 @@ const privateWebsites: any = [
             'html-js': 'http://www.html-js.com/',
             UC: 'http://crop-answer.sm.cn/answer/index?activity=million&from=smball#/match/million',
             leetcode: 'https://leetcode.com/',
+            leetcodeCN: 'https://leetcode-cn.com/',
             imooc: 'http://www.imooc.com',
             study163: 'http://study.163.com/',
             speedtest: 'http://www.speedtest.net/',
