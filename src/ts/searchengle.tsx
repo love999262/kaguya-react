@@ -47,13 +47,14 @@ class SearchEngle extends React.Component <Props, any> {
     private historyListStyle: HistoryListStyleInterface;
     constructor(props: Props, context: any) {
         super(props, context);
+        const searcEngle = (Object as any).assign({
+            searchInterface: 'https://www.baidu.com/s?wd=',
+            searchBtnHref: 'https://www.baidu.com/',
+            searchBtnName: 'baidu',
+            searchEngleList: searchEngineList,
+        }, JSON.parse(localStorage.getItem('searchEngle')));
         this.state = {
-            search: {
-                searchInterface: 'https://www.baidu.com/s?wd=',
-                searchBtnHref: 'https://www.baidu.com/',
-                searchBtnName: 'baidu',
-                searchEngleList: searchEngineList,
-            },
+            search: searcEngle,
             currentDate: new Date().toString(),
             searchArray: JSON.parse(localStorage.getItem('searchHistory')) ? JSON.parse(localStorage.getItem('searchHistory')) : [],
             inputVal: '',
@@ -112,6 +113,12 @@ class SearchEngle extends React.Component <Props, any> {
                 display: this.state.dropmenuStyle.display === 'none' ? 'block' : 'none',
             },
         });
+        const searchEngle = {
+            searchInterface: engine.url,
+            searchBtnHref: engine.href,
+            searchBtnName: engine.name,
+        };
+        localStorage.setItem('searchEngle', JSON.stringify(searchEngle));
 
     }
     private handleContainerBtnClick() {
