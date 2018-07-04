@@ -127,6 +127,9 @@
                     border-bottom: 1px solid $gray;
                     height: 32px;
                     line-height: 32px;
+                    text-overflow: ellipsis;
+                    overflow: hidden;
+                    white-space: nowrap;
                     &:hover {
                         background-color: $b-blue !important;
                         color: $white;
