@@ -21,6 +21,10 @@ const searchEngineList: SearchEngleInterface[] = [
         'name': 'MDN',
         'url': 'https://developer.mozilla.org/zh-CN/search?q=',
         'href': 'https://developer.mozilla.org/zh-CN/',
+    }, {
+        'name': 'boohee',
+        'url': 'https://www.boohee.com/food/search?keyword=',
+        'href': 'https://www.boohee.com/food',
     }, { 
         'name': 'bilibili', 
         'url': 'http://search.bilibili.com/all?keyword=', 
