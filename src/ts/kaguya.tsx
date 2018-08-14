@@ -2,7 +2,6 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import Background from './background';
 import Navigator from './navigator';
-
 interface StateInterface {
     prefix: string;
 }
