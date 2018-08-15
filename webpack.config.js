@@ -6,12 +6,11 @@ const ENV = process.env.NODE_ENV;
 const config = {
     mode: (ENV === 'production' ? 'production' : 'development'),
     entry: {
-        app: path.resolve(__dirname, './src/app.tsx'),
+        kaguya: path.resolve(__dirname, './src/app.tsx'),
     },
     output: {
         filename: '[name].min.js',
         path: path.resolve(__dirname, 'dist'),
-        publicPath: '/assets/',
     },
     devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'inline-source-map',
     resolve: {
@@ -62,16 +61,25 @@ const config = {
     watchOptions: {
         ignored: [/node_modules/]
     },
+    plugins: [],
 };
-if (ENV === 'production') {
+if (ENV === 'development') {
+    config.plugins.push(new webpack.HotModuleReplacementPlugin());
     config.devServer = {
-        contentBase: '/dist/',
-        historyApiFallback: true,
+        contentBase: path.resolve(__dirname, 'dist'),
         inline: true,
         host: 'localhost',
-        port: 8080,
+        port: 8089,
         open: true,
-        openPage: '/dist/',
+        hot: true,
+        clientLogLevel: 'none',
+        quiet: false,
+        historyApiFallback: {
+            disableDotRule: true
+        },
+        watchOptions: {
+            ignored: /node_modules/
+        }
     };
 }
 console.log(config);

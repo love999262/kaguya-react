@@ -2,6 +2,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import Background from './background';
 import Navigator from './navigator';
+import Clock from './clock';
 interface StateInterface {
     prefix: string;
 }
@@ -21,6 +22,7 @@ class Kaguya extends React.Component <any, any> {
             <div className='kaguya'>
                 <Background prefix={this.state.prefix} />
                 <Navigator prefix={this.state.prefix} />
+                <Clock prefix={this.state.prefix} />
             </div>
         );
     }

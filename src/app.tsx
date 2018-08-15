@@ -1,3 +1,5 @@
+/// <reference path="./../types/global.d.ts"/>
+
 import * as React from 'react';
 import { render } from 'react-dom';
 import './scss/index.scss';
