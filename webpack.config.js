@@ -1,6 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const ENV = process.env.NODE_ENV;
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 
 const config = {
@@ -35,8 +36,7 @@ const config = {
                 loader: 'postcss-loader',
             }, {
                 loader: 'sass-loader',
-            },
-            ]
+            }, ]
         }, {
             test: /\.tsx?$/,
             exclude: /node_modules/,
@@ -46,16 +46,15 @@ const config = {
                 loader: 'ts-loader',
             }, {
                 loader: 'tslint-loader',
-            },
-            ],
+            }, ],
         }, {
             test: /\.(png|jpg|gif|ttf|eot|svg|woff)$/,
-            use: [
-                {
-                    loader: 'url-loader',
-                    options: { limit: 819200 }
+            use: [{
+                loader: 'url-loader',
+                options: {
+                    limit: 819200
                 }
-            ]
+            }]
         }]
     },
     watchOptions: {
@@ -80,6 +79,28 @@ if (ENV === 'development') {
         watchOptions: {
             ignored: /node_modules/
         }
+    };
+} else {
+    config.optimization = {
+        minimizer: [
+            new UglifyJsPlugin({
+                sourceMap: true,
+                extractComments: false,
+                uglifyOptions: {
+                    compress: {
+                        drop_console: true,
+                        drop_debugger: true
+                    },
+                    output: {
+                        /**
+                         * @desc escape Unicode characters in strings and regexps
+                         *       (affects directives with non-ascii characters becoming invalid)
+                         */
+                        ascii_only: false
+                    }
+                }
+            })
+        ]
     };
 }
 console.log(config);
