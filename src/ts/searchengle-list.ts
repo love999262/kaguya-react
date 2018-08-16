@@ -71,8 +71,8 @@ const searchEngineList: SearchEngleInterface[] = [
         'href': ' http://www.pixiv.net',
     }, { 
         'name': 'npmjs', 
-        'url': 'https://www.npmjs.com/package/', 
-        'href': 'https://www.npmjs.com/package/package',
+        'url': 'https://www.npmjs.com/search?q=', 
+        'href': 'https://www.npmjs.com/',
     }, { 
         'name': '谷歌镜像', 
         'url': 'http://soguge.com/search?hl=zh-CN&q=', 
