@@ -33,8 +33,8 @@ class Time extends React.Component <Props, any> {
         this.clock = new window.Clock({
             selector: '.kaguya-clock',
             type: 'dial',
-            color: '#fff',
-            bgColor: 'rgba(0, 0, 0, .2)',
+            // color: '#000',
+            // bgColor: 'rgba(255, 255, 255, .2)',
         });
     }
     render(): JSX.Element {
