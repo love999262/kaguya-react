@@ -21,6 +21,10 @@ const searchEngineList: SearchEngleInterface[] = [
         'name': 'MDN',
         'url': 'https://developer.mozilla.org/zh-CN/search?q=',
         'href': 'https://developer.mozilla.org/zh-CN/',
+    }, { 
+        'name': 'npmjs', 
+        'url': 'https://www.npmjs.com//', 
+        'href': 'https://www.npmjs.com/search?q=',
     }, {
         'name': 'boohee',
         'url': 'https://www.boohee.com/food/search?keyword=',
@@ -69,10 +73,6 @@ const searchEngineList: SearchEngleInterface[] = [
         'name': 'pixiv18', 
         'url': 'http://www.pixiv.net/search.php?s_mode=s_tag&r18=1&word=', 
         'href': ' http://www.pixiv.net',
-    }, { 
-        'name': 'npmjs', 
-        'url': 'https://www.npmjs.com/package/', 
-        'href': 'https://www.npmjs.com/package/package',
     }, { 
         'name': '谷歌镜像', 
         'url': 'http://soguge.com/search?hl=zh-CN&q=', 
