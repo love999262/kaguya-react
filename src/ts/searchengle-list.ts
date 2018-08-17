@@ -23,8 +23,8 @@ const searchEngineList: SearchEngleInterface[] = [
         'href': 'https://developer.mozilla.org/zh-CN/',
     }, { 
         'name': 'npmjs', 
-        'url': 'https://www.npmjs.com//', 
-        'href': 'https://www.npmjs.com/search?q=',
+        'url': 'https://www.npmjs.com/search?q=', 
+        'href': 'https://www.npmjs.com/',
     }, {
         'name': 'boohee',
         'url': 'https://www.boohee.com/food/search?keyword=',
