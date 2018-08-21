@@ -1,10 +1,16 @@
 @import './global.scss';
 .#{$kaguya} {
-    &-clock {
-        width: 120px;
-        height: 120px;
+    &-dial, &-digital {
         position: fixed;
         top: 30px;
         right: 30px;
+    }
+    &-dial {
+        width: 120px;
+        height: 120px;
+        right: 65px;
+    }
+    &-digital {
+        top: 200px;
     }
 }

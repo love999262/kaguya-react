@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
-import Clock from 'syg-clock';
+import Clock from 'kaguya-clock';
 interface StateInterface {
     prefix: string;
 }
@@ -30,17 +30,43 @@ class Time extends React.Component <Props, any> {
         
     }
     renderClock() {
-        this.clock = new window.Clock({
-            selector: '.kaguya-clock',
+        new window.Clock({
+            selector: '.kaguya-dial',
             type: 'dial',
-            // color: '#000',
-            // bgColor: 'rgba(255, 255, 255, .2)',
+            renderType: 'canvas',
+            // color: 'rgba(255, 142, 179, 1)',
+            bgColor: 'rgba(0, 161, 214, .75)',
+            dial: {
+                hasTimeLabel: true,
+                hasBorder: false,
+            },
+            digital: {
+                fontSize: 12,
+            },
+        });
+        new window.Clock({
+            selector: '.kaguya-digital',
+            type: 'digital',
+            renderType: 'css',
+            draggable: true,
+            color: 'rgba(255, 255, 255, 1)',
+            bgColor: 'rgba(0, 0, 0, 0.3)',
+            dial: {
+                hasTimeLabel: true,
+                hasBorder: true,
+            },
+            digital: {
+                fontFamily: 'simhei',
+                fontSize: 24,
+            },
         });
     }
     render(): JSX.Element {
         return(
-            <div className={`${this.props.prefix}-clock`}>
-            </div>
+            <>
+                <div className={`${this.props.prefix}-dial`}></div>
+                <div className={`${this.props.prefix}-digital`}></div>
+            </>
         );
     }
 }
