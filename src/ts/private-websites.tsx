@@ -52,6 +52,7 @@ const privateWebsites: any = [
             gitbooks: 'https://www.gitbook.com/',
             pdftoword: 'https://www.ilovepdf.com/pdf_to_word',
             juejin: 'https://juejin.im/timeline',
+            segmentfault: 'https://segmentfault.com/',
             'html-js': 'http://www.html-js.com/',
             UC: 'http://crop-answer.sm.cn/answer/index?activity=million&from=smball#/match/million',
             leetcode: 'https://leetcode.com/',

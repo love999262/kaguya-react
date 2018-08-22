@@ -27,6 +27,10 @@ const searchEngineList: SearchEngleInterface[] = [
         'href': 'https://www.npmjs.com/',
     }, {
         'name': 'boohee',
+        'url': 'https://npms.io/search?q=',
+        'href': 'https://npms.io/ ',
+    }, {
+        'name': 'boohee',
         'url': 'https://www.boohee.com/food/search?keyword=',
         'href': 'https://www.boohee.com/food',
     }, { 

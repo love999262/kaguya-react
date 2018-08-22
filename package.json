@@ -55,7 +55,7 @@
     "@types/react-dom": "^16.0.3",
     "@types/react-router": "^4.0.19",
     "@types/react-router-dom": "^4.2.3",
-    "kaguya-clock": "^1.0.4",
+    "kaguya-clock": "^1.0.6",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "syg-clock": "^1.0.18"

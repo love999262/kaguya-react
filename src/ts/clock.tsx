@@ -47,7 +47,7 @@ class Time extends React.Component <Props, any> {
         new window.Clock({
             selector: '.kaguya-digital',
             type: 'digital',
-            renderType: 'css',
+            renderType: 'canvas',
             draggable: true,
             color: 'rgba(255, 255, 255, 1)',
             bgColor: 'rgba(0, 0, 0, 0.3)',
@@ -56,7 +56,6 @@ class Time extends React.Component <Props, any> {
                 hasBorder: true,
             },
             digital: {
-                fontFamily: 'simhei',
                 fontSize: 24,
             },
         });
