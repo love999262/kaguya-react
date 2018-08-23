@@ -26,7 +26,11 @@ const searchEngineList: SearchEngleInterface[] = [
         'url': 'https://www.npmjs.com/search?q=', 
         'href': 'https://www.npmjs.com/',
     }, {
-        'name': 'boohee',
+        'name': 'cnpm',
+        'url': 'https://npm.taobao.org/browse/keyword/',
+        'href': 'https://npm.taobao.org/ ',
+    }, {
+        'name': 'npms',
         'url': 'https://npms.io/search?q=',
         'href': 'https://npms.io/ ',
     }, {

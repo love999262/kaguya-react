@@ -11,7 +11,6 @@ class Time extends React.Component <Props, any> {
     clock: Clock;
     constructor(props: Props, context: any) {
         super(props, context);
-        Clock;
         this.state = {
             prefix: `${this.props.prefix}-search`,
         };
@@ -30,7 +29,7 @@ class Time extends React.Component <Props, any> {
         
     }
     renderClock() {
-        new window.Clock({
+        new Clock({
             selector: '.kaguya-dial',
             type: 'dial',
             renderType: 'canvas',
@@ -44,7 +43,7 @@ class Time extends React.Component <Props, any> {
                 fontSize: 12,
             },
         });
-        new window.Clock({
+        new Clock({
             selector: '.kaguya-digital',
             type: 'digital',
             renderType: 'canvas',
