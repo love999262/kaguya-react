@@ -1,6 +1,11 @@
+import axios from 'axios';
+
+interface InterfaceParams {
+    url: string;
+}
 
 const utils = {
-    getRandomColor: () => {
+    getRandomColor() {
         let r: string | number = Math.floor(Math.random() * 256);
         let g: string | number = Math.floor(Math.random() * 256);
         let b: string | number = Math.floor(Math.random() * 256);
@@ -20,6 +25,14 @@ const utils = {
             b = b.toString(16);
         }
         return `#${r}${g}${b}`;
+    },
+    ajax(para: InterfaceParams) {
+        para = (<any>Object).assign({
+            baseURL: '//www.kaguya.top',
+            url: '',
+            method: 'get',
+        }, para);
+        return axios(para);
     },
 };
 

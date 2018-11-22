@@ -1,9 +1,12 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
-import searchEngineList, { SearchEngleInterface } from './searchengle-list';
-import Utils from './utils';
-
+import utils from './utils';
+interface SearchEngleInterface {
+    name: string;
+    url: string;
+    href: string;
+}
 interface DropMenuStyleInterface {
     display: string;
 }
@@ -45,16 +48,11 @@ class SearchEngle extends React.Component <Props, any> {
     input: HTMLElement;
     historyLists: JSX.Element[];
     private historyListStyle: HistoryListStyleInterface;
+    searcEngle: SearchInterface;
     constructor(props: Props, context: any) {
         super(props, context);
-        const searcEngle = (Object as any).assign({
-            searchInterface: 'https://www.baidu.com/s?wd=',
-            searchBtnHref: 'https://www.baidu.com/',
-            searchBtnName: 'baidu',
-            searchEngleList: searchEngineList,
-        }, JSON.parse(localStorage.getItem('searchEngle')));
         this.state = {
-            search: searcEngle,
+            search: this.searcEngle,
             currentDate: new Date().toString(),
             searchArray: JSON.parse(localStorage.getItem('searchHistory')) ? JSON.parse(localStorage.getItem('searchHistory')) : [],
             inputVal: '',
@@ -62,7 +60,7 @@ class SearchEngle extends React.Component <Props, any> {
                 display: 'none',
             },
             searchBtnStyle: {
-                backgroundColor: Utils.getRandomColor(),
+                backgroundColor: utils.getRandomColor(),
             },
             historyPanelStyle: {
 
@@ -76,7 +74,19 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     componentWillMount() {
-
+        utils.ajax({
+            url: '/searchengine-list.json',
+        }).then((res: any) => {
+            this.searcEngle = (Object as any).assign({
+                searchInterface: 'https://www.baidu.com/s?wd=',
+                searchBtnHref: 'https://www.baidu.com/',
+                searchBtnName: 'baidu',
+                searchEngleList: res.data,
+            }, JSON.parse(localStorage.getItem('searchEngle')));
+            this.setState({
+                search: this.searcEngle,
+            });
+        });
     }
     
     componentDidMount() {
@@ -103,12 +113,13 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     private handleEngleClick(engine: SearchEngleInterface) {
+        const searchState = (Object as any).assign(this.state.search, {
+            searchInterface: engine.url,
+            searchBtnHref: engine.href,
+            searchBtnName: engine.name,
+        });
         this.setState({
-            search: {
-                searchInterface: engine.url,
-                searchBtnHref: engine.href,
-                searchBtnName: engine.name,
-            },
+            search: searchState,
             dropmenuStyle: {
                 display: this.state.dropmenuStyle.display === 'none' ? 'block' : 'none',
             },
@@ -247,12 +258,12 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     render(): JSX.Element {
-        const dropList = searchEngineList.map((engine: SearchEngleInterface) => {
+        const dropList = this.state.search && this.state.search.searchEngleList && this.state.search.searchEngleList.map((engine: SearchEngleInterface) => {
             return this.renderSearchEngles(engine);
         });
         return(
             <div className={`${this.props.prefix}-bar`}>
-                <button className={`${this.props.prefix}-bar-container-btn`} onClick={() => { this.handleContainerBtnClick(); }}>{this.state.search.searchBtnName}</button>
+                <button className={`${this.props.prefix}-bar-container-btn`} onClick={() => { this.handleContainerBtnClick(); }}>{this.state.search && this.state.search.searchBtnName}</button>
                 <ul className={`${this.props.prefix}-bar-container-dropmenu`} style={this.state.dropmenuStyle}>
                     {dropList}
                 </ul>

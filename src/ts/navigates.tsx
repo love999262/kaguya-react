@@ -1,8 +1,6 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
-import privateWebsites from './private-websites';
-import websites from './websites';
 import utils from './utils';
 
 interface StateInterface {
@@ -15,11 +13,18 @@ class Navigates extends React.Component <Props, any> {
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
-            websites: privateWebsites.length > 0 ? privateWebsites[0] : websites[0],
+            websites: {},
         };
     }
 
     componentWillMount() {
+        utils.ajax({
+            url: '/websites.json',
+        }).then((res) => {
+            this.setState({
+                websites: res.data[0],
+            });
+        });
     }
     
     componentDidMount() {
