@@ -61,6 +61,7 @@
                     color: $dark;
                     top: calc(100% + .5rem);
                     z-index: 9999999;
+                    left: 0;
                     @include setShadow;
                     &-searchengine {
                         color: $dark;
