@@ -11,7 +11,7 @@ const config = {
     },
     output: {
         filename: '[name].min.js',
-        path: path.resolve(__dirname, 'dist'),
+        path: path.resolve(__dirname, 'dist/assets/'),
     },
     devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'inline-source-map',
     resolve: {

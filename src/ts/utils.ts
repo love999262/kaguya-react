@@ -28,7 +28,7 @@ const utils = {
     },
     ajax(para: InterfaceParams) {
         para = (<any>Object).assign({
-            baseURL: '//www.kaguya.top',
+            baseURL: '//www.kaguya.top/assets/',
             url: '',
             method: 'get',
         }, para);

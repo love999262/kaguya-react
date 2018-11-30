@@ -11,7 +11,7 @@ interface StateInterface {
     isLocal: boolean;
     bgImgStyle: ImgStyleInterface;
     totalPic: number;
-    qiniuURL: string;
+    assetsURL: string;
     localPicDir: string;
 }
 
@@ -42,7 +42,7 @@ class Background extends React.Component <Props, any> {
             isLocal: false,
             bgImgStyle: {},
             totalPic: 830,
-            qiniuURL: '//www.kaguya.top/',
+            assetsURL: '//www.kaguya.top/assets/img/',
             localPicDir: '../img/',
         };
     }
@@ -72,7 +72,7 @@ class Background extends React.Component <Props, any> {
         }
         let style: object;
         let assets: string;
-        this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.qiniuURL;
+        this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
         style = {
             backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
         };
