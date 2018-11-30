@@ -11,7 +11,8 @@ const config = {
     },
     output: {
         filename: '[name].min.js',
-        path: path.resolve(__dirname, 'dist/assets/'),
+        path: path.join(__dirname, 'dist', 'assets'),
+        publicPath: '/assets/',
     },
     devtool: (ENV === 'dev' || ENV === 'watch') ? 'eval-source-map' : 'inline-source-map',
     resolve: {
@@ -65,7 +66,8 @@ const config = {
 if (ENV === 'development') {
     config.plugins.push(new webpack.HotModuleReplacementPlugin());
     config.devServer = {
-        contentBase: path.resolve(__dirname, 'dist'),
+        contentBase: path.join(__dirname, 'dist'),
+        publicPath: '/assets/',
         inline: true,
         host: 'localhost',
         port: 8089,

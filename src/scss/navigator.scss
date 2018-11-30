@@ -6,12 +6,15 @@
         margin-top: 25vh;
         z-index: 999;
         user-select: none;
+        width: 50vw;
+        min-width: 600px;
         &-bar {
             height: $h;
+            width: 100%;
             @include setShadow;
             display: flex;
             align-items: center;
-            margin: 0 auto;
+            justify-content: center;
             &-container {
                 height: inherit;
                 float: left;
@@ -37,11 +40,12 @@
                     border: 1px solid $btn-border-color;
                     background: url(../images/down.svg) 5px 10px no-repeat;
                     background-size: 12px;
-                    line-height: 36px;
+                    line-height: $h;
                     width: 24px;
                     background-color: $btn-color;
                     cursor: pointer;
                     padding: 6px 8px;
+                    flex-wrap: wrap;
                     &:hover {
                         background-color: $btn-hover-color;
                         border-color: $btn-border-color;
@@ -69,18 +73,22 @@
                     }
                 }
             }
+            &-input-wrap {
+                flex-grow: 1;
+            }
             &-input {
                 height: $h;
-                width: $input-w;
+                // width: $input-w;
                 float: left;
                 color: $dark;
                 // border: 1px solid $gray;
                 text-indent: .5rem;
                 padding-right: 24px;
+                width: 100%;
             }
             &-spread {
                 float: right;
-                height: 36px;
+                height: $h;
                 position: absolute;
                 right: 0px;
                 cursor: pointer;
@@ -93,8 +101,8 @@
                 }
             }
             &-btn {
-                width: $h;
-                height: $h;
+                min-width: $h;
+                min-height: $h;
                 float: left;
                 cursor: pointer;
                 color: $white;
@@ -145,16 +153,16 @@
             // flex-direction: row;
             // flex-wrap: nowrap;
             flex-flow: row nowrap;
-            justify-content: center;
-            align-items: flex-start;
+            align-items: start;
             opacity: 0.9;
+            width: 100%;
             &-nav {
                 // display: flex;
                 // flex-flow: column wrap;
                 // flex-basis: 0;
                 // flex: 1;
-                @include setShadow;
                 width: 20%;
+                @include setShadow;
                 background-color: $white;
                 & > * {
                     height: $h;
@@ -165,9 +173,10 @@
                 }
                 text-align: left;
                 li {
-                    flex: 1;
                     cursor: pointer;
-                    padding: 0 4px;
+                    // flex: 1;
+                    // padding: 0 4px;
+                    // float: left;
                 }
                 &-list {
                     color: $dark;
