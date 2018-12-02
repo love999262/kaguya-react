@@ -84,7 +84,6 @@
                 color: $dark;
                 // border: 1px solid $gray;
                 text-indent: .5rem;
-                padding-right: 24px;
                 width: 100%;
             }
             &-spread {
@@ -98,6 +97,7 @@
                     width: 24px;
                     height: 24px;
                     background-size: 24px;
+                    background: url('./../images/more.svg');
                     top: 6px;
                 }
             }
@@ -109,7 +109,7 @@
                 color: $white;
                 background: url(../images/search.svg) 2px 8px no-repeat;
                 background-color: #5BC0DE;
-                background-size: 32px;
+                background-size: 3.5vh;
                 &:hover {
                     background-color: $btn-hover-color;
                     border-color: $btn-border-color;
