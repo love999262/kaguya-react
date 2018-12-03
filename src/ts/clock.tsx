@@ -26,7 +26,6 @@ class Time extends React.Component <Props, any> {
     }
 
     componentWillUnmount() {
-        
     }
     renderClock() {
         new Clock({

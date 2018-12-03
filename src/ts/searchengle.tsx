@@ -49,6 +49,7 @@ class SearchEngle extends React.Component <Props, any> {
     historyLists: JSX.Element[];
     private historyListStyle: HistoryListStyleInterface;
     searcEngle: SearchInterface;
+    isMount: boolean;
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
@@ -74,6 +75,11 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     componentWillMount() {
+
+    }
+    
+    componentDidMount() {
+        this.isMount = true;
         utils.ajax({
             url: '/searchengine-list.json',
         }).then((res: any) => {
@@ -83,13 +89,12 @@ class SearchEngle extends React.Component <Props, any> {
                 searchBtnName: 'baidu',
                 searchEngleList: res.data,
             }, JSON.parse(localStorage.getItem('searchEngle')));
-            this.setState({
-                search: this.searcEngle,
-            });
+            if (this.isMount) {
+                this.setState({
+                    search: this.searcEngle,
+                });                
+            }
         });
-    }
-    
-    componentDidMount() {
         document.addEventListener('click', (e: any) => {
             if (e.target.className !== `${this.props.prefix}-bar-container-panel`) {
                 this.setState({
@@ -109,7 +114,7 @@ class SearchEngle extends React.Component <Props, any> {
     }
 
     componentWillUnmount() {
-
+        this.isMount = false;
     }
 
     private handleEngleClick(engine: SearchEngleInterface) {

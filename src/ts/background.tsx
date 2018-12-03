@@ -59,7 +59,6 @@ class Background extends React.Component <Props, any> {
     }
 
     componentWillUnmount() {
-
     }
 
     private setBackground() {
