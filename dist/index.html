@@ -10,8 +10,22 @@
 
 <body>
     <div id="kaguya"></div>
-    <script src="./assets/kaguya.min.js"></script>
-    <script src="/assets/kaguya.min.js"></script>
+    <script>
+        function isLocal() {
+            return Boolean(window.location.href.match('localhost'));
+        }
+        function appendScript() {
+            const body = document.querySelector('body');
+            const script = document.createElement('script');
+            if (isLocal()) {
+                script.src = '/assets/kaguya.min.js';
+            } else {
+                script.src = './assets/kaguya.min.js';
+            }
+            body.appendChild(script);
+        }
+        appendScript();
+    </script>
 </body>
 
 </html>

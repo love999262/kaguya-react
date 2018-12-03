@@ -25,14 +25,6 @@ const config = {
                 loader: 'style-loader',
             }, {
                 loader: 'css-loader',
-                options: {
-                    minimize: {
-                        discardComments: {
-                            removeAll: true
-                        },
-                    },
-                    importLoaders: 2,
-                }
             }, {
                 loader: 'postcss-loader',
             }, {
