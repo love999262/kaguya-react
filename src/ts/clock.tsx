@@ -32,6 +32,7 @@ class Time extends React.Component <Props, any> {
             selector: '.kaguya-dial',
             type: 'dial',
             renderType: 'canvas',
+            draggable: false,
             // color: 'rgba(255, 142, 179, 1)',
             bgColor: 'rgba(0, 161, 214, .75)',
             dial: {
@@ -46,7 +47,7 @@ class Time extends React.Component <Props, any> {
             selector: '.kaguya-digital',
             type: 'digital',
             renderType: 'canvas',
-            draggable: true,
+            draggable: false,
             color: 'rgba(255, 255, 255, 1)',
             bgColor: 'rgba(0, 0, 0, 0.3)',
             dial: {

@@ -274,7 +274,16 @@ class SearchEngle extends React.Component <Props, any> {
                 </ul>
                 <button className={`${this.props.prefix}-bar-container-panel`} onClick={() => { this.handleContainerPanelClick(); }}></button>
                 <div className={`${this.props.prefix}-bar-input-wrap`}>
-                    <input type='text' ref={(ele) => { this.input = ele; }} className={`${this.props.prefix}-bar-input`} /* onFocus={() => { this.handleInputFocus(); }} */ /* onBlur={() => { this.handleInputBlur(); }} */ onKeyDown={(e) => { this.handleSearchEvent(e); }} placeholder='Open The Door To A Whole New World!!!' value={this.state.inputVal} onChange={(e) => {this.handleInputChange(e); }} />
+                    <input 
+                        type='text' 
+                        ref={(ele) => { this.input = ele; }} 
+                        className={`${this.props.prefix}-bar-input`} 
+                        onKeyDown={(e) => { this.handleSearchEvent(e); }} 
+                        placeholder='Open The Door To A Whole New World!!!' 
+                        value={this.state.inputVal} 
+                        onChange={(e) => {this.handleInputChange(e); }} 
+                        /* onFocus={() => { this.handleInputFocus(); }} */ /* onBlur={() => { this.handleInputBlur(); }} */ 
+                    />
                     <div className={`${this.props.prefix}-bar-spread`} style={{ display: (this.getSearchHistoryPanel().length > 0 ? 'block' : 'none') }} onClick={() => { this.handleSpreadClick(); }}><i className={`${this.props.prefix}-bar-spread-icon`}></i></div>
                     <ul className={`${this.props.prefix}-bar-search-history`} style={this.state.historyPanelStyle}>
                         {this.getSearchHistoryPanel()}
