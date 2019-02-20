@@ -2,6 +2,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
 import Clock from 'kaguya-clock';
+import utils from './utils';
 interface StateInterface {
     prefix: string;
 }
@@ -33,8 +34,8 @@ class Time extends React.Component <Props, any> {
             type: 'dial',
             renderType: 'canvas',
             draggable: false,
-            // color: 'rgba(255, 142, 179, 1)',
-            bgColor: 'rgba(0, 161, 214, .75)',
+            // color: utils.getRandomColor(),
+            bgColor: utils.getRandomColor(),
             dial: {
                 hasTimeLabel: true,
                 hasBorder: false,
@@ -48,8 +49,9 @@ class Time extends React.Component <Props, any> {
             type: 'digital',
             renderType: 'canvas',
             draggable: false,
-            color: 'rgba(255, 255, 255, 1)',
-            bgColor: 'rgba(0, 0, 0, 0.3)',
+            // color: 'rgba(255, 255, 255, 1)',
+            // bgColor: 'rgba(0, 0, 0, 0.3)',
+            // bgColor: utils.getRandomColor(),
             dial: {
                 hasTimeLabel: true,
                 hasBorder: true,
