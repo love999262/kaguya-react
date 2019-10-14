@@ -28,7 +28,7 @@ const utils = {
     },
     ajax(para: InterfaceParams) {
         para = (<any>Object).assign({
-            baseURL: '//www.kaguya.top/assets/',
+            baseURL: '//love999262.github.io/kaguya-react/',
             url: '',
             method: 'get',
         }, para);
