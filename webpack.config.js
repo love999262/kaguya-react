@@ -78,7 +78,7 @@ if (ENV === 'development') {
     config.optimization = {
         minimizer: [
             new UglifyJsPlugin({
-                sourceMap: true,
+                sourceMap: false,
                 extractComments: false,
                 uglifyOptions: {
                     compress: {
