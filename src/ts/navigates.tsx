@@ -45,44 +45,44 @@ class Navigates extends React.Component <Props, any> {
         let listContainer: any = [];
         const nav: any = [];
         console.log('this.state.websites', this.state.websites);
-        // this.state.websites.forEach((item: any, i: number) => {
-        //     listContainer = [];
-        //     const title = <li key={i + item.content.length} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{item.title}</li>;
-        //     listContainer.push(title);
-        //     item.content && Array.isArray(item.content) && item.content.forEach((ite: any, idx: number) => {
-        //         const list = <li key={idx} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(ite.url); }}>{ite.name}</li>;
-        //         listContainer.push(list);
-        //     });
-        //     nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-        //     // for (const i in item) {
-        //     //     if (i) {
-        //     //         listContainer = [];
-        //     //         const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
-        //     //         listContainer.push(title);
-        //     //         for (const j in item[i]) {
-        //     //             if (j) {
-        //     //                 const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(item[i][j]); }}>{j}</li>;
-        //     //                 listContainer.push(list);
-        //     //             }
-        //     //         }
-        //     //         nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-        //     //     }
-        //     // }
-        // });
-        for (const i in this.state.websites) {
-            if (i) {
-                listContainer = [];
-                const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
-                listContainer.push(title);
-                for (const j in this.state.websites[i]) {
-                    if (j) {
-                        const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(this.state.websites[i][j]); }}>{j}</li>;
-                        listContainer.push(list);
-                    }
-                }
-                nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-            }
-        }
+        this.state.websites.forEach((item: any, i: number) => {
+            listContainer = [];
+            const title = <li key={i + item.content.length} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{item.title}</li>;
+            listContainer.push(title);
+            item.content && Array.isArray(item.content) && item.content.forEach((ite: any, idx: number) => {
+                const list = <li key={idx} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(ite.url); }}>{ite.name}</li>;
+                listContainer.push(list);
+            });
+            nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
+            // for (const i in item) {
+            //     if (i) {
+            //         listContainer = [];
+            //         const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
+            //         listContainer.push(title);
+            //         for (const j in item[i]) {
+            //             if (j) {
+            //                 const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(item[i][j]); }}>{j}</li>;
+            //                 listContainer.push(list);
+            //             }
+            //         }
+            //         nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
+            //     }
+            // }
+        });
+        // for (const i in this.state.websites) {
+        //     if (i) {
+        //         listContainer = [];
+        //         const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
+        //         listContainer.push(title);
+        //         for (const j in this.state.websites[i]) {
+        //             if (j) {
+        //                 const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(this.state.websites[i][j]); }}>{j}</li>;
+        //                 listContainer.push(list);
+        //             }
+        //         }
+        //         nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
+        //     }
+        // }
         return nav;
     }
 
