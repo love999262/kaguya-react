@@ -42,7 +42,7 @@ class Background extends React.Component <Props, any> {
             bgImgStyle: {},
             totalPic: 830,
             assetsURL: '//www.kaguya.top/assets/img/',
-            localPicDir: '../img/',
+            localPicDir: '../images/',
         };
     }
     
@@ -74,6 +74,7 @@ class Background extends React.Component <Props, any> {
         style = {
             // backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
             backgroundImage: `url(${assets}/ba.gif)`,
+            backgroundRepeat: 'repeat',
         };
         this.setState({
             imgIndex: num,
