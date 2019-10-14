@@ -73,6 +73,7 @@ class Background extends React.Component <Props, any> {
         this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
         style = {
             backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
+            backgroundColor: 'pink',
         };
         this.setState({
             imgIndex: num,
