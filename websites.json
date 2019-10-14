@@ -1,6 +1,9 @@
 [{
   "title": "ACG",
   "content": [{
+    "url": "https://www.youtube.com/",
+    "name": "youtube"
+  }, {
     "url": "http://www.bilibili.com",
     "name": "bilibili"
   }, {
@@ -18,12 +21,6 @@
   }, {
     "url": "http://www.nicovideo.jp/",
     "name": "nicovideo"
-  }, {
-    "url": "http://www.4chan.org/",
-    "name": "4chan"
-  }, {
-    "url": "http://www.2chan.net/",
-    "name": "2chan"
   }, {
     "url": "https://www.tumblr.com/",
     "name": "tumblr"

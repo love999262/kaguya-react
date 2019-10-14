@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
-
 interface ImgStyleInterface {
     backgroundImage?: string;
 }
@@ -39,7 +38,7 @@ class Background extends React.Component <Props, any> {
                             ];
         this.state = {
             imgIndex: 0,
-            isLocal: false,
+            isLocal: true,
             bgImgStyle: {},
             totalPic: 830,
             assetsURL: '//www.kaguya.top/assets/img/',
@@ -73,7 +72,8 @@ class Background extends React.Component <Props, any> {
         let assets: string;
         this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
         style = {
-            backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
+            // backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
+            backgroundImage: `url(${assets}/ba.gif)`,
         };
         this.setState({
             imgIndex: num,
