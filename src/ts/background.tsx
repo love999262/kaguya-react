@@ -38,7 +38,7 @@ class Background extends React.Component <Props, any> {
                             ];
         this.state = {
             imgIndex: 0,
-            isLocal: true,
+            isLocal: false,
             bgImgStyle: {},
             totalPic: 830,
             assetsURL: '//www.kaguya.top/assets/img/',
@@ -72,9 +72,7 @@ class Background extends React.Component <Props, any> {
         let assets: string;
         this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
         style = {
-            // backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
-            backgroundImage: `url(${assets}ba.gif)`,
-            backgroundRepeat: 'repeat',
+            backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
         };
         this.setState({
             imgIndex: num,
