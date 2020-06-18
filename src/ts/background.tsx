@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
+import CONSTANTS from './CONSTANTS';
 interface ImgStyleInterface {
     backgroundImage?: string;
 }
@@ -40,7 +41,7 @@ class Background extends React.Component <Props, any> {
             imgIndex: 0,
             isLocal: false,
             bgImgStyle: {},
-            totalPic: 830,
+            totalPic: CONSTANTS.IMAGE_LIST.length,
             assetsURL: '//www.kaguya.top/assets/img/',
             localPicDir: '../images/',
         };
@@ -60,19 +61,32 @@ class Background extends React.Component <Props, any> {
     componentWillUnmount() {
     }
 
+    // private setBackground() {
+    //     const num = Math.round(Math.random() * this.state.totalPic);
+    //     console.log(num, this.eliminateImg);
+    //     if (this.eliminateImg.indexOf(num) > -1) {
+    //         console.log('eliminateImg');
+    //         this.setBackground();
+    //         return false;
+    //     }
+    //     let style: object;
+    //     let assets: string;
+    //     this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
+    //     style = {
+    //         backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
+    //         backgroundColor: 'pink',
+    //     };
+    //     this.setState({
+    //         imgIndex: num,
+    //         bgImgStyle: style,
+    //     });
+    // }
+
     private setBackground() {
         const num = Math.round(Math.random() * this.state.totalPic);
-        console.log(num, this.eliminateImg);
-        if (this.eliminateImg.indexOf(num) > -1) {
-            console.log('eliminateImg');
-            this.setBackground();
-            return false;
-        }
         let style: object;
-        let assets: string;
-        this.state.isLocal ? assets = this.state.localPicDir : assets = this.state.assetsURL;
         style = {
-            backgroundImage: `url(${assets}bg${num.toString()}.jpg)`,
+            backgroundImage: `url(${CONSTANTS.IMAGE_LIST[num]})`,
             backgroundColor: 'pink',
         };
         this.setState({
