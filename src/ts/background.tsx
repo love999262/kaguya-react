@@ -83,7 +83,7 @@ class Background extends React.Component <Props, any> {
     // }
 
     private setBackground() {
-        const num = Math.round(Math.random() * this.state.totalPic);
+        const num = Math.floor(Math.random() * this.state.totalPic);
         let style: object;
         style = {
             backgroundImage: `url(${CONSTANTS.IMAGE_LIST[num]})`,
