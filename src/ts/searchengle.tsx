@@ -24,12 +24,14 @@ interface StateInterface {
     showHistoryPanel: boolean;
 }
 
+type SearchTriggerEvent = React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLElement>;
+
 class SearchEngle extends React.Component <Props, StateInterface> {
     input: HTMLInputElement | null;
     private barRef: HTMLDivElement | null;
 
-    constructor(props: Props, context: any) {
-        super(props, context);
+    constructor(props: Props) {
+        super(props);
         this.input = null;
         this.barRef = null;
         this.state = {
@@ -108,10 +110,18 @@ class SearchEngle extends React.Component <Props, StateInterface> {
             if (!Array.isArray(parsed)) {
                 return [];
             }
-            return parsed.filter((item: any) => typeof item === 'string');
+            return parsed.filter((item: unknown): item is string => typeof item === 'string');
         } catch (error) {
             return [];
         }
+    }
+
+    private isTypingTarget(target: EventTarget | null) {
+        if (!(target instanceof HTMLElement)) {
+            return false;
+        }
+        const tagName = target.tagName.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea' || target.isContentEditable;
     }
 
     private handleDocumentClick(event: MouseEvent) {
@@ -125,15 +135,20 @@ class SearchEngle extends React.Component <Props, StateInterface> {
     }
 
     private handleDocumentKeydown(event: KeyboardEvent) {
-        if (event.key === '`' || event.keyCode === 192) {
+        if (event.key !== '/') {
+            return;
+        }
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+            return;
+        }
+        if (this.isTypingTarget(event.target)) {
             return;
         }
         if (!this.input) {
             return;
         }
-        if (document.activeElement !== this.input) {
-            this.input.focus();
-        }
+        event.preventDefault();
+        this.input.focus();
     }
 
     private handleEngleClick(engine: SearchEngleInterface) {
@@ -166,8 +181,8 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         });
     }
 
-    private handleSearchEvent(event: any, listInfo?: string) {
-        if (event.type === 'keydown' && event.key !== 'Enter' && event.keyCode !== 13) {
+    private handleSearchEvent(event: SearchTriggerEvent, listInfo?: string) {
+        if (event.type === 'keydown' && (event as React.KeyboardEvent<HTMLInputElement>).key !== 'Enter') {
             return;
         }
 
@@ -261,7 +276,7 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                         ref={(element) => { this.input = element; }}
                         className={`${this.props.prefix}-bar-input`}
                         onKeyDown={(event) => { this.handleSearchEvent(event); }}
-                        placeholder='Search the web...'
+                        placeholder='Search the web... (press /)'
                         value={this.state.inputVal}
                         onChange={(event) => { this.handleInputChange(event); }}
                     />

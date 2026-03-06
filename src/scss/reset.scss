@@ -1,16 +1,28 @@
-@import './global.scss';
-* {
+@use './global.scss' as *;
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    border-radius: none !important;
-    position: relative;
-    list-style-type: none;
-    color: #fff;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    color: $dark;
     font-family: "Arial", "Times New Roman", "microsoft yahei";
     font-size: 16px;
-    border: 0;
-    border-width: 1px;
-    outline-color: $gray;
+    line-height: 1.5;
+}
+
+ul,
+li {
+    list-style-type: none;
 }
 
 a {
@@ -27,6 +39,13 @@ a {
 
 button {
     border-radius: 0;
+    border: 0;
+    outline-color: $gray;
+}
+
+input {
+    border: 0;
+    outline-color: $gray;
 }
 
 li {
@@ -60,5 +79,5 @@ li {
 
 ::selection {
     background: #777;
-    color: #fff
+    color: #fff;
 }

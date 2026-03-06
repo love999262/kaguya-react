@@ -1,4 +1,4 @@
-@import './global.scss';
+@use './global.scss' as *;
 .#{$kaguya} {
     &-dial, &-digital {
         position: fixed;
@@ -12,5 +12,23 @@
     }
     &-digital {
         top: 200px;
+    }
+}
+
+@media (max-width: 900px) {
+    .#{$kaguya} {
+        &-dial, &-digital {
+            right: 10px;
+        }
+        &-dial {
+            width: 96px;
+            height: 96px;
+            right: 38px;
+            top: 14px;
+        }
+        &-digital {
+            top: 128px;
+            right: 8px;
+        }
     }
 }

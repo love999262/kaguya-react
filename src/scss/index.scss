@@ -1,6 +1,5 @@
-@import './global.scss';
-@import './reset.scss';
-@import './app.scss';
-@import './kaguya.scss';
-@import './navigator.scss';
-@import './clock.scss';
+@use './reset.scss';
+@use './app.scss';
+@use './kaguya.scss';
+@use './navigator.scss';
+@use './clock.scss';

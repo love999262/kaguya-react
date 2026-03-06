@@ -1,12 +1,12 @@
-@import './global.scss';
+@use './global.scss' as *;
 .#{$kaguya} {
     &-search {
         opacity: 0.9;
         text-align: center;
         margin-top: 25vh;
         z-index: 999;
-        width: 50vw;
-        min-width: 660px;
+        width: min(920px, calc(100vw - 24px));
+        min-width: 0;
         &-bar {
             height: $h;
             width: 100%;
@@ -152,7 +152,8 @@
             display: flex;
             // flex-direction: row;
             // flex-wrap: nowrap;
-            flex-flow: row nowrap;
+            flex-flow: row wrap;
+            gap: 8px;
             align-items: start;
             opacity: 0.9;
             width: 100%;
@@ -162,6 +163,7 @@
                 // flex-basis: 0;
                 // width: 20%;
                 flex: 1;
+                min-width: 180px;
                 @include setShadow;
                 background-color: $white;
                 & > * {
@@ -225,6 +227,40 @@
             //         }
             //     }
             // }
+        }
+    }
+}
+
+@media (max-width: 900px) {
+    .#{$kaguya} {
+        &-search {
+            margin-top: 14vh;
+            &-bar {
+                min-height: 42px;
+                &-container-btn {
+                    min-width: 80px;
+                    padding: 6px 8px;
+                }
+            }
+            &-panel {
+                margin: 1.5rem auto;
+                &-nav {
+                    min-width: calc(50% - 6px);
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: 560px) {
+    .#{$kaguya} {
+        &-search {
+            width: calc(100vw - 12px);
+            &-panel {
+                &-nav {
+                    min-width: 100%;
+                }
+            }
         }
     }
 }

@@ -6,11 +6,11 @@ interface StateInterface {
     prefix: string;
 }
 
-class Navigator extends React.Component <Props, any> {
+class Navigator extends React.Component <Props, StateInterface> {
     state: StateInterface;
 
-    constructor(props: Props, context: any) {
-        super(props, context);
+    constructor(props: Props) {
+        super(props);
         this.state = {
             prefix: `${this.props.prefix}-search`,
         };
