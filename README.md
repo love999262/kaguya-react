@@ -1,16 +1,28 @@
 # kaguya-react
-My [navigator websites](https://github.com/love999262/mokou) write with react&typescript.
 
-[link](https://github.com/love999262/mokou)
+一个个人导航页项目，已从旧版 webpack 工程迁移到 Vite + React 18 + TypeScript。
 
-[website](https://love999262.github.io/kaguya-react/dist/index.html)
+## Run
 
-### TODO
+```bash
+npm install
+npm run dev
+```
 
-- utils class
+默认地址：`http://localhost:8089`
 
-- global event listener such as: click other place close dropmenu.
+## Build
 
-- delete unnecessary code.
-- pull away I/O, all searchengine && websites request from remote or first request remote.
-- add a moe kaguya Icon.
+```bash
+npm run typecheck
+npm run build
+npm run preview
+```
+
+## Modernization notes
+
+- 移除跨域远程 JSON 请求，改为本地打包数据，修复 CORS 问题。
+- 移除 `axios`，统一使用浏览器原生能力和本地数据。
+- 所有外链跳转启用 `noopener,noreferrer` 并做协议校验。
+- 依赖升级后 `npm audit` 当前为 `0 vulnerabilities`。
+- 样式重构为响应式玻璃卡片风格，优化了移动端布局和交互。

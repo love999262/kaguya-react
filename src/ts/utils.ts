@@ -1,9 +1,3 @@
-import axios from 'axios';
-
-interface InterfaceParams {
-    url: string;
-}
-
 const utils = {
     getRandomColor() {
         let r: string | number = Math.floor(Math.random() * 256);
@@ -26,13 +20,20 @@ const utils = {
         }
         return `#${r}${g}${b}`;
     },
-    ajax(para: InterfaceParams) {
-        para = (<any>Object).assign({
-            baseURL: '//love999262.github.io/kaguya-react/',
-            url: '',
-            method: 'get',
-        }, para);
-        return axios(para);
+    openExternalUrl(url: string) {
+        try {
+            const parsed = new URL(url, window.location.href);
+            const isSafeProtocol = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            if (!isSafeProtocol) {
+                return;
+            }
+            const newWindow = window.open(parsed.toString(), '_blank', 'noopener,noreferrer');
+            if (newWindow) {
+                newWindow.opener = null;
+            }
+        } catch (error) {
+            // Ignore malformed URLs from external data sources.
+        }
     },
 };
 

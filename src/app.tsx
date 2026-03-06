@@ -1,15 +1,15 @@
 /// <reference path="./../types/global.d.ts"/>
 
 import * as React from 'react';
-import { render } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import './scss/index.scss';
 import Kaguya from './ts/kaguya';
-class App extends React.Component {
-    render(): JSX.Element {
-        return (
-            <Kaguya />
-        );
-    }
+
+const rootElement = document.getElementById('kaguya');
+
+if (!rootElement) {
+    throw new Error('Missing root element #kaguya');
 }
 
-render(<App />, document.querySelectorAll('#kaguya')[0]);
+const root = createRoot(rootElement);
+root.render(<Kaguya />);

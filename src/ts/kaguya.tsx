@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { render } from 'react-dom';
 import Background from './background';
 import Navigator from './navigator';
 import Clock from './clock';
@@ -14,9 +13,6 @@ class Kaguya extends React.Component <any, any> {
             prefix: 'kaguya',
         };
     }
-    componentDidMount() {
-        
-    }
     render(): JSX.Element {
         return (
             <div className='kaguya'>
@@ -29,4 +25,4 @@ class Kaguya extends React.Component <any, any> {
 }
 
 export default Kaguya;
-export { StateInterface as KaguyaProps };
+export type { StateInterface as KaguyaProps };

@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { render } from 'react-dom';
 import { KaguyaProps as Props } from './kaguya';
 import SearchEngle from './searchengle';
 import Navigates from './navigates';
@@ -17,22 +16,6 @@ class Navigator extends React.Component <Props, any> {
         };
     }
 
-    componentWillMount() {
-
-    }
-    
-    componentDidMount() {
-
-    }
-
-    componentWillUnmount() {
-        
-    }
-
-    handleSearchEvent() {
-
-    }
-
     render(): JSX.Element {
         return(
             <div className={`${this.props.prefix}-search`}>
@@ -44,4 +27,4 @@ class Navigator extends React.Component <Props, any> {
 }
 
 export default  Navigator;
-export { StateInterface };
+export type { StateInterface };

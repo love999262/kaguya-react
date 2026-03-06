@@ -1,15 +1,24 @@
 import * as React from 'react';
-import { render } from 'react-dom';
 import { StateInterface as Props } from './navigator';
 import utils from './utils';
+import websitesData from '../../websites.json';
+
+interface WebsiteLink {
+    name: string;
+    url: string;
+}
+
+interface WebsiteSection {
+    title: string;
+    content: WebsiteLink[];
+}
 
 interface StateInterface {
-    websites: any;
+    websites: WebsiteSection[];
 }
 
 class Navigates extends React.Component <Props, any> {
     state: StateInterface;
-    isMount: boolean;
     constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
@@ -17,72 +26,55 @@ class Navigates extends React.Component <Props, any> {
         };
     }
 
-    componentWillMount() {
-
-    }
-    
     componentDidMount() {
-        this.isMount = true;
-        utils.ajax({
-            url: '/websites.json',
-        }).then((res: any) => {
-            if (this.isMount) {
-                this.setState({
-                    websites: res.data,
-                });
-            }
-        });
+        const websites = websitesData as WebsiteSection[];
+        if (Array.isArray(websites)) {
+            this.setState({
+                websites,
+            });
+        } else {
+            this.setState({
+                websites: [],
+            });
+            console.warn('Unexpected websites.json format.');
+        }
     }
 
     componentWillUnmount() {
-        this.isMount = false;
     }
 
     handleNavClick(href: string) {
-        window.open(href);
+        utils.openExternalUrl(href);
     }
     renderWebSites() {
-        let listContainer: any = [];
-        const nav: any = [];
-        console.log('this.state.websites', this.state.websites);
-        this.state.websites.forEach((item: any, i: number) => {
-            listContainer = [];
-            const title = <li key={i + item.content.length} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{item.title}</li>;
+        const nav: JSX.Element[] = [];
+        this.state.websites.forEach((item: WebsiteSection, sectionIndex: number) => {
+            const listContainer: JSX.Element[] = [];
+            const title = (
+                <li
+                    key={`title-${item.title}-${sectionIndex}`}
+                    className={`${this.props.prefix}-panel-nav-list-title`}
+                >
+                    {item.title}
+                </li>
+            );
             listContainer.push(title);
-            item.content && Array.isArray(item.content) && item.content.forEach((ite: any, idx: number) => {
-                const list = <li key={idx} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(ite.url); }}>{ite.name}</li>;
-                listContainer.push(list);
-            });
-            nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-            // for (const i in item) {
-            //     if (i) {
-            //         listContainer = [];
-            //         const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
-            //         listContainer.push(title);
-            //         for (const j in item[i]) {
-            //             if (j) {
-            //                 const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(item[i][j]); }}>{j}</li>;
-            //                 listContainer.push(list);
-            //             }
-            //         }
-            //         nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-            //     }
-            // }
+            if (item.content && Array.isArray(item.content)) {
+                item.content.forEach((entry: WebsiteLink, entryIndex: number) => {
+                    const list = (
+                        <li
+                            key={`${entry.name}-${entryIndex}`}
+                            className={`${this.props.prefix}-panel-nav-list`}
+                            onClick={() => { this.handleNavClick(entry.url); }}
+                        >
+                            {entry.name}
+                        </li>
+                    );
+                    listContainer.push(list);
+                });
+            }
+            nav.push(<ul key={`${item.title}-${sectionIndex}`} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
         });
-        // for (const i in this.state.websites) {
-        //     if (i) {
-        //         listContainer = [];
-        //         const title = <li key={i} className={`${this.props.prefix}-panel-nav-list-title`} style={{ backgroundColor: utils.getRandomColor() }}>{i}</li>;
-        //         listContainer.push(title);
-        //         for (const j in this.state.websites[i]) {
-        //             if (j) {
-        //                 const list = <li key={j} className={`${this.props.prefix}-panel-nav-list`} onClick={() => { this.handleNavClick(this.state.websites[i][j]); }}>{j}</li>;
-        //                 listContainer.push(list);
-        //             }
-        //         }
-        //         nav.push(<ul key={i} className={`${this.props.prefix}-panel-nav`}>{listContainer}</ul>);
-        //     }
-        // }
         return nav;
     }
 
