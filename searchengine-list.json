@@ -10,11 +10,6 @@
     "href": "https://www.baidu.com/"
   },
   {
-    "name": "高德地图",
-    "url": "https://ditu.amap.com/search?query=",
-    "href": "https://ditu.amap.com/"
-  },
-  {
     "name": "Google",
     "url": "https://www.google.com/search?q=",
     "href": "https://www.google.com/"
@@ -78,5 +73,10 @@
     "name": "哔哩哔哩",
     "url": "https://search.bilibili.com/all?keyword=",
     "href": "https://www.bilibili.com/"
+  },
+  {
+    "name": "高德地图",
+    "url": "https://ditu.amap.com/search?query=",
+    "href": "https://ditu.amap.com/"
   }
 ]
