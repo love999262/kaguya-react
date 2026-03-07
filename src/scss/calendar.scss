@@ -1,0 +1,317 @@
+@import './global.scss';
+
+.#{$kaguya} {
+    &-calendar {
+        position: fixed;
+        top: 210px;
+        right: 18px;
+        left: auto;
+        width: 286px;
+        padding: 12px 12px 10px;
+        border-radius: 16px !important;
+        border: 1px solid rgba(188, 211, 235, 0.4);
+        background: linear-gradient(160deg, rgba(18, 35, 57, 0.84), rgba(11, 25, 44, 0.78));
+        box-shadow: 0 12px 24px rgba(7, 18, 34, 0.32);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 1200;
+        color: #eaf4ff !important;
+        user-select: none;
+    }
+
+    &-calendar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    &-calendar-title {
+        color: #eff7ff !important;
+        font-size: 1.05rem;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+    }
+
+    &-calendar-live-time {
+        margin: 2px 0 8px;
+        padding: 5px 8px;
+        border-radius: 10px !important;
+        background: rgba(126, 168, 213, 0.2);
+        border: 1px solid rgba(182, 214, 245, 0.3);
+        color: #eef7ff !important;
+        font-size: 0.9rem;
+        font-weight: 680;
+        letter-spacing: 0.06em;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &-calendar-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px !important;
+        color: #eaf4ff !important;
+        font-size: 1.05rem;
+        line-height: 28px;
+        text-align: center;
+        background: rgba(133, 171, 213, 0.2);
+        border: 1px solid rgba(170, 202, 236, 0.28);
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease;
+        &:hover {
+            background: rgba(153, 190, 230, 0.32);
+            border-color: rgba(190, 218, 245, 0.5);
+        }
+        &:active {
+            background: rgba(124, 165, 209, 0.28);
+        }
+    }
+
+    &-calendar-quick {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    &-calendar-select {
+        flex: 1;
+        min-width: 0;
+        height: 28px;
+        color: #e9f4ff !important;
+        background: rgba(113, 155, 201, 0.2);
+        border: 1px solid rgba(172, 203, 236, 0.3);
+        border-radius: 8px !important;
+        padding: 0 6px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+        color-scheme: dark;
+        transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+        &:hover {
+            background: rgba(128, 173, 220, 0.28);
+            border-color: rgba(187, 218, 248, 0.45);
+        }
+        &:focus,
+        &:focus-visible {
+            border-color: rgba(190, 222, 252, 0.6);
+            box-shadow: 0 0 0 2px rgba(129, 183, 236, 0.22);
+            background: rgba(124, 170, 218, 0.32);
+        }
+        option {
+            color: #ecf5ff !important;
+            background: #324f71;
+        }
+        option:checked {
+            color: #ffffff !important;
+            background: #4674aa;
+        }
+        option:hover {
+            background: #3e648f;
+        }
+    }
+
+    &-calendar-go {
+        width: 48px;
+        min-width: 48px;
+        height: 28px;
+        color: #eef7ff !important;
+        background: rgba(122, 170, 220, 0.32);
+        border: 1px solid rgba(177, 212, 245, 0.42);
+        border-radius: 8px !important;
+        font-size: 0.75rem;
+        cursor: pointer;
+        &:hover {
+            background: rgba(145, 192, 241, 0.4);
+        }
+    }
+
+    &-calendar-week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    &-calendar-week-item {
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(211, 230, 248, 0.8) !important;
+        font-weight: 560;
+        &:nth-child(6),
+        &:nth-child(7) {
+            color: #bcf3d6 !important;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(90, 219, 158, 0.45);
+        }
+    }
+
+    &-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+    }
+
+    &-calendar-cell {
+        border-radius: 8px !important;
+    }
+
+    &-calendar-day {
+        width: 100%;
+        height: 30px;
+        border-radius: 9px !important;
+        background: rgba(136, 175, 217, 0.08);
+        border: 1px solid rgba(164, 197, 230, 0.18);
+        color: #e8f3ff !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease;
+        &:hover {
+            background: rgba(134, 179, 224, 0.2);
+            border-color: rgba(184, 216, 248, 0.42);
+        }
+    }
+
+    &-calendar-day-number {
+        font-size: 0.84rem;
+        color: inherit !important;
+        line-height: 1;
+    }
+
+    &-calendar-day-tag {
+        min-width: 12px;
+        font-size: 0.64rem;
+        color: #ffe9c1 !important;
+        line-height: 1;
+        text-align: center;
+    }
+
+    &-calendar-cell-other {
+        opacity: 0.52;
+    }
+
+    &-calendar-cell-weekend {
+        .#{$kaguya}-calendar-day-number {
+            color: #cdf6de !important;
+            font-weight: 700;
+        }
+    }
+
+    &-calendar-cell-weekend-plain {
+        .#{$kaguya}-calendar-day-number {
+            color: #c5f3d8 !important;
+            font-weight: 730;
+            text-shadow: 0 0 8px rgba(98, 219, 161, 0.52);
+        }
+    }
+
+    &-calendar-cell-holiday {
+        .#{$kaguya}-calendar-day {
+            background: rgba(244, 189, 101, 0.34);
+            border-color: rgba(250, 213, 154, 0.74);
+        }
+        .#{$kaguya}-calendar-day-number {
+            color: #ffe8bf !important;
+            font-weight: 700;
+        }
+        .#{$kaguya}-calendar-day-tag {
+            color: #ffe7c0 !important;
+            font-weight: 700;
+        }
+    }
+
+    &-calendar-cell-workday {
+        .#{$kaguya}-calendar-day {
+            background: rgba(245, 117, 117, 0.32);
+            border-color: rgba(250, 164, 164, 0.72);
+        }
+        .#{$kaguya}-calendar-day-number {
+            color: #ffd4d2 !important;
+            font-weight: 680;
+        }
+        .#{$kaguya}-calendar-day-tag {
+            color: #ffd1cc !important;
+            font-weight: 700;
+        }
+    }
+
+    &-calendar-cell-other.#{$kaguya}-calendar-cell-holiday,
+    &-calendar-cell-other.#{$kaguya}-calendar-cell-workday {
+        opacity: 0.78;
+    }
+
+    &-calendar-cell-other.#{$kaguya}-calendar-cell-weekend-plain {
+        opacity: 0.72;
+        .#{$kaguya}-calendar-day-number {
+            color: #aee9c7 !important;
+        }
+    }
+
+    &-calendar-cell-today {
+        .#{$kaguya}-calendar-day {
+            border-color: rgba(144, 210, 255, 0.75);
+            box-shadow: inset 0 0 0 1px rgba(154, 214, 255, 0.35);
+        }
+    }
+
+    &-calendar-cell-selected {
+        .#{$kaguya}-calendar-day {
+            background: rgba(126, 187, 245, 0.32);
+            border-color: rgba(185, 224, 255, 0.68);
+        }
+    }
+
+    &-calendar-footer {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+    }
+
+    &-calendar-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        span {
+            color: rgba(226, 240, 253, 0.95) !important;
+            font-size: 0.78rem;
+            line-height: 1.2;
+        }
+    }
+
+    &-calendar-today {
+        padding: 5px 9px;
+        border-radius: 8px !important;
+        font-size: 0.78rem;
+        color: #eef7ff !important;
+        background: rgba(122, 170, 220, 0.25);
+        border: 1px solid rgba(177, 212, 245, 0.36);
+        cursor: pointer;
+        &:hover {
+            background: rgba(144, 189, 236, 0.36);
+        }
+    }
+
+    &-calendar-status {
+        min-height: 18px;
+        margin-top: 6px;
+        color: rgba(197, 217, 238, 0.8) !important;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .#{$kaguya}-calendar {
+        width: 258px;
+        top: 206px;
+        right: 10px;
+        left: auto;
+    }
+}

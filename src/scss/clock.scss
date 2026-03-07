@@ -2,8 +2,8 @@
 .#{$kaguya} {
     &-dial, &-digital {
         position: fixed;
-        top: 30px;
-        right: 30px;
+        top: 20px;
+        right: 18px;
         border: 1px solid rgba(176, 203, 231, 0.48);
         background: transparent;
         box-shadow: 0 10px 24px rgba(7, 18, 34, 0.28);
@@ -13,12 +13,13 @@
     &-dial {
         width: 120px;
         height: 120px;
-        right: 65px;
+        right: 220px;
         border-radius: 50% !important;
         overflow: hidden;
     }
     &-digital {
-        top: 200px;
+        top: 56px;
+        right: 18px;
         border-radius: 14px !important;
         padding: 0;
         overflow: hidden;
@@ -32,5 +33,15 @@
     }
     &-digital canvas {
         border-radius: 14px !important;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .#{$kaguya}-dial {
+        right: 206px;
+    }
+    .#{$kaguya}-digital {
+        right: 10px;
+        top: 54px;
     }
 }

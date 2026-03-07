@@ -116,6 +116,7 @@
                 display: flex;
                 align-items: center;
                 min-width: 0;
+                position: relative;
                 padding: 0 8px 0 10px;
                 background: linear-gradient(180deg, rgba(20, 45, 78, 0.3), rgba(11, 31, 59, 0.2));
                 border: 1px solid rgba(170, 206, 238, 0.16);
@@ -230,9 +231,13 @@
             }
             &-search-history {
                 display: none;
-                width: 100%;
                 position: absolute;
-                top: calc(100% + 0.5rem);
+                top: calc(100% + 4px);
+                left: 0;
+                right: 0;
+                width: auto;
+                margin: 0;
+                box-sizing: border-box;
                 background: linear-gradient(160deg, rgba(15, 33, 60, 0.96), rgba(9, 24, 47, 0.95));
                 border: 1px solid rgba(132, 190, 242, 0.4);
                 backdrop-filter: blur(12px) saturate(130%);
@@ -246,7 +251,7 @@
                     color: #e7f2ff !important;
                     text-align: left;
                     text-indent: 0;
-                    padding: 0 0.75rem;
+                    padding: 0 10px;
                     border-bottom: 1px solid rgba(128, 181, 227, 0.2);
                     height: 36px;
                     line-height: 36px;
