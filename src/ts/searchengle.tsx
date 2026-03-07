@@ -9,6 +9,12 @@ interface SearchEngleInterface {
     href: string;
 }
 
+const DEFAULT_SEARCH_ENGINE: SearchEngleInterface = {
+    name: 'Bing',
+    url: 'https://www.bing.com/search?q=',
+    href: 'https://www.bing.com/',
+};
+
 interface SearchInterface {
     searchEngleList: SearchEngleInterface[];
     searchInterface: string;
@@ -22,58 +28,75 @@ interface StateInterface {
     inputVal: string;
     showDropMenu: boolean;
     showHistoryPanel: boolean;
+    dropMenuMaxHeight: number;
+    historyPanelMaxHeight: number;
 }
 
 class SearchEngle extends React.Component <Props, StateInterface> {
     input: HTMLInputElement | null;
     private barRef: HTMLDivElement | null;
+    private dropMenuRef: HTMLUListElement | null;
+    private historyPanelRef: HTMLUListElement | null;
 
     constructor(props: Props, context: any) {
         super(props, context);
         this.input = null;
         this.barRef = null;
+        this.dropMenuRef = null;
+        this.historyPanelRef = null;
         this.state = {
             search: {
-                searchInterface: 'https://www.bing.com/search?q=',
-                searchBtnHref: 'https://www.bing.com/',
-                searchBtnName: 'bing',
+                searchInterface: DEFAULT_SEARCH_ENGINE.url,
+                searchBtnHref: DEFAULT_SEARCH_ENGINE.href,
+                searchBtnName: DEFAULT_SEARCH_ENGINE.name,
                 searchEngleList: [],
             },
             searchArray: this.loadSearchHistory(),
             inputVal: '',
             showDropMenu: false,
             showHistoryPanel: false,
+            dropMenuMaxHeight: 300,
+            historyPanelMaxHeight: 300,
         };
 
         this.handleDocumentClick = this.handleDocumentClick.bind(this);
         this.handleDocumentKeydown = this.handleDocumentKeydown.bind(this);
+        this.handleWindowResize = this.handleWindowResize.bind(this);
     }
     
     componentDidMount() {
-        const searchEngleList = searchEngineData as SearchEngleInterface[];
+        const rawSearchEngleList = searchEngineData as SearchEngleInterface[];
+        const searchEngleList = this.normalizeSearchEngineList(rawSearchEngleList);
         const searchFromStorage = this.loadSearchEngineFromStorage();
-        const defaultSearch = {
-            searchInterface: 'https://www.bing.com/search?q=',
-            searchBtnHref: 'https://www.bing.com/',
-            searchBtnName: 'bing',
-        };
+        const initialSearch = this.resolveInitialSearch(searchEngleList, searchFromStorage);
 
         this.setState({
             search: {
-                searchInterface: searchFromStorage.searchInterface || defaultSearch.searchInterface,
-                searchBtnHref: searchFromStorage.searchBtnHref || defaultSearch.searchBtnHref,
-                searchBtnName: searchFromStorage.searchBtnName || defaultSearch.searchBtnName,
+                searchInterface: initialSearch.url,
+                searchBtnHref: initialSearch.href,
+                searchBtnName: initialSearch.name,
                 searchEngleList,
             },
         });
 
         document.addEventListener('click', this.handleDocumentClick);
         document.addEventListener('keydown', this.handleDocumentKeydown);
+        window.addEventListener('resize', this.handleWindowResize);
     }
 
     componentWillUnmount() {
         document.removeEventListener('click', this.handleDocumentClick);
         document.removeEventListener('keydown', this.handleDocumentKeydown);
+        window.removeEventListener('resize', this.handleWindowResize);
+    }
+
+    private handleWindowResize() {
+        if (this.state.showDropMenu) {
+            this.updatePanelMaxHeight('drop');
+        }
+        if (this.state.showHistoryPanel) {
+            this.updatePanelMaxHeight('history');
+        }
     }
 
     private loadSearchEngineFromStorage() {
@@ -124,8 +147,75 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         });
     }
 
+    private updatePanelMaxHeight(panelType: 'drop' | 'history') {
+        const panelElement = panelType === 'drop' ? this.dropMenuRef : this.historyPanelRef;
+        if (!panelElement) {
+            return;
+        }
+        const viewportBottomPadding = 12;
+        const panelTop = panelElement.getBoundingClientRect().top;
+        const availableHeight = Math.max(120, Math.floor(window.innerHeight - panelTop - viewportBottomPadding));
+
+        if (panelType === 'drop') {
+            this.setState({ dropMenuMaxHeight: availableHeight });
+        } else {
+            this.setState({ historyPanelMaxHeight: availableHeight });
+        }
+    }
+
+    private normalizeSearchEngineList(list: SearchEngleInterface[]) {
+        const fallbackList = [DEFAULT_SEARCH_ENGINE];
+        if (!Array.isArray(list)) {
+            return fallbackList;
+        }
+
+        const normalizedList: SearchEngleInterface[] = [];
+        const seen = new Set<string>();
+
+        list.forEach((item) => {
+            if (!item || typeof item.name !== 'string' || typeof item.url !== 'string' || typeof item.href !== 'string') {
+                return;
+            }
+
+            const name = item.name.trim();
+            const url = item.url.trim();
+            const href = item.href.trim();
+            if (!name || !url || !href) {
+                return;
+            }
+
+            const dedupeKey = url.toLowerCase();
+            if (seen.has(dedupeKey)) {
+                return;
+            }
+            seen.add(dedupeKey);
+            normalizedList.push({ name, url, href });
+        });
+
+        return normalizedList.length > 0 ? normalizedList : fallbackList;
+    }
+
+    private resolveInitialSearch(
+        searchEngleList: SearchEngleInterface[],
+        searchFromStorage: { searchInterface: string; searchBtnHref: string; searchBtnName: string; },
+    ) {
+        const matched = searchEngleList.find((item) => {
+            const sameName = searchFromStorage.searchBtnName && item.name.toLowerCase() === searchFromStorage.searchBtnName.toLowerCase();
+            const sameUrl = searchFromStorage.searchInterface && item.url === searchFromStorage.searchInterface;
+            const sameHref = searchFromStorage.searchBtnHref && item.href === searchFromStorage.searchBtnHref;
+            return sameName || (sameUrl && sameHref);
+        });
+
+        if (matched) {
+            return matched;
+        }
+
+        const defaultEngine = searchEngleList.find((item) => item.url === DEFAULT_SEARCH_ENGINE.url);
+        return defaultEngine || searchEngleList[0] || DEFAULT_SEARCH_ENGINE;
+    }
+
     private handleDocumentKeydown(event: KeyboardEvent) {
-        if (event.key === '`' || event.keyCode === 192) {
+        if (event.key === '`' || event.keyCode === 192 || event.key === '\\' || event.keyCode === 220) {
             return;
         }
         if (!this.input) {
@@ -163,6 +253,10 @@ class SearchEngle extends React.Component <Props, StateInterface> {
             return {
                 showDropMenu: !previousState.showDropMenu,
             };
+        }, () => {
+            if (this.state.showDropMenu) {
+                requestAnimationFrame(() => this.updatePanelMaxHeight('drop'));
+            }
         });
     }
 
@@ -231,6 +325,10 @@ class SearchEngle extends React.Component <Props, StateInterface> {
             return {
                 showHistoryPanel: !previousState.showHistoryPanel,
             };
+        }, () => {
+            if (this.state.showHistoryPanel) {
+                requestAnimationFrame(() => this.updatePanelMaxHeight('history'));
+            }
         });
     }
 
@@ -250,11 +348,22 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                 </button>
                 <ul
                     className={`${this.props.prefix}-bar-container-dropmenu`}
-                    style={{ display: this.state.showDropMenu ? 'block' : 'none' }}
+                    ref={(element) => { this.dropMenuRef = element; }}
+                    style={{
+                        display: this.state.showDropMenu ? 'block' : 'none',
+                        maxHeight: `${this.state.dropMenuMaxHeight}px`,
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                    }}
                 >
                     {dropList}
                 </ul>
-                <button className={`${this.props.prefix}-bar-container-panel`} onClick={() => { this.handleContainerPanelClick(); }}></button>
+                <button
+                    className={`${this.props.prefix}-bar-container-panel${this.state.showDropMenu ? ` ${this.props.prefix}-bar-container-panel-open` : ''}`}
+                    onClick={() => { this.handleContainerPanelClick(); }}
+                    aria-label='Toggle search engine list'
+                    aria-expanded={this.state.showDropMenu}
+                ></button>
                 <div className={`${this.props.prefix}-bar-input-wrap`}>
                     <input
                         type='text'
@@ -266,16 +375,23 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                         onChange={(event) => { this.handleInputChange(event); }}
                     />
                     <button
-                        className={`${this.props.prefix}-bar-spread`}
-                        style={{ display: this.state.searchArray.length > 0 ? 'block' : 'none' }}
+                        className={`${this.props.prefix}-bar-spread${this.state.showHistoryPanel ? ` ${this.props.prefix}-bar-spread-open` : ''}`}
+                        style={{ display: this.state.searchArray.length > 0 ? 'inline-flex' : 'none' }}
                         onClick={() => { this.handleSpreadClick(); }}
                         aria-label='Toggle search history'
+                        aria-expanded={this.state.showHistoryPanel}
                     >
                         <i className={`${this.props.prefix}-bar-spread-icon`}></i>
                     </button>
                     <ul
                         className={`${this.props.prefix}-bar-search-history`}
-                        style={{ display: this.state.showHistoryPanel ? 'block' : 'none' }}
+                        ref={(element) => { this.historyPanelRef = element; }}
+                        style={{
+                            display: this.state.showHistoryPanel ? 'block' : 'none',
+                            maxHeight: `${this.state.historyPanelMaxHeight}px`,
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                        }}
                     >
                         {historyList}
                     </ul>

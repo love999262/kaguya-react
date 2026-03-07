@@ -4,13 +4,33 @@
         position: fixed;
         top: 30px;
         right: 30px;
+        border: 1px solid rgba(176, 203, 231, 0.48);
+        background: transparent;
+        box-shadow: 0 10px 24px rgba(7, 18, 34, 0.28);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
     }
     &-dial {
         width: 120px;
         height: 120px;
         right: 65px;
+        border-radius: 50% !important;
+        overflow: hidden;
     }
     &-digital {
         top: 200px;
+        border-radius: 14px !important;
+        padding: 0;
+        overflow: hidden;
+    }
+    &-dial canvas,
+    &-digital canvas {
+        display: block;
+    }
+    &-dial canvas {
+        border-radius: 50% !important;
+    }
+    &-digital canvas {
+        border-radius: 14px !important;
     }
 }

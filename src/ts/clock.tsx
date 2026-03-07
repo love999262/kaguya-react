@@ -1,6 +1,12 @@
 import * as React from 'react';
 import { KaguyaProps as Props } from './kaguya';
 import Clock from 'kaguya-clock';
+
+interface ClockTheme {
+    dialBg: string;
+    digitalBg: string;
+    textColor: string;
+}
 interface StateInterface {
     prefix: string;
 }
@@ -25,13 +31,41 @@ class Time extends React.Component <Props, any> {
 
     componentWillUnmount() {
     }
+
+    private getRandomTheme(): ClockTheme {
+        const themes: ClockTheme[] = [
+            {
+                dialBg: 'rgba(14, 34, 59, 0.92)',
+                digitalBg: 'rgba(14, 34, 59, 0.9)',
+                textColor: 'rgba(236, 245, 255, 0.98)',
+            },
+            {
+                dialBg: 'rgba(22, 41, 70, 0.92)',
+                digitalBg: 'rgba(19, 38, 66, 0.9)',
+                textColor: 'rgba(229, 250, 255, 0.98)',
+            },
+            {
+                dialBg: 'rgba(27, 36, 64, 0.92)',
+                digitalBg: 'rgba(24, 33, 62, 0.9)',
+                textColor: 'rgba(241, 236, 255, 0.98)',
+            },
+            {
+                dialBg: 'rgba(21, 44, 56, 0.92)',
+                digitalBg: 'rgba(17, 39, 51, 0.9)',
+                textColor: 'rgba(230, 253, 247, 0.98)',
+            },
+        ];
+        return themes[Math.floor(Math.random() * themes.length)];
+    }
+
     renderClock() {
+        const theme = this.getRandomTheme();
         new Clock({
             selector: '.kaguya-dial',
             type: 'dial',
             renderType: 'canvas',
             draggable: false,
-            bgColor: 'rgba(5, 20, 35, 0.85)',
+            bgColor: theme.dialBg,
             dial: {
                 hasTimeLabel: true,
                 hasBorder: false,
@@ -45,12 +79,11 @@ class Time extends React.Component <Props, any> {
             type: 'digital',
             renderType: 'canvas',
             draggable: false,
-            // color: 'rgba(255, 255, 255, 1)',
-            // bgColor: 'rgba(0, 0, 0, 0.3)',
-            // bgColor: utils.getRandomColor(),
+            color: theme.textColor,
+            bgColor: theme.digitalBg,
             dial: {
                 hasTimeLabel: true,
-                hasBorder: true,
+                hasBorder: false,
             },
             digital: {
                 fontSize: 24,

@@ -1,154 +1,387 @@
-[{
-  "title": "ACG",
-  "content": [{
-    "url": "https://www.youtube.com/",
-    "name": "youtube"
-  }, {
-    "url": "http://www.bilibili.com",
-    "name": "bilibili"
-  }, {
-    "url": "http://www.iqiyi.com/",
-    "name": "iqiyi"
-  }, {
-    "url": "https://v.qq.com/",
-    "name": "vqq"
-  }, {
-    "url": "http://www.youku.com/",
-    "name": "youku"
-  }, {
-    "url": "https://www.douyu.com/",
-    "name": "douyu"
-  }, {
-    "url": "http://www.nicovideo.jp/",
-    "name": "nicovideo"
-  }, {
-    "url": "https://www.pixiv.net/",
-    "name": "pixiv"
-  }, {
-    "url": "https://www.tumblr.com/",
-    "name": "tumblr"
-  }, {
-    "url": "https://youtubemultidownloader.com/",
-    "name": "youtubemultidownloader"
-  }, {
-    "url": "http://store.steampowered.com/",
-    "name": "steampowered"
-  }, {
-    "url": "https://www.tineye.com/",
-    "name": "tineye"
-  }]
-}, {
-  "title": "SNS",
-  "content": [{
-    "url": "http://weibo.com/",
-    "name": "weibo"
-  }, {
-    "url": "https://www.zhihu.com/",
-    "name": "zhihu"
-  }, {
-    "url": "http://bbs.tianya.cn/",
-    "name": "tianya"
-  }, {
-    "url": "https://go.twitch.tv/",
-    "name": "twitch"
-  }, {
-    "url": "https://wx.qq.com/",
-    "name": "wx"
-  }, {
-    "url": "https://t66y.com/index.php",
-    "name": "t66y"
-  }, {
-    "url": "http://www.91porn.com",
-    "name": "91porn"
-  }, {
-    "url": "https://www.pornhub.com",
-    "name": "pornhub"
-  }, {
-    "url": "https://www.quora.com/#",
-    "name": "quora"
-  }, {
-    "url": "https://www.douban.com/",
-    "name": "douban"
-  }, {
-    "url": "https://twitter.com/",
-    "name": "twitter"
-  }, {
-    "url": "https://www.facebook.com/",
-    "name": "facebook"
-  }, {
-    "url": "https://www.linkedin.com/",
-    "name": "linkedin"
-  }, {
-    "url": "https://wx.qq.com/",
-    "name": "wx"
-  }, {
-    "url": "https://outlook.live.com/owa/",
-    "name": "outlook"
-  }, {
-    "url": "https://www.myfreecams.com/",
-    "name": "myfreecams"
-  }]
-}, {
-  "title": "Techonology",
-  "content": [{
-    "url": "https://github.com/",
-    "name": "github"
-  }, {
-    "url": "https://www.gitbook.com/",
-    "name": "gitbook"
-  }, {
-    "url": "https://juejin.im/timeline",
-    "name": "juejin"
-  }, {
-    "url": "https://segmentfault.com/",
-    "name": "segmentfault"
-  }, {
-    "url": "https://leetcode.com/",
-    "name": "leetcode"
-  }, {
-    "url": "https://leetcode-cn.com/",
-    "name": "leetcode-cn"
-  }, {
-    "url": "https://www.cnblogs.com/",
-    "name": "cnblogs"
-  }, {
-    "url": "http://stackoverflow.com/",
-    "name": "stackoverflow"
-  }, {
-    "url": "https://www.typescriptlang.org/",
-    "name": "typescriptlang"
-  }, {
-    "url": "https://www.tslang.cn/",
-    "name": "tscn"
-  }, {
-    "url": "https://codepen.io/",
-    "name": "codepen"
-  }, {
-    "url": "https://jsonlint.com/",
-    "name": "jsonlint"
-  }, {
-    "url": "https://cn.vuejs.org/",
-    "name": "vuejs"
-  }, {
-    "url": "https://reactjs.org",
-    "name": "reactjs"
-  }]
-}, {
-  "title": "Shopping",
-  "content": [{
-    "url": "https://www.taobao.com/",
-    "name": "taobao"
-  }, {
-    "url": "http://www.jd.com/",
-    "name": "jd"
-  }, {
-    "url": "http://www.amazon.cn/",
-    "name": "amazon"
-  }, {
-    "url": "https://sh.meituan.com/",
-    "name": "meituan"
-  }, {
-    "url": "http://www.smzdm.com/",
-    "name": "smzdm"
-  }]
-}]
+[
+  {
+    "title": "ACG",
+    "content": [
+      {
+        "url": "https://www.bilibili.com/",
+        "name": "哔哩哔哩"
+      },
+      {
+        "url": "https://www.douyin.com/",
+        "name": "抖音"
+      },
+      {
+        "url": "https://www.youtube.com/",
+        "name": "youtube"
+      },
+      {
+        "url": "https://www.xiaohongshu.com/",
+        "name": "小红书"
+      },
+      {
+        "url": "https://v.qq.com/",
+        "name": "腾讯视频"
+      },
+      {
+        "url": "https://www.iqiyi.com/",
+        "name": "爱奇艺"
+      },
+      {
+        "url": "https://www.youku.com/",
+        "name": "优酷"
+      },
+      {
+        "url": "https://www.mgtv.com/",
+        "name": "芒果TV"
+      },
+      {
+        "url": "https://www.douyu.com/",
+        "name": "斗鱼"
+      },
+      {
+        "url": "https://www.huya.com/",
+        "name": "虎牙"
+      },
+      {
+        "url": "https://www.nicovideo.jp/",
+        "name": "niconico"
+      },
+      {
+        "url": "https://www.pixiv.net/",
+        "name": "pixiv"
+      },
+      {
+        "url": "https://www.acfun.cn/",
+        "name": "A站"
+      },
+      {
+        "url": "https://bangumi.tv/",
+        "name": "Bangumi"
+      },
+      {
+        "url": "https://www.nga.cn/",
+        "name": "NGA"
+      },
+      {
+        "url": "https://www.twitch.tv/",
+        "name": "twitch"
+      },
+      {
+        "url": "https://www.netflix.com/",
+        "name": "netflix"
+      },
+      {
+        "url": "https://www.lofter.com/",
+        "name": "LOFTER"
+      }
+    ]
+  },
+  {
+    "title": "SNS",
+    "content": [
+      {
+        "url": "https://weibo.com/",
+        "name": "微博"
+      },
+      {
+        "url": "https://www.zhihu.com/",
+        "name": "知乎"
+      },
+      {
+        "url": "https://wx.qq.com/",
+        "name": "微信"
+      },
+      {
+        "url": "https://www.xiaohongshu.com/",
+        "name": "小红书"
+      },
+      {
+        "url": "https://www.douban.com/",
+        "name": "豆瓣"
+      },
+      {
+        "url": "https://www.v2ex.com/",
+        "name": "v2ex"
+      },
+      {
+        "url": "https://www.reddit.com/",
+        "name": "reddit"
+      },
+      {
+        "url": "https://x.com/",
+        "name": "x"
+      },
+      {
+        "url": "https://www.threads.net/",
+        "name": "threads"
+      },
+      {
+        "url": "https://discord.com/app",
+        "name": "discord"
+      },
+      {
+        "url": "https://www.linkedin.com/",
+        "name": "linkedin"
+      },
+      {
+        "url": "https://www.quora.com/",
+        "name": "quora"
+      },
+      {
+        "url": "https://tieba.baidu.com/",
+        "name": "百度贴吧"
+      },
+      {
+        "url": "https://www.douyin.com/",
+        "name": "抖音"
+      },
+      {
+        "url": "https://web.okjike.com/",
+        "name": "即刻"
+      },
+      {
+        "url": "https://t.me/",
+        "name": "telegram"
+      },
+      {
+        "url": "https://www.facebook.com/",
+        "name": "facebook"
+      },
+      {
+        "url": "https://www.instagram.com/",
+        "name": "instagram"
+      }
+    ]
+  },
+  {
+    "title": "Technology",
+    "content": [
+      {
+        "url": "https://github.com/",
+        "name": "github"
+      },
+      {
+        "url": "https://stackoverflow.com/",
+        "name": "stackoverflow"
+      },
+      {
+        "url": "https://huggingface.co/",
+        "name": "huggingface"
+      },
+      {
+        "url": "https://chatgpt.com/",
+        "name": "chatgpt"
+      },
+      {
+        "url": "https://claude.ai/",
+        "name": "claude"
+      },
+      {
+        "url": "https://chat.deepseek.com/",
+        "name": "deepseek"
+      },
+      {
+        "url": "https://juejin.cn/",
+        "name": "掘金"
+      },
+      {
+        "url": "https://www.csdn.net/",
+        "name": "CSDN"
+      },
+      {
+        "url": "https://developer.mozilla.org/",
+        "name": "mdn"
+      },
+      {
+        "url": "https://www.npmjs.com/",
+        "name": "npm"
+      },
+      {
+        "url": "https://www.typescriptlang.org/",
+        "name": "typescript"
+      },
+      {
+        "url": "https://www.cloudflare.com/",
+        "name": "cloudflare"
+      },
+      {
+        "url": "https://gitee.com/",
+        "name": "Gitee"
+      },
+      {
+        "url": "https://leetcode.com/",
+        "name": "leetcode"
+      },
+      {
+        "url": "https://segmentfault.com/",
+        "name": "SegmentFault"
+      },
+      {
+        "url": "https://www.producthunt.com/",
+        "name": "producthunt"
+      },
+      {
+        "url": "https://news.ycombinator.com/",
+        "name": "hackernews"
+      },
+      {
+        "url": "https://www.reddit.com/r/programming/",
+        "name": "reddit-programming"
+      }
+    ]
+  },
+  {
+    "title": "Shopping",
+    "content": [
+      {
+        "url": "https://www.taobao.com/",
+        "name": "淘宝"
+      },
+      {
+        "url": "https://www.tmall.com/",
+        "name": "天猫"
+      },
+      {
+        "url": "https://www.jd.com/",
+        "name": "京东"
+      },
+      {
+        "url": "https://www.pinduoduo.com/",
+        "name": "拼多多"
+      },
+      {
+        "url": "https://www.1688.com/",
+        "name": "1688"
+      },
+      {
+        "url": "https://www.suning.com/",
+        "name": "苏宁易购"
+      },
+      {
+        "url": "https://www.smzdm.com/",
+        "name": "什么值得买"
+      },
+      {
+        "url": "https://www.amazon.com/",
+        "name": "amazon"
+      },
+      {
+        "url": "https://www.aliexpress.com/",
+        "name": "速卖通"
+      },
+      {
+        "url": "https://www.temu.com/",
+        "name": "temu"
+      },
+      {
+        "url": "https://www.meituan.com/",
+        "name": "美团"
+      },
+      {
+        "url": "https://www.ebay.com/",
+        "name": "ebay"
+      },
+      {
+        "url": "https://www.dewu.com/",
+        "name": "得物"
+      },
+      {
+        "url": "https://www.vip.com/",
+        "name": "唯品会"
+      },
+      {
+        "url": "https://2.taobao.com/",
+        "name": "闲鱼"
+      },
+      {
+        "url": "https://www.douyin.com/mall",
+        "name": "抖音商城"
+      },
+      {
+        "url": "https://www.samsclub.cn/",
+        "name": "山姆会员商店"
+      },
+      {
+        "url": "https://www.freshhema.com/",
+        "name": "盒马"
+      }
+    ]
+  },
+  {
+    "title": "AI",
+    "content": [
+      {
+        "url": "https://chatgpt.com/",
+        "name": "ChatGPT"
+      },
+      {
+        "url": "https://gemini.google.com/",
+        "name": "Gemini"
+      },
+      {
+        "url": "https://claude.ai/",
+        "name": "Claude"
+      },
+      {
+        "url": "https://chat.deepseek.com/",
+        "name": "DeepSeek"
+      },
+      {
+        "url": "https://www.doubao.com/",
+        "name": "豆包"
+      },
+      {
+        "url": "https://tongyi.aliyun.com/qianwen/",
+        "name": "通义千问"
+      },
+      {
+        "url": "https://kimi.moonshot.cn/",
+        "name": "Kimi"
+      },
+      {
+        "url": "https://xinghuo.xfyun.cn/",
+        "name": "讯飞星火"
+      },
+      {
+        "url": "https://yiyan.baidu.com/",
+        "name": "文心一言"
+      },
+      {
+        "url": "https://chatglm.cn/",
+        "name": "智谱清言"
+      },
+      {
+        "url": "https://grok.com/",
+        "name": "Grok"
+      },
+      {
+        "url": "https://www.perplexity.ai/",
+        "name": "Perplexity"
+      },
+      {
+        "url": "https://copilot.microsoft.com/",
+        "name": "Copilot"
+      },
+      {
+        "url": "https://www.jiqizhixin.com/",
+        "name": "机器之心"
+      },
+      {
+        "url": "https://www.qbitai.com/",
+        "name": "量子位"
+      },
+      {
+        "url": "https://openai.com/",
+        "name": "OpenAI"
+      },
+      {
+        "url": "https://www.aibase.com/",
+        "name": "AIbase"
+      },
+      {
+        "url": "https://www.zhidx.com/",
+        "name": "智东西"
+      }
+    ]
+  }
+]

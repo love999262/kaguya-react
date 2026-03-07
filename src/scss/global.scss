@@ -21,6 +21,8 @@ $list-hover: $dark;
 $list-hover-font: $white;
 $hover: $b-pink;
 $hover-font: $white;
+$font-sans: "SF Pro Text", "SF Pro Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei UI", sans-serif;
+$font-display: "SF Pro Display", "Avenir Next", "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei UI", sans-serif;
 @mixin setShadow {
     box-shadow: 8px 8px 8px #333;
 }
