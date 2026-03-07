@@ -17,11 +17,10 @@ interface StateInterface {
     websites: WebsiteSection[];
 }
 
-class Navigates extends React.Component <Props, StateInterface> {
+class Navigates extends React.Component <Props, any> {
     state: StateInterface;
-
-    constructor(props: Props) {
-        super(props);
+    constructor(props: Props, context: any) {
+        super(props, context);
         this.state = {
             websites: [],
         };
@@ -39,6 +38,9 @@ class Navigates extends React.Component <Props, StateInterface> {
             });
             console.warn('Unexpected websites.json format.');
         }
+    }
+
+    componentWillUnmount() {
     }
 
     handleNavClick(href: string) {

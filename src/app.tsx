@@ -1,3 +1,5 @@
+/// <reference path="./../types/global.d.ts"/>
+
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import './scss/index.scss';
@@ -11,11 +13,3 @@ if (!rootElement) {
 
 const root = createRoot(rootElement);
 root.render(<Kaguya />);
-
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js').catch(() => {
-            // Service worker registration failure should not block rendering.
-        });
-    });
-}

@@ -1,13 +1,31 @@
 import * as React from 'react';
 import { KaguyaProps as Props } from './kaguya';
 import Clock from 'kaguya-clock';
+interface StateInterface {
+    prefix: string;
+}
 
-class Time extends React.Component <Props> {
+class Time extends React.Component <Props, any> {
+    state: StateInterface;
+    clock: Clock;
+    constructor(props: Props, context: any) {
+        super(props, context);
+        this.state = {
+            prefix: `${this.props.prefix}-search`,
+        };
+    }
+
+    componentWillMount() {
+
+    }
+    
     componentDidMount() {
         this.renderClock();
     }
 
-    private renderClock() {
+    componentWillUnmount() {
+    }
+    renderClock() {
         new Clock({
             selector: '.kaguya-dial',
             type: 'dial',
@@ -50,3 +68,4 @@ class Time extends React.Component <Props> {
 }
 
 export default  Time;
+export type { StateInterface };

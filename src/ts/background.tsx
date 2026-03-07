@@ -12,8 +12,8 @@ interface StateInterface {
 }
 
 class Background extends React.Component <Props, StateInterface> {
-    constructor(props: Props) {
-        super(props);
+    constructor(props: Props, context: any) {
+        super(props, context);
         this.state = {
             bgImgStyle: {},
             totalPic: CONSTANTS.IMAGE_LIST.length,

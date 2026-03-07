@@ -2,16 +2,17 @@ import * as React from 'react';
 import Background from './background';
 import Navigator from './navigator';
 import Clock from './clock';
-
 interface StateInterface {
     prefix: string;
 }
-
-class Kaguya extends React.Component<Record<string, never>, StateInterface> {
-    state: StateInterface = {
-        prefix: 'kaguya',
-    };
-
+class Kaguya extends React.Component <any, any> {
+    state: StateInterface;
+    constructor(props: any, context: any) {
+        super(props, context);
+        this.state = {
+            prefix: 'kaguya',
+        };
+    }
     render(): JSX.Element {
         return (
             <div className='kaguya'>
