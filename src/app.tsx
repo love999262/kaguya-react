@@ -13,3 +13,11 @@ if (!rootElement) {
 
 const root = createRoot(rootElement);
 root.render(<Kaguya />);
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((error: unknown) => {
+            console.error('Service worker registration failed:', error);
+        });
+    });
+}
