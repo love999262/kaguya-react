@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Kaguya Start Page</title>
+    <meta http-equiv="refresh" content="0; url=./dist/index.html" />
 </head>
 <body>
-    <div id="kaguya"></div>
-    <script type="module" src="/src/app.tsx"></script>
+    <script>
+        window.location.replace('./dist/index.html');
+    </script>
 </body>
 </html>
