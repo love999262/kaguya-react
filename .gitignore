@@ -1,6 +1,0 @@
-node_modules
-dist/
-img/
-src/ts/private-websites.tsx
-playwright-report/
-page-check.png
