@@ -68,7 +68,14 @@ class Calendar extends React.Component <Props, StateInterface> {
 
     componentDidMount() {
         this.timer = window.setInterval(() => {
-            this.setState({ now: new Date() });
+            const now = new Date();
+            const nextTodayKey = this.toDateKey(now);
+            this.setState((prevState) => {
+                if (prevState.todayKey !== nextTodayKey) {
+                    return { now, todayKey: nextTodayKey };
+                }
+                return { now };
+            });
         }, 1000);
         this.fetchYearHolidays(this.state.displayMonth.getFullYear());
     }

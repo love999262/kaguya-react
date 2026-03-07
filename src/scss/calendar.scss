@@ -142,9 +142,9 @@
         font-weight: 560;
         &:nth-child(6),
         &:nth-child(7) {
-            color: #bcf3d6 !important;
+            color: #84cdff !important;
             font-weight: 700;
-            text-shadow: 0 0 8px rgba(90, 219, 158, 0.45);
+            text-shadow: 0 0 10px rgba(86, 186, 255, 0.68);
         }
     }
 
@@ -197,16 +197,17 @@
 
     &-calendar-cell-weekend {
         .#{$kaguya}-calendar-day-number {
-            color: #cdf6de !important;
-            font-weight: 700;
+            color: #8fd5ff !important;
+            font-weight: 740;
+            text-shadow: 0 0 9px rgba(95, 193, 255, 0.62);
         }
     }
 
     &-calendar-cell-weekend-plain {
         .#{$kaguya}-calendar-day-number {
-            color: #c5f3d8 !important;
-            font-weight: 730;
-            text-shadow: 0 0 8px rgba(98, 219, 161, 0.52);
+            color: #7fceff !important;
+            font-weight: 760;
+            text-shadow: 0 0 10px rgba(82, 188, 255, 0.72);
         }
     }
 
@@ -246,9 +247,10 @@
     }
 
     &-calendar-cell-other.#{$kaguya}-calendar-cell-weekend-plain {
-        opacity: 0.72;
+        opacity: 0.9;
         .#{$kaguya}-calendar-day-number {
-            color: #aee9c7 !important;
+            color: #75c7ff !important;
+            text-shadow: 0 0 9px rgba(82, 188, 255, 0.62);
         }
     }
 
