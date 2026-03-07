@@ -5,8 +5,9 @@
         text-align: center;
         margin-top: 14vh;
         z-index: 999;
-        width: 50vw;
-        min-width: 660px;
+        width: 56vw;
+        max-width: 1180px;
+        min-width: 980px;
         &-bar {
             height: clamp(44px, 4.9vh, 52px);
             width: 100%;

@@ -3,7 +3,8 @@
     &-dial, &-digital {
         position: fixed;
         top: 20px;
-        right: 18px;
+        left: 18px;
+        right: auto;
         border: 1px solid rgba(176, 203, 231, 0.48);
         background: transparent;
         box-shadow: 0 10px 24px rgba(7, 18, 34, 0.28);
@@ -13,13 +14,15 @@
     &-dial {
         width: 120px;
         height: 120px;
-        right: 220px;
+        left: 18px;
+        right: auto;
         border-radius: 50% !important;
         overflow: hidden;
     }
     &-digital {
         top: 56px;
-        right: 18px;
+        left: 152px;
+        right: auto;
         border-radius: 14px !important;
         padding: 0;
         overflow: hidden;
@@ -38,10 +41,22 @@
 
 @media screen and (max-width: 1200px) {
     .#{$kaguya}-dial {
-        right: 206px;
+        left: 12px;
+        right: auto;
     }
     .#{$kaguya}-digital {
-        right: 10px;
+        left: 144px;
+        right: auto;
         top: 54px;
+    }
+}
+
+@media screen and (max-width: 1320px) {
+    .#{$kaguya}-dial {
+        display: none;
+    }
+
+    .#{$kaguya}-digital {
+        display: none;
     }
 }

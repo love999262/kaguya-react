@@ -1,4 +1,9 @@
 @import './global.scss';
+html,
+body {
+    overflow-x: auto;
+}
+
 * {
     margin: 0;
     padding: 0;
