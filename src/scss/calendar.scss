@@ -318,6 +318,35 @@
     }
 }
 
+@media screen and (max-width: 1680px) {
+    .#{$kaguya}-calendar {
+        width: 286px;
+        left: 12px;
+        top: 206px;
+        padding: 10px 10px 8px;
+    }
+}
+
+@media screen and (max-width: 1560px) {
+    .#{$kaguya}-calendar {
+        width: 252px;
+        left: 10px;
+        top: 198px;
+        padding: 9px 9px 7px;
+    }
+
+    .#{$kaguya}-calendar-week,
+    .#{$kaguya}-calendar-grid {
+        gap: 4px;
+    }
+}
+
+@media screen and (max-width: 1480px) {
+    .#{$kaguya}-calendar {
+        display: none;
+    }
+}
+
 @media screen and (max-width: 1320px) {
     .#{$kaguya}-calendar {
         display: none;

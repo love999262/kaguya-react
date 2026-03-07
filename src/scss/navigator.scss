@@ -273,6 +273,53 @@
                     }
                 }
             }
+            &-search-suggest {
+                display: none;
+                position: absolute;
+                top: calc(100% + 4px);
+                left: 0;
+                right: 0;
+                width: auto;
+                margin: 0;
+                box-sizing: border-box;
+                background: linear-gradient(160deg, rgba(15, 33, 60, 0.96), rgba(9, 24, 47, 0.95));
+                border: 1px solid rgba(132, 190, 242, 0.4);
+                backdrop-filter: blur(12px) saturate(130%);
+                -webkit-backdrop-filter: blur(12px) saturate(130%);
+                box-shadow: 0 16px 28px rgba(8, 20, 38, 0.42);
+                border-radius: 14px !important;
+                z-index: 1200;
+                overflow: hidden;
+                pointer-events: auto;
+                &-list {
+                    color: #e7f2ff !important;
+                    text-align: left;
+                    text-indent: 0;
+                    padding: 0 10px;
+                    border-bottom: 1px solid rgba(128, 181, 227, 0.2);
+                    height: 36px;
+                    line-height: 36px;
+                    text-overflow: ellipsis;
+                    overflow: hidden;
+                    white-space: nowrap;
+                    background: rgba(118, 166, 218, 0.05);
+                    font-size: 0.96rem;
+                    font-weight: 540;
+                    letter-spacing: 0.01em;
+                    &:hover {
+                        background-color: rgba(97, 163, 232, 0.26) !important;
+                        color: #f5faff !important;
+                        cursor: pointer;
+                    }
+                    &:last-child {
+                        border-bottom: 0;
+                    }
+                }
+                &-list-active {
+                    background-color: rgba(97, 163, 232, 0.34) !important;
+                    color: #f5faff !important;
+                }
+            }
             & > button,
             &-container-btn,
             &-container-panel,
@@ -390,5 +437,21 @@
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
+    }
+}
+
+@media screen and (max-width: 1680px) {
+    .#{$kaguya}-search {
+        width: 54vw;
+        max-width: 1080px;
+        min-width: 900px;
+    }
+}
+
+@media screen and (max-width: 1560px) {
+    .#{$kaguya}-search {
+        width: 53vw;
+        max-width: 1020px;
+        min-width: 840px;
     }
 }

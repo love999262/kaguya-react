@@ -25,11 +25,15 @@ interface SearchInterface {
 interface StateInterface {
     search: SearchInterface;
     searchArray: string[];
+    suggestArray: string[];
+    activeSuggestIndex: number;
     inputVal: string;
     showDropMenu: boolean;
     showHistoryPanel: boolean;
+    showSuggestPanel: boolean;
     dropMenuMaxHeight: number;
     historyPanelMaxHeight: number;
+    suggestPanelMaxHeight: number;
 }
 
 class SearchEngle extends React.Component <Props, StateInterface> {
@@ -37,6 +41,9 @@ class SearchEngle extends React.Component <Props, StateInterface> {
     private barRef: HTMLDivElement | null;
     private dropMenuRef: HTMLUListElement | null;
     private historyPanelRef: HTMLUListElement | null;
+    private suggestPanelRef: HTMLUListElement | null;
+    private suggestDebounceTimer: number | null;
+    private suggestRequestToken: number;
 
     constructor(props: Props, context: any) {
         super(props, context);
@@ -44,6 +51,9 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         this.barRef = null;
         this.dropMenuRef = null;
         this.historyPanelRef = null;
+        this.suggestPanelRef = null;
+        this.suggestDebounceTimer = null;
+        this.suggestRequestToken = 0;
         this.state = {
             search: {
                 searchInterface: DEFAULT_SEARCH_ENGINE.url,
@@ -52,11 +62,15 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                 searchEngleList: [],
             },
             searchArray: this.loadSearchHistory(),
+            suggestArray: [],
+            activeSuggestIndex: -1,
             inputVal: '',
             showDropMenu: false,
             showHistoryPanel: false,
+            showSuggestPanel: false,
             dropMenuMaxHeight: 300,
             historyPanelMaxHeight: 300,
+            suggestPanelMaxHeight: 300,
         };
 
         this.handleDocumentClick = this.handleDocumentClick.bind(this);
@@ -88,6 +102,10 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         document.removeEventListener('click', this.handleDocumentClick);
         document.removeEventListener('keydown', this.handleDocumentKeydown);
         window.removeEventListener('resize', this.handleWindowResize);
+        if (this.suggestDebounceTimer !== null) {
+            window.clearTimeout(this.suggestDebounceTimer);
+            this.suggestDebounceTimer = null;
+        }
     }
 
     private handleWindowResize() {
@@ -96,6 +114,9 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         }
         if (this.state.showHistoryPanel) {
             this.updatePanelMaxHeight('history');
+        }
+        if (this.state.showSuggestPanel) {
+            this.updatePanelMaxHeight('suggest');
         }
     }
 
@@ -144,11 +165,15 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         this.setState({
             showDropMenu: false,
             showHistoryPanel: false,
+            showSuggestPanel: false,
+            activeSuggestIndex: -1,
         });
     }
 
-    private updatePanelMaxHeight(panelType: 'drop' | 'history') {
-        const panelElement = panelType === 'drop' ? this.dropMenuRef : this.historyPanelRef;
+    private updatePanelMaxHeight(panelType: 'drop' | 'history' | 'suggest') {
+        const panelElement = panelType === 'drop'
+            ? this.dropMenuRef
+            : (panelType === 'history' ? this.historyPanelRef : this.suggestPanelRef);
         if (!panelElement) {
             return;
         }
@@ -158,8 +183,10 @@ class SearchEngle extends React.Component <Props, StateInterface> {
 
         if (panelType === 'drop') {
             this.setState({ dropMenuMaxHeight: availableHeight });
-        } else {
+        } else if (panelType === 'history') {
             this.setState({ historyPanelMaxHeight: availableHeight });
+        } else {
+            this.setState({ suggestPanelMaxHeight: availableHeight });
         }
     }
 
@@ -235,6 +262,8 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                 searchEngleList: this.state.search.searchEngleList,
             },
             showDropMenu: false,
+            showSuggestPanel: false,
+            activeSuggestIndex: -1,
         });
         const searchEngle = {
             searchInterface: engine.url,
@@ -252,6 +281,9 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         this.setState((previousState) => {
             return {
                 showDropMenu: !previousState.showDropMenu,
+                showHistoryPanel: false,
+                showSuggestPanel: false,
+                activeSuggestIndex: -1,
             };
         }, () => {
             if (this.state.showDropMenu) {
@@ -261,11 +293,68 @@ class SearchEngle extends React.Component <Props, StateInterface> {
     }
 
     private handleSearchEvent(event: any, listInfo?: string) {
-        if (event.type === 'keydown' && event.key !== 'Enter' && event.keyCode !== 13) {
-            return;
+        if (event.type === 'keydown') {
+            const key = event.key;
+            const keyCode = event.keyCode;
+            const hasSuggest = this.state.showSuggestPanel && this.state.suggestArray.length > 0;
+
+            if (key === 'ArrowDown' || keyCode === 40) {
+                if (!hasSuggest) {
+                    return;
+                }
+                event.preventDefault();
+                const nextIndex = this.state.activeSuggestIndex < this.state.suggestArray.length - 1
+                    ? this.state.activeSuggestIndex + 1
+                    : 0;
+                this.setState({
+                    activeSuggestIndex: nextIndex,
+                    inputVal: this.state.suggestArray[nextIndex],
+                }, () => {
+                    this.scrollActiveSuggestIntoView(nextIndex);
+                });
+                return;
+            }
+
+            if (key === 'ArrowUp' || keyCode === 38) {
+                if (!hasSuggest) {
+                    return;
+                }
+                event.preventDefault();
+                const nextIndex = this.state.activeSuggestIndex > 0
+                    ? this.state.activeSuggestIndex - 1
+                    : this.state.suggestArray.length - 1;
+                this.setState({
+                    activeSuggestIndex: nextIndex,
+                    inputVal: this.state.suggestArray[nextIndex],
+                }, () => {
+                    this.scrollActiveSuggestIntoView(nextIndex);
+                });
+                return;
+            }
+
+            if (key === 'Escape' || keyCode === 27) {
+                if (!this.state.showSuggestPanel) {
+                    return;
+                }
+                event.preventDefault();
+                this.setState({
+                    showSuggestPanel: false,
+                    activeSuggestIndex: -1,
+                });
+                return;
+            }
+
+            if (key !== 'Enter' && keyCode !== 13) {
+                return;
+            }
         }
 
-        const keyword = typeof listInfo === 'string' ? listInfo : this.state.inputVal.trim();
+        const hasActiveSuggest = this.state.showSuggestPanel
+            && this.state.activeSuggestIndex >= 0
+            && this.state.activeSuggestIndex < this.state.suggestArray.length;
+        const keyword = typeof listInfo === 'string'
+            ? listInfo
+            : (hasActiveSuggest ? this.state.suggestArray[this.state.activeSuggestIndex] : this.state.inputVal.trim());
         if (!keyword) {
             return;
         }
@@ -281,14 +370,133 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
         this.setState({
             searchArray: searchHistory,
-            inputVal: typeof listInfo === 'string' ? listInfo : this.state.inputVal,
+            inputVal: keyword,
+            suggestArray: [],
+            showSuggestPanel: false,
+            showHistoryPanel: false,
+            showDropMenu: false,
+            activeSuggestIndex: -1,
         });
     }
     
     private handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+        const nextValue = event.target.value;
         this.setState({
-            inputVal: event.target.value,
+            inputVal: nextValue,
+            showHistoryPanel: false,
+            activeSuggestIndex: -1,
+        }, () => {
+            this.handleInputSuggest(nextValue);
         });
+    }
+
+    private async fetchBaiduSuggest(keyword: string) {
+        return new Promise<string[]>((resolve) => {
+            const callbackName = `kaguyaBaiduSug_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+            const runtimeWindow = window as Window & { [key: string]: any };
+            let script: HTMLScriptElement | null = null;
+            let timeoutId: number | null = null;
+
+            const cleanup = () => {
+                if (timeoutId !== null) {
+                    window.clearTimeout(timeoutId);
+                }
+                if (script && script.parentNode) {
+                    script.parentNode.removeChild(script);
+                }
+                try {
+                    delete runtimeWindow[callbackName];
+                } catch (error) {
+                    runtimeWindow[callbackName] = undefined;
+                }
+            };
+
+            runtimeWindow[callbackName] = (payload: { s?: any[] }) => {
+                const list = Array.isArray(payload?.s)
+                    ? payload.s.filter((item) => typeof item === 'string').map((item) => item.trim()).filter((item) => item)
+                    : [];
+                cleanup();
+                resolve(list);
+            };
+
+            script = document.createElement('script');
+            script.src = `https://suggestion.baidu.com/su?wd=${encodeURIComponent(keyword)}&cb=${callbackName}`;
+            script.async = true;
+            script.onerror = () => {
+                cleanup();
+                resolve([]);
+            };
+
+            timeoutId = window.setTimeout(() => {
+                cleanup();
+                resolve([]);
+            }, 2800);
+
+            document.body.appendChild(script);
+        });
+    }
+
+    private async loadSuggestList(keyword: string, requestToken: number) {
+        const remoteList = await this.fetchBaiduSuggest(keyword);
+        if (requestToken !== this.suggestRequestToken) {
+            return;
+        }
+
+        const keywordLower = keyword.toLowerCase();
+        const localHistoryList = this.state.searchArray
+            .filter((item) => item.toLowerCase().includes(keywordLower))
+            .slice(0, 8);
+
+        const mergedList: string[] = [];
+        const seen = new Set<string>();
+        [...remoteList, ...localHistoryList].forEach((item) => {
+            const normalized = item.trim();
+            if (!normalized) {
+                return;
+            }
+            const dedupeKey = normalized.toLowerCase();
+            if (seen.has(dedupeKey)) {
+                return;
+            }
+            seen.add(dedupeKey);
+            mergedList.push(normalized);
+        });
+
+        const limitedList = mergedList.slice(0, 12);
+        this.setState({
+            suggestArray: limitedList,
+            showSuggestPanel: limitedList.length > 0,
+            showDropMenu: false,
+            activeSuggestIndex: -1,
+        }, () => {
+            if (this.state.showSuggestPanel) {
+                requestAnimationFrame(() => this.updatePanelMaxHeight('suggest'));
+            }
+        });
+    }
+
+    private handleInputSuggest(inputValue: string) {
+        const keyword = inputValue.trim();
+        if (this.suggestDebounceTimer !== null) {
+            window.clearTimeout(this.suggestDebounceTimer);
+            this.suggestDebounceTimer = null;
+        }
+
+        if (!keyword) {
+            this.suggestRequestToken += 1;
+            this.setState({
+                suggestArray: [],
+                showSuggestPanel: false,
+                activeSuggestIndex: -1,
+            });
+            return;
+        }
+
+        const nextRequestToken = this.suggestRequestToken + 1;
+        this.suggestRequestToken = nextRequestToken;
+        this.suggestDebounceTimer = window.setTimeout(() => {
+            this.loadSuggestList(keyword, nextRequestToken);
+        }, 150);
     }
 
     private renderSearchEngles(engine: SearchEngleInterface): JSX.Element {
@@ -324,12 +532,35 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         this.setState((previousState) => {
             return {
                 showHistoryPanel: !previousState.showHistoryPanel,
+                showSuggestPanel: false,
+                showDropMenu: false,
+                activeSuggestIndex: -1,
             };
         }, () => {
             if (this.state.showHistoryPanel) {
                 requestAnimationFrame(() => this.updatePanelMaxHeight('history'));
             }
         });
+    }
+
+    private scrollActiveSuggestIntoView(activeIndex: number) {
+        const panel = this.suggestPanelRef;
+        if (!panel) {
+            return;
+        }
+        const activeItem = panel.querySelector(`[data-suggest-index="${activeIndex}"]`) as HTMLLIElement | null;
+        if (!activeItem) {
+            return;
+        }
+        const panelTop = panel.scrollTop;
+        const panelBottom = panelTop + panel.clientHeight;
+        const itemTop = activeItem.offsetTop;
+        const itemBottom = itemTop + activeItem.offsetHeight;
+        if (itemTop < panelTop) {
+            panel.scrollTop = itemTop;
+        } else if (itemBottom > panelBottom) {
+            panel.scrollTop = itemBottom - panel.clientHeight;
+        }
     }
 
     render(): JSX.Element {
@@ -339,6 +570,24 @@ class SearchEngle extends React.Component <Props, StateInterface> {
 
         const historyList = this.state.searchArray.map((item, index) => {
             return this.renderHistoryPanel(item, index);
+        });
+        const suggestList = this.state.suggestArray.map((item, index) => {
+            return (
+                <li
+                    className={`${this.props.prefix}-bar-search-suggest-list${this.state.activeSuggestIndex === index ? ` ${this.props.prefix}-bar-search-suggest-list-active` : ''}`}
+                    key={`${item}-${index}`}
+                    title={item}
+                    data-suggest-index={index}
+                    onClick={(event) => {
+                        this.handleSearchEvent(event, item);
+                    }}
+                    onMouseEnter={() => {
+                        this.setState({ activeSuggestIndex: index });
+                    }}
+                >
+                    {item}
+                </li>
+            );
         });
 
         return (
@@ -373,6 +622,7 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                         placeholder='Search the web...'
                         value={this.state.inputVal}
                         onChange={(event) => { this.handleInputChange(event); }}
+                        onFocus={() => { this.handleInputSuggest(this.state.inputVal); }}
                     />
                     <button
                         className={`${this.props.prefix}-bar-spread${this.state.showHistoryPanel ? ` ${this.props.prefix}-bar-spread-open` : ''}`}
@@ -383,6 +633,18 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                     >
                         <i className={`${this.props.prefix}-bar-spread-icon`}></i>
                     </button>
+                    <ul
+                        className={`${this.props.prefix}-bar-search-suggest`}
+                        ref={(element) => { this.suggestPanelRef = element; }}
+                        style={{
+                            display: this.state.showSuggestPanel ? 'block' : 'none',
+                            maxHeight: `${this.state.suggestPanelMaxHeight}px`,
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                        }}
+                    >
+                        {suggestList}
+                    </ul>
                     <ul
                         className={`${this.props.prefix}-bar-search-history`}
                         ref={(element) => { this.historyPanelRef = element; }}

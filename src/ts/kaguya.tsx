@@ -3,6 +3,7 @@ import Background from './background';
 import Navigator from './navigator';
 import Clock from './clock';
 import Calendar from './calendar';
+import Live2D from './live2d';
 interface StateInterface {
     prefix: string;
 }
@@ -21,6 +22,7 @@ class Kaguya extends React.Component <any, any> {
                 <Calendar prefix={this.state.prefix} />
                 <Navigator prefix={this.state.prefix} />
                 <Clock prefix={this.state.prefix} />
+                <Live2D />
             </div>
         );
     }
