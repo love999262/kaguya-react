@@ -31,6 +31,21 @@ type PersonaReply = {
     action: Live2DAction;
 };
 
+type WeatherAdvisoryRiskItem = {
+    dateKey: string;
+    weatherCode: number;
+    weatherText: string;
+    min: number;
+    max: number;
+    tags: string[];
+};
+
+type WeatherAdvisoryEventDetail = {
+    location: string;
+    forecastDays: number;
+    badDays: WeatherAdvisoryRiskItem[];
+};
+
 const MAX_MESSAGES = 18;
 const MAX_CONTEXT_MESSAGES = 10;
 const DEFAULT_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
@@ -95,6 +110,44 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
     } catch {
         // ignore storage quota / private mode issues
     }
+};
+
+const buildWeatherSummary = (badDays: WeatherAdvisoryRiskItem[]): string => {
+    return badDays.map((item) => {
+        const tagsText = item.tags.join('/');
+        return `${item.dateKey} ${item.weatherText} ${item.min}~${item.max}° (${tagsText})`;
+    }).join('；');
+};
+
+const buildLocalWeatherAdvice = (roleTarget: '22' | '33', badDays: WeatherAdvisoryRiskItem[]): string => {
+    const tagSet = new Set<string>();
+    badDays.forEach((item) => item.tags.forEach((tag) => tagSet.add(tag)));
+    const tips: string[] = [];
+    if (tagSet.has('rain')) {
+        tips.push('带伞并穿防水鞋');
+    }
+    if (tagSet.has('snow')) {
+        tips.push('注意防滑并保暖');
+    }
+    if (tagSet.has('thunder')) {
+        tips.push('远离空旷和高处，尽量减少外出');
+    }
+    if (tagSet.has('fog')) {
+        tips.push('出行放慢速度并开启照明');
+    }
+    if (tagSet.has('cold')) {
+        tips.push('低温时加衣保暖');
+    }
+    if (tagSet.has('heat')) {
+        tips.push('及时补水并避免午后暴晒');
+    }
+    if (!tips.length) {
+        tips.push('关注天气变化，提前安排出行');
+    }
+    if (roleTarget === '22') {
+        return `未来三天有天气风险，建议${tips.slice(0, 2).join('，')}，我会继续提醒你。`;
+    }
+    return `建议按优先级执行：${tips.slice(0, 2).join('；')}。`;
 };
 
 const SYSTEM_PROMPT_22 = '你是2233中的22。风格热情、可爱、主动，每次回复1到2句中文。';
@@ -191,6 +244,7 @@ const DeepMode = (): JSX.Element => {
     const lastInteractionAtRef = React.useRef<number>(Date.now());
     const idleRunningRef = React.useRef<boolean>(false);
     const lastLoadFailedAtRef = React.useRef<number>(0);
+    const lastWeatherAdvisorySignatureRef = React.useRef<string>('');
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -450,6 +504,60 @@ const DeepMode = (): JSX.Element => {
         emitBubble('33', reply33.text);
     }, [emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
 
+    const handleWeatherAdvisory = React.useCallback(async (detail: WeatherAdvisoryEventDetail) => {
+        if (!detail || !Array.isArray(detail.badDays) || detail.badDays.length === 0) {
+            return;
+        }
+
+        const signature = detail.badDays.map((item) => `${item.dateKey}:${item.tags.join(',')}`).join('|');
+        if (!signature || signature === lastWeatherAdvisorySignatureRef.current) {
+            return;
+        }
+        lastWeatherAdvisorySignatureRef.current = signature;
+
+        const summary = buildWeatherSummary(detail.badDays);
+        const fallback22 = buildLocalWeatherAdvice('22', detail.badDays);
+        const fallback33 = buildLocalWeatherAdvice('33', detail.badDays);
+
+        const [reply22, reply33] = await Promise.all([
+            requestPersonaJson(
+                '22',
+                `地点：${detail.location}。未来三天风险天气：${summary}。请给出一句热情且实用的出行建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                fallback22,
+                'curious',
+            ),
+            requestPersonaJson(
+                '33',
+                `地点：${detail.location}。未来三天风险天气：${summary}。请给出一句冷静且可执行的应对策略，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                fallback33,
+                'thinking',
+            ),
+        ]);
+
+        pushMessage('assistant22', `22（天气提醒）：${reply22.text}`);
+        pushMessage('assistant33', `33（天气提醒）：${reply33.text}`);
+        emitAction('22', reply22.action);
+        emitAction('33', reply33.action);
+        emitBubble('22', reply22.text);
+        emitBubble('33', reply33.text);
+
+        const payload = {
+            type: 'kaguya:weather-advice',
+            timestamp: new Date().toISOString(),
+            location: detail.location,
+            forecastDays: detail.forecastDays,
+            risks: detail.badDays,
+            advises: {
+                '22': reply22.text,
+                '33': reply33.text,
+            },
+        };
+        window.postMessage(payload, '*');
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, '*');
+        }
+    }, [emitAction, emitBubble, pushMessage, requestPersonaJson]);
+
     const triggerIdleInteraction = React.useCallback(async () => {
         if (idleRunningRef.current || llmState !== 'ready') {
             return;
@@ -582,6 +690,18 @@ const DeepMode = (): JSX.Element => {
             }
         };
     }, [handleSearchFeedback]);
+
+    React.useEffect(() => {
+        const onWeatherAdvisory = (event: Event): void => {
+            const detail = (event as CustomEvent<WeatherAdvisoryEventDetail>).detail;
+            void handleWeatherAdvisory(detail);
+        };
+
+        window.addEventListener('kaguya:weather-advisory', onWeatherAdvisory as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:weather-advisory', onWeatherAdvisory as EventListener);
+        };
+    }, [handleWeatherAdvisory]);
 
     React.useEffect(() => {
         const timer = window.setInterval(() => {

@@ -69,6 +69,21 @@ interface ExtremeWeatherAlertItem {
     text: string;
 }
 
+interface WeatherAdvisoryRiskItem {
+    dateKey: string;
+    weatherCode: number;
+    weatherText: string;
+    min: number;
+    max: number;
+    tags: string[];
+}
+
+type WeatherAdvisoryEventDetail = {
+    location: string;
+    forecastDays: number;
+    badDays: WeatherAdvisoryRiskItem[];
+};
+
 interface StateInterface {
     displayMonth: Date;
     selectedDate: Date;
@@ -259,6 +274,55 @@ class Calendar extends React.Component<Props, StateInterface> {
         return null;
     }
 
+    private getAdvisoryTags(code: number, min: number, max: number): string[] {
+        const tags: string[] = [];
+        if ((code >= 51 && code <= 57) || (code >= 61 && code <= 67) || (code >= 80 && code <= 82)) {
+            tags.push('rain');
+        }
+        if ((code >= 71 && code <= 77) || code === 85 || code === 86) {
+            tags.push('snow');
+        }
+        if (code >= 95) {
+            tags.push('thunder');
+        }
+        if (code === 45 || code === 48) {
+            tags.push('fog');
+        }
+        if (min <= 8) {
+            tags.push('cold');
+        }
+        if (max >= 34) {
+            tags.push('heat');
+        }
+        return tags;
+    }
+
+    private emitThreeDayWeatherAdvisory(locationText: string, forecastDays: number, weatherRows: WeeklyWeatherItem[]) {
+        const badDays = weatherRows.slice(0, 3).map((item) => {
+            return {
+                dateKey: item.dateKey,
+                weatherCode: item.weatherCode,
+                weatherText: item.weatherText,
+                min: item.min,
+                max: item.max,
+                tags: this.getAdvisoryTags(item.weatherCode, item.min, item.max),
+            };
+        }).filter((item) => item.tags.length > 0);
+
+        if (!badDays.length) {
+            return;
+        }
+
+        const detail: WeatherAdvisoryEventDetail = {
+            location: locationText,
+            forecastDays,
+            badDays,
+        };
+        window.dispatchEvent(new CustomEvent<WeatherAdvisoryEventDetail>('kaguya:weather-advisory', {
+            detail,
+        }));
+    }
+
     private buildWeatherUrl(location: WeatherLocation, forecastDays: number): string {
         const params = new URLSearchParams({
             latitude: `${location.latitude}`,
@@ -439,6 +503,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                 });
             });
             this.postExtremeWeatherMessage(locationText, weeklyWeather.length, extremeAlerts);
+            this.emitThreeDayWeatherAdvisory(locationText, weeklyWeather.length, weeklyWeather);
 
             this.setState({
                 weeklyWeather,
