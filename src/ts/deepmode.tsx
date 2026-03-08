@@ -61,13 +61,18 @@ type TodayWeatherEventDetail = {
 
 const MAX_MESSAGES = 18;
 const MAX_CONTEXT_MESSAGES = 10;
-const DEFAULT_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+const FALLBACK_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q0f16-MLC';
+const PREMIUM_MODEL_ID = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
 const LLM_RETRY_COOLDOWN_MS = 12000;
+const PREMIUM_RETRY_COOLDOWN_MS = 60000;
 const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
 const TODAY_WEATHER_COMMENT_STORAGE_KEY = 'kaguya:today-weather-commented';
+
+type StoragePersistenceState = 'unknown' | 'persisted' | 'granted' | 'denied' | 'unsupported';
+type ModelTier = 'none' | 'fallback' | 'premium';
 
 type LLMLoadStrategy = {
     id: 'cache-api' | 'indexeddb';
@@ -75,10 +80,16 @@ type LLMLoadStrategy = {
     useIndexedDBCache: boolean;
 };
 
+type LLMLoadResult = {
+    engine: MLCEngineInterface;
+    strategy: LLMLoadStrategy;
+};
+
 const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
-    { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false },
     { id: 'indexeddb', label: 'IndexedDB', useIndexedDBCache: true },
+    { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false },
 ];
+const PREFERRED_CACHE_STRATEGY_ID: LLMLoadStrategy['id'] = 'indexeddb';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -160,13 +171,13 @@ const buildLocalWeatherAdvice = (roleTarget: '22' | '33', badDays: WeatherAdviso
         tips.push('关注天气变化，提前安排出行');
     }
     if (roleTarget === '22') {
-        return `未来三天有天气风险，建议${tips.slice(0, 2).join('，')}，我会继续提醒你。`;
+        return `这波天气有点挑战，但你完全能应对。建议先${tips[0]}，再${tips[1] || '留意天气更新并灵活调整行程'}。`;
     }
-    return `建议按优先级执行：${tips.slice(0, 2).join('；')}。`;
+    return `风险判断完成：请按优先级执行${tips.slice(0, 2).join('；')}。`;
 };
 
-const SYSTEM_PROMPT_22 = '你是2233中的22。风格热情、可爱、主动，每次回复1到2句中文。';
-const SYSTEM_PROMPT_33 = '你是2233中的33。风格冷静、克制、理性，每次回复1到2句中文。';
+const SYSTEM_PROMPT_22 = '你是2233中的22。性格元气满满、热情主动。每次回复1到2句中文，必须先给情绪价值（鼓励/安抚），再给1条可执行建议。';
+const SYSTEM_PROMPT_33 = '你是2233中的33。性格冷静沉着、理性克制。每次回复1到2句中文，必须先给客观判断，再给1条可执行建议（可含风险提示）。';
 
 const normalizeAction = (value: string): Live2DAction => {
     const text = value.toLowerCase();
@@ -243,7 +254,10 @@ const DeepMode = (): JSX.Element => {
     const [target, setTarget] = React.useState<TalkTarget>('all');
     const [llmState, setLlmState] = React.useState<LLMState>('idle');
     const [llmProgress, setLlmProgress] = React.useState<string>('未加载');
+    const [activeModelTier, setActiveModelTier] = React.useState<ModelTier>('none');
+    const [activeModelId, setActiveModelId] = React.useState<string>('未加载');
     const [isResponding, setIsResponding] = React.useState<boolean>(false);
+    const [storagePersistence, setStoragePersistence] = React.useState<StoragePersistenceState>('unknown');
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         { id: 1, role: 'system', text: '深度交互已就绪：纯文字对话 + 22/33分角色回复。' },
     ]);
@@ -252,15 +266,21 @@ const DeepMode = (): JSX.Element => {
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
     const nextIdRef = React.useRef<number>(2);
     const openedHintRef = React.useRef<boolean>(false);
-    const engineRef = React.useRef<MLCEngineInterface | null>(null);
+    const activeEngineRef = React.useRef<MLCEngineInterface | null>(null);
+    const fallbackEngineRef = React.useRef<MLCEngineInterface | null>(null);
+    const premiumEngineRef = React.useRef<MLCEngineInterface | null>(null);
+    const webllmModuleRef = React.useRef<any | null>(null);
     const loadingPromiseRef = React.useRef<Promise<MLCEngineInterface | null> | null>(null);
+    const premiumLoadingPromiseRef = React.useRef<Promise<void> | null>(null);
     const searchDebounceRef = React.useRef<number | null>(null);
     const lastSearchKeywordRef = React.useRef<string>('');
     const lastInteractionAtRef = React.useRef<number>(Date.now());
     const idleRunningRef = React.useRef<boolean>(false);
     const lastLoadFailedAtRef = React.useRef<number>(0);
+    const premiumLastLoadFailedAtRef = React.useRef<number>(0);
     const lastWeatherAdvisorySignatureRef = React.useRef<string>('');
     const lastTodayWeatherSignatureRef = React.useRef<string>('');
+    const storageCheckedRef = React.useRef<boolean>(false);
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -301,9 +321,223 @@ const DeepMode = (): JSX.Element => {
         });
     }, []);
 
+    const ensurePersistentStorage = React.useCallback(async (): Promise<StoragePersistenceState> => {
+        const storageManager = navigator.storage;
+        if (!storageManager || typeof storageManager.persisted !== 'function' || typeof storageManager.persist !== 'function') {
+            setStoragePersistence('unsupported');
+            return 'unsupported';
+        }
+
+        try {
+            const alreadyPersisted = await storageManager.persisted();
+            if (alreadyPersisted) {
+                setStoragePersistence('persisted');
+                return 'persisted';
+            }
+
+            const granted = await storageManager.persist();
+            if (granted) {
+                setStoragePersistence('granted');
+                pushMessage('system', '已启用浏览器持久化存储，模型缓存更不容易被系统回收。');
+                return 'granted';
+            }
+
+            setStoragePersistence('denied');
+            pushMessage('system', '浏览器未授予持久化存储权限，模型缓存可能在系统清理时被回收。');
+            return 'denied';
+        } catch {
+            setStoragePersistence('denied');
+            return 'denied';
+        }
+    }, [pushMessage]);
+
+    const getWebLLMModule = React.useCallback(async () => {
+        if (webllmModuleRef.current) {
+            return webllmModuleRef.current;
+        }
+        const webllm = await import('@mlc-ai/web-llm');
+        webllmModuleRef.current = webllm;
+        return webllm;
+    }, []);
+
+    const getStrategyOrder = React.useCallback((): LLMLoadStrategy[] => {
+        const storedStrategyId = getStoredStrategyId();
+        return [...LLM_LOAD_STRATEGIES].sort((a, b) => {
+            if (a.id === PREFERRED_CACHE_STRATEGY_ID) {
+                return -1;
+            }
+            if (b.id === PREFERRED_CACHE_STRATEGY_ID) {
+                return 1;
+            }
+            if (a.id === storedStrategyId) {
+                return -1;
+            }
+            if (b.id === storedStrategyId) {
+                return 1;
+            }
+            return 0;
+        });
+    }, []);
+
+    const loadModelWithStrategies = React.useCallback(async (
+        webllm: any,
+        modelId: string,
+        stageLabel: string,
+        silentProgress: boolean = false,
+    ): Promise<{ result: LLMLoadResult | null; lastErrorText: string; }> => {
+        const strategyOrder = getStrategyOrder();
+        let lastErrorText = '';
+
+        for (let strategyIndex = 0; strategyIndex < strategyOrder.length; strategyIndex++) {
+            const strategy = strategyOrder[strategyIndex];
+            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+            const hasCachedModel = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
+            if (hasCachedModel && !silentProgress) {
+                setLlmProgress(`${stageLabel}命中本地缓存(${strategy.label})，正在恢复...`);
+            }
+
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const engine = await webllm.CreateMLCEngine(modelId, {
+                        appConfig,
+                        initProgressCallback: (report: InitProgressReport) => {
+                            if (silentProgress) {
+                                return;
+                            }
+                            const percent = Math.max(0, Math.min(100, Math.round(report.progress * 100)));
+                            setLlmProgress(`${stageLabel}${percent}% ${report.text}`);
+                        },
+                    });
+                    setStoredStrategyId(strategy.id);
+                    return {
+                        result: {
+                            engine,
+                            strategy,
+                        },
+                        lastErrorText,
+                    };
+                } catch (error) {
+                    lastErrorText = error instanceof Error ? error.message : String(error);
+                    const canCleanupAndRetry = attempt === 1 && hasCachedModel;
+                    if (canCleanupAndRetry) {
+                        if (!silentProgress) {
+                            setLlmProgress(`${stageLabel}检测到缓存异常，清理后重试(${strategy.label})...`);
+                        }
+                        await webllm.deleteModelAllInfoInCache(modelId, appConfig).catch((): void => {});
+                        await wait(220);
+                        continue;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return { result: null, lastErrorText };
+    }, [getStrategyOrder]);
+
+    const hasModelInAnyStrategy = React.useCallback(async (webllm: any, modelId: string): Promise<boolean> => {
+        const strategyOrder = getStrategyOrder();
+        for (let index = 0; index < strategyOrder.length; index++) {
+            const strategy = strategyOrder[index];
+            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+            const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
+            if (hasCache) {
+                return true;
+            }
+        }
+        return false;
+    }, [getStrategyOrder]);
+
+    const warmupPremiumModel = React.useCallback(async (): Promise<void> => {
+        if (premiumEngineRef.current || premiumLoadingPromiseRef.current) {
+            return;
+        }
+
+        const now = Date.now();
+        if (premiumLastLoadFailedAtRef.current && (now - premiumLastLoadFailedAtRef.current < PREMIUM_RETRY_COOLDOWN_MS)) {
+            return;
+        }
+
+        premiumLoadingPromiseRef.current = (async () => {
+            try {
+                const webllm = await getWebLLMModule();
+                const hasPremiumModel = webllm.prebuiltAppConfig.model_list.some((item: ModelRecord) => item.model_id === PREMIUM_MODEL_ID);
+                if (!hasPremiumModel) {
+                    pushMessage('system', `优质模型不可用：${PREMIUM_MODEL_ID} 不在可用列表。`);
+                    return;
+                }
+
+                const hasPremiumCache = await hasModelInAnyStrategy(webllm, PREMIUM_MODEL_ID);
+                if (storagePersistence === 'denied' && !hasPremiumCache) {
+                    setLlmProgress('已启用兜底模型（未授权持久化，已跳过优质模型预热）');
+                    pushMessage('system', '当前浏览器未授权持久化，且优质模型未缓存：为避免每次刷新重复下载，已自动跳过优质模型预热。');
+                    return;
+                }
+
+                setLlmProgress((prev) => {
+                    if (!prev || prev === '未加载') {
+                        if (hasPremiumCache) {
+                            return '已启用兜底模型，检测到优质模型缓存，正在激活...';
+                        }
+                        return '已启用兜底模型，优质模型预热中...';
+                    }
+                    if (prev.includes('优质模型预热中') || prev.includes('优质模型缓存')) {
+                        return prev;
+                    }
+                    if (hasPremiumCache) {
+                        return `${prev} · 检测到优质模型缓存，正在激活...`;
+                    }
+                    return `${prev} · 优质模型预热中...`;
+                });
+
+                const { result, lastErrorText } = await loadModelWithStrategies(webllm, PREMIUM_MODEL_ID, '优质模型预热：', true);
+                if (!result) {
+                    premiumLastLoadFailedAtRef.current = Date.now();
+                    const hint = getWebLLMFailureHint(lastErrorText);
+                    pushMessage(
+                        'system',
+                        `优质模型预热失败，继续使用兜底模型。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                    );
+                    return;
+                }
+
+                premiumEngineRef.current = result.engine;
+                activeEngineRef.current = result.engine;
+                setActiveModelTier('premium');
+                setActiveModelId(PREMIUM_MODEL_ID);
+                setLlmState('ready');
+                setLlmProgress(`优质模型已就绪(${result.strategy.label})，已自动切换`);
+                pushMessage('system', `优质模型已就绪：${PREMIUM_MODEL_ID}（${result.strategy.label}），当前优先使用优质模型。`);
+                premiumLastLoadFailedAtRef.current = 0;
+            } catch (error) {
+                premiumLastLoadFailedAtRef.current = Date.now();
+                const errorText = error instanceof Error ? error.message : String(error);
+                const hint = getWebLLMFailureHint(errorText);
+                pushMessage(
+                    'system',
+                    `优质模型预热失败，继续使用兜底模型。${errorText ? `（${errorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                );
+            } finally {
+                premiumLoadingPromiseRef.current = null;
+            }
+        })();
+
+        await premiumLoadingPromiseRef.current;
+    }, [getWebLLMModule, hasModelInAnyStrategy, loadModelWithStrategies, pushMessage, storagePersistence]);
+
     const ensureLLMEngine = React.useCallback(async (): Promise<MLCEngineInterface | null> => {
-        if (engineRef.current) {
-            return engineRef.current;
+        if (premiumEngineRef.current) {
+            activeEngineRef.current = premiumEngineRef.current;
+            setActiveModelTier('premium');
+            setActiveModelId(PREMIUM_MODEL_ID);
+            return premiumEngineRef.current;
+        }
+
+        if (activeEngineRef.current) {
+            if (!premiumEngineRef.current) {
+                void warmupPremiumModel();
+            }
+            return activeEngineRef.current;
         }
 
         if (loadingPromiseRef.current) {
@@ -330,75 +564,38 @@ const DeepMode = (): JSX.Element => {
                 setLlmState('loading');
                 setLlmProgress('正在加载 WebLLM...');
 
-                const webllm = await import('@mlc-ai/web-llm');
-                const hasModel = webllm.prebuiltAppConfig.model_list.some((item) => item.model_id === DEFAULT_MODEL_ID);
-                if (!hasModel) {
+                const webllm = await getWebLLMModule();
+                const hasFallbackModel = webllm.prebuiltAppConfig.model_list.some((item: ModelRecord) => item.model_id === FALLBACK_MODEL_ID);
+                if (!hasFallbackModel) {
                     setLlmState('error');
-                    setLlmProgress('模型不可用');
-                    pushMessage('system', `WebLLM 模型 ${DEFAULT_MODEL_ID} 不在可用列表中。`);
+                    setLlmProgress('兜底模型不可用');
+                    pushMessage('system', `兜底模型 ${FALLBACK_MODEL_ID} 不在可用列表中。`);
                     return null;
                 }
 
-                const storedStrategyId = getStoredStrategyId();
-                const strategyOrder = [...LLM_LOAD_STRATEGIES].sort((a, b) => {
-                    if (a.id === storedStrategyId) {
-                        return -1;
-                    }
-                    if (b.id === storedStrategyId) {
-                        return 1;
-                    }
-                    return 0;
-                });
-
-                let lastErrorText = '';
-                for (let strategyIndex = 0; strategyIndex < strategyOrder.length; strategyIndex++) {
-                    const strategy = strategyOrder[strategyIndex];
-                    const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                    const hasCachedModel = await webllm.hasModelInCache(DEFAULT_MODEL_ID, appConfig).catch(() => false);
-                    if (hasCachedModel) {
-                        setLlmProgress(`命中本地缓存(${strategy.label})，正在恢复...`);
-                    }
-
-                    for (let attempt = 1; attempt <= 2; attempt++) {
-                        try {
-                            const engine = await webllm.CreateMLCEngine(DEFAULT_MODEL_ID, {
-                                appConfig,
-                                initProgressCallback: (report: InitProgressReport) => {
-                                    const percent = Math.max(0, Math.min(100, Math.round(report.progress * 100)));
-                                    setLlmProgress(`${percent}% ${report.text}`);
-                                },
-                            });
-
-                            engineRef.current = engine;
-                            setLlmState('ready');
-                            setLlmProgress(`模型已就绪(${strategy.label})`);
-                            lastLoadFailedAtRef.current = 0;
-                            setStoredStrategyId(strategy.id);
-                            pushMessage('system', `WebLLM 就绪：${DEFAULT_MODEL_ID}（${strategy.label}）`);
-                            return engine;
-                        } catch (error) {
-                            lastErrorText = error instanceof Error ? error.message : String(error);
-                            const canCleanupAndRetry = attempt === 1 && hasCachedModel;
-                            if (canCleanupAndRetry) {
-                                setLlmProgress(`检测到缓存异常，清理后重试(${strategy.label})...`);
-                                await webllm.deleteModelAllInfoInCache(DEFAULT_MODEL_ID, appConfig).catch((): void => {});
-                                await wait(220);
-                                continue;
-                            }
-                            break;
-                        }
-                    }
+                const { result, lastErrorText } = await loadModelWithStrategies(webllm, FALLBACK_MODEL_ID, '兜底模型加载：');
+                if (!result) {
+                    setLlmState('error');
+                    setLlmProgress('加载失败，可稍后自动重试');
+                    lastLoadFailedAtRef.current = Date.now();
+                    const hint = getWebLLMFailureHint(lastErrorText);
+                    pushMessage(
+                        'system',
+                        `兜底模型加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                    );
+                    return null;
                 }
 
-                setLlmState('error');
-                setLlmProgress('加载失败，可稍后自动重试');
-                lastLoadFailedAtRef.current = Date.now();
-                const hint = getWebLLMFailureHint(lastErrorText);
-                pushMessage(
-                    'system',
-                    `WebLLM 加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
-                );
-                return null;
+                fallbackEngineRef.current = result.engine;
+                activeEngineRef.current = result.engine;
+                setActiveModelTier('fallback');
+                setActiveModelId(FALLBACK_MODEL_ID);
+                setLlmState('ready');
+                setLlmProgress(`兜底模型已就绪(${result.strategy.label})，优质模型后台预热中...`);
+                lastLoadFailedAtRef.current = 0;
+                pushMessage('system', `兜底模型已就绪：${FALLBACK_MODEL_ID}（${result.strategy.label}），开始后台预热优质模型。`);
+                void warmupPremiumModel();
+                return result.engine;
             } catch (error) {
                 const errorText = error instanceof Error ? error.message : String(error);
                 setLlmState('error');
@@ -416,7 +613,7 @@ const DeepMode = (): JSX.Element => {
         })();
 
         return loadingPromiseRef.current;
-    }, [llmState, pushMessage]);
+    }, [getWebLLMModule, llmState, loadModelWithStrategies, pushMessage, warmupPremiumModel]);
 
     const requestPersonaJson = React.useCallback(async (
         roleTarget: '22' | '33',
@@ -424,79 +621,122 @@ const DeepMode = (): JSX.Element => {
         fallbackComment: string,
         fallbackAction: Live2DAction,
     ): Promise<PersonaReply> => {
-        const engine = await ensureLLMEngine();
-        if (!engine) {
-            return { text: fallbackComment, action: fallbackAction };
-        }
+        const primaryEngine = await ensureLLMEngine();
+        const system = roleTarget === '22'
+            ? `${SYSTEM_PROMPT_22} 你需要输出 JSON。`
+            : `${SYSTEM_PROMPT_33} 你需要输出 JSON。`;
 
-        try {
-            const system = roleTarget === '22'
-                ? `${SYSTEM_PROMPT_22} 你需要输出 JSON。`
-                : `${SYSTEM_PROMPT_33} 你需要输出 JSON。`;
-
-            const result: any = await engine.chat.completions.create({
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: prompt },
-                ],
-                temperature: 0.7,
-                top_p: 0.9,
-                max_tokens: 180,
-            });
-
-            const raw = extractContent(result?.choices?.[0]?.message?.content);
-            const parsed = parseJsonPayload(raw);
-            if (!parsed) {
-                return { text: fallbackComment, action: fallbackAction };
+        const tryGenerate = async (engine: MLCEngineInterface | null): Promise<PersonaReply | null> => {
+            if (!engine) {
+                return null;
             }
+            try {
+                const result: any = await engine.chat.completions.create({
+                    messages: [
+                        { role: 'system', content: system },
+                        { role: 'user', content: prompt },
+                    ],
+                    temperature: 0.7,
+                    top_p: 0.9,
+                    max_tokens: 180,
+                });
 
-            return { text: parsed.comment, action: parsed.action };
-        } catch {
-            return { text: fallbackComment, action: fallbackAction };
+                const raw = extractContent(result?.choices?.[0]?.message?.content);
+                const parsed = parseJsonPayload(raw);
+                if (!parsed) {
+                    return null;
+                }
+
+                return { text: parsed.comment, action: parsed.action };
+            } catch {
+                return null;
+            }
+        };
+
+        const primaryReply = await tryGenerate(primaryEngine);
+        if (primaryReply) {
+            return primaryReply;
         }
-    }, [ensureLLMEngine]);
+
+        const backupReply = await tryGenerate(fallbackEngineRef.current);
+        if (backupReply) {
+            if (activeModelTier === 'premium') {
+                pushMessage('system', '优质模型本次响应失败，已自动回退兜底模型继续回复。');
+            }
+            return backupReply;
+        }
+
+        return { text: fallbackComment, action: fallbackAction };
+    }, [activeModelTier, ensureLLMEngine, pushMessage]);
 
     const askModel = React.useCallback(async (roleTarget: '22' | '33', userText: string): Promise<PersonaReply> => {
-        const engine = await ensureLLMEngine();
+        const primaryEngine = await ensureLLMEngine();
         const history = historyRef.current[roleTarget];
-        history.push({ role: 'user', content: userText });
+        const roleGuidance = roleTarget === '22'
+            ? '请先给情绪价值，再给一个最小可执行建议，语气元气。'
+            : '请先给客观判断，再给一个可执行建议并可提示风险，语气冷静。';
+        history.push({ role: 'user', content: `${roleGuidance}\n用户问题：${userText}` });
 
         if (history.length > MAX_CONTEXT_MESSAGES + 1) {
             history.splice(1, history.length - (MAX_CONTEXT_MESSAGES + 1));
         }
 
-        if (!engine) {
-            const fallbackText = roleTarget === '22' ? `这个话题我很感兴趣：${userText}` : `收到：${userText}`;
-            const fallbackAction = roleTarget === '22' ? 'happy' : 'calm';
+        if (!primaryEngine) {
+            const fallbackText = roleTarget === '22'
+                ? `这件事别慌，我和你站一边。先从“${userText}”里最容易的一步开始就好。`
+                : `先客观看待“${userText}”。先确认目标与约束，再执行第一步。`;
+            const fallbackAction = roleTarget === '22' ? 'happy' : 'thinking';
             history.push({ role: 'assistant', content: fallbackText });
             return { text: fallbackText, action: fallbackAction };
         }
 
-        try {
-            const response: any = await engine.chat.completions.create({
-                messages: history,
-                temperature: 0.7,
-                top_p: 0.9,
-                max_tokens: 160,
-            });
+        const tryAsk = async (engine: MLCEngineInterface | null): Promise<PersonaReply | null> => {
+            if (!engine) {
+                return null;
+            }
+            try {
+                const response: any = await engine.chat.completions.create({
+                    messages: history,
+                    temperature: 0.7,
+                    top_p: 0.9,
+                    max_tokens: 160,
+                });
 
-            const content = extractContent(response?.choices?.[0]?.message?.content);
-            const text = content || (roleTarget === '22' ? `这个话题我很感兴趣：${userText}` : `收到：${userText}`);
-            history.push({ role: 'assistant', content: text });
+                const content = extractContent(response?.choices?.[0]?.message?.content);
+                const text = content || (roleTarget === '22' ? `这个话题我很感兴趣：${userText}` : `收到：${userText}`);
+                history.push({ role: 'assistant', content: text });
 
-            const action = roleTarget === '22'
-                ? (text.length > 18 ? 'curious' : 'happy')
-                : (text.includes('？') ? 'thinking' : 'calm');
-            return { text, action };
-        } catch {
-            const fallbackText = roleTarget === '22' ? `这个话题我很感兴趣：${userText}` : `收到：${userText}`;
-            history.push({ role: 'assistant', content: fallbackText });
-            return {
-                text: fallbackText,
-                action: roleTarget === '22' ? 'happy' : 'calm',
-            };
+                const action = roleTarget === '22'
+                    ? (text.length > 18 ? 'curious' : 'happy')
+                    : (text.includes('？') ? 'thinking' : 'calm');
+                return { text, action };
+            } catch {
+                return null;
+            }
+        };
+
+        const primaryReply = await tryAsk(primaryEngine);
+        if (primaryReply) {
+            return primaryReply;
         }
-    }, [ensureLLMEngine]);
+
+        const backupReply = await tryAsk(fallbackEngineRef.current);
+        if (backupReply) {
+            if (activeModelTier === 'premium') {
+                pushMessage('system', '优质模型本次响应失败，已自动回退兜底模型继续回复。');
+            }
+            return backupReply;
+        }
+
+        const fallbackText = roleTarget === '22'
+            ? `别有压力，这题可以拆开做。先把“${userText}”里最关键的一项处理掉。`
+            : `结论先给你：这件事可以推进。建议先明确优先级，再按顺序执行。`;
+        history.push({ role: 'assistant', content: fallbackText });
+        return {
+            text: fallbackText,
+            action: roleTarget === '22' ? 'curious' : 'thinking',
+        };
+    }, [activeModelTier, ensureLLMEngine, pushMessage]);
 
     const handleSearchFeedback = React.useCallback(async (keyword: string) => {
         if (!keyword || keyword.length < 2) {
@@ -508,15 +748,15 @@ const DeepMode = (): JSX.Element => {
         const [reply22, reply33] = await Promise.all([
             requestPersonaJson(
                 '22',
-                `用户正在输入搜索词：${keyword}。请给一句热情点评，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                `22觉得“${keyword}”很有意思，快搜一下看看！`,
+                `用户正在输入搜索词：${keyword}。请输出1到2句：先给情绪鼓励，再给一个检索建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `这个词很有潜力，放心冲。建议先搜“${keyword} 教程/实测”快速建立判断。`,
                 'curious',
             ),
             requestPersonaJson(
                 '33',
-                `用户正在输入搜索词：${keyword}。请给一句偏冷静的点评，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                `33建议先明确“${keyword}”的关键词再搜索。`,
-                'calm',
+                `用户正在输入搜索词：${keyword}。请输出1到2句：先给客观判断，再给一个检索策略，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `先明确“${keyword}”是资讯、教程还是购买，再按维度筛选结果。`,
+                'thinking',
             ),
         ]);
 
@@ -546,13 +786,13 @@ const DeepMode = (): JSX.Element => {
         const [reply22, reply33] = await Promise.all([
             requestPersonaJson(
                 '22',
-                `地点：${detail.location}。未来三天风险天气：${summary}。请给出一句热情且实用的出行建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `地点：${detail.location}。未来三天风险天气：${summary}。请输出1到2句：先给情绪支持，再给可执行建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
                 fallback22,
                 'curious',
             ),
             requestPersonaJson(
                 '33',
-                `地点：${detail.location}。未来三天风险天气：${summary}。请给出一句冷静且可执行的应对策略，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `地点：${detail.location}。未来三天风险天气：${summary}。请输出1到2句：先做客观判断，再给可执行策略（可含风险提醒），并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
                 fallback33,
                 'thinking',
             ),
@@ -603,21 +843,21 @@ const DeepMode = (): JSX.Element => {
 
         lastTodayWeatherSignatureRef.current = signature;
         const summary = `${detail.today.dateKey} ${detail.today.weatherText} ${detail.today.min}~${detail.today.max}°`;
-        const fallback22 = `22觉得今天${detail.location}${detail.today.weatherText}，温度${detail.today.min}到${detail.today.max}度，出门也要保持好心情。`;
-        const fallback33 = `33提示：今天${summary}，按温度和天气合理安排出行。`;
+        const fallback22 = `今天${detail.location}${detail.today.weatherText}，但节奏别乱，你状态在线。建议按${detail.today.min}到${detail.today.max}度调整穿搭再出门。`;
+        const fallback33 = `客观结论：今天${summary}。建议按温差准备衣物，并预留通勤缓冲时间。`;
 
         const [reply22, reply33] = await Promise.all([
             requestPersonaJson(
                 '22',
-                `请基于今天的天气做一句热情点评。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `请基于今天的天气输出1到2句：先给情绪鼓励，再给可执行建议。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
                 fallback22,
                 'happy',
             ),
             requestPersonaJson(
                 '33',
-                `请基于今天的天气做一句冷静点评。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                `请基于今天的天气输出1到2句：先给客观判断，再给可执行策略。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
                 fallback33,
-                'calm',
+                'thinking',
             ),
         ]);
 
@@ -645,15 +885,15 @@ const DeepMode = (): JSX.Element => {
             const [idle22, idle33] = await Promise.all([
                 requestPersonaJson(
                     '22',
-                    '当前是待机状态，请给一句热情的短句（12字以内）并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
-                    '22正在待机，随时准备帮你。',
+                    '当前是待机状态，请给1到2句短句：先给情绪价值，再给一个可执行小建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
+                    '我在这儿陪你，状态拉满。想推进事情时，先做一个最小动作就好。',
                     'happy',
                 ),
                 requestPersonaJson(
                     '33',
-                    '当前是待机状态，请给一句冷静的短句（12字以内）并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
-                    '33待命中。',
-                    'calm',
+                    '当前是待机状态，请给1到2句短句：先给客观判断，再给一个可执行小建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
+                    '当前无异常，节奏可控。建议先确定下一件最高优先级任务。',
+                    'thinking',
                 ),
             ]);
 
@@ -733,8 +973,13 @@ const DeepMode = (): JSX.Element => {
             pushMessage('system', '已展开：可选22/33/all。搜索输入会触发角色点评与动作。');
         }
 
+        if (!storageCheckedRef.current) {
+            storageCheckedRef.current = true;
+            void ensurePersistentStorage();
+        }
+
         void ensureLLMEngine();
-    }, [ensureLLMEngine, panelOpen, pushMessage]);
+    }, [ensureLLMEngine, ensurePersistentStorage, panelOpen, pushMessage]);
 
     React.useEffect(() => {
         const onSearchInput = (event: Event): void => {
@@ -812,16 +1057,37 @@ const DeepMode = (): JSX.Element => {
                 window.clearTimeout(searchDebounceRef.current);
                 searchDebounceRef.current = null;
             }
-            if (engineRef.current) {
-                void engineRef.current.unload();
-            }
-            engineRef.current = null;
+            const engineList = [
+                activeEngineRef.current,
+                fallbackEngineRef.current,
+                premiumEngineRef.current,
+            ].filter((item): item is MLCEngineInterface => Boolean(item));
+            const uniqueEngineList = Array.from(new Set(engineList));
+            uniqueEngineList.forEach((engine) => {
+                void engine.unload();
+            });
+            activeEngineRef.current = null;
+            fallbackEngineRef.current = null;
+            premiumEngineRef.current = null;
+            webllmModuleRef.current = null;
+            loadingPromiseRef.current = null;
+            premiumLoadingPromiseRef.current = null;
         };
     }, []);
 
     const llmText = llmState === 'ready'
         ? '就绪'
         : (llmState === 'loading' ? '加载中' : (llmState === 'error' ? '失败' : (llmState === 'unsupported' ? '不支持' : '未加载')));
+    const storageText = storagePersistence === 'persisted'
+        ? '已持久化'
+        : (storagePersistence === 'granted'
+            ? '已申请持久化'
+            : (storagePersistence === 'denied'
+                ? '未授权持久化'
+                : (storagePersistence === 'unsupported' ? '浏览器不支持' : '待检测')));
+    const modelTierText = activeModelTier === 'premium'
+        ? '优质模型'
+        : (activeModelTier === 'fallback' ? '兜底模型' : '未启用');
 
     return (
         <div className='kaguya-deep'>
@@ -848,6 +1114,8 @@ const DeepMode = (): JSX.Element => {
 
                 <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
                 <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
+                <div className='kaguya-deep-meta'>当前模型：{activeModelId}（{modelTierText}）</div>
+                <div className='kaguya-deep-meta'>模型缓存：{storageText}</div>
 
                 <div className='kaguya-deep-targets'>
                     <button
