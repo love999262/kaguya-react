@@ -3,7 +3,7 @@
 .#{$kaguya} {
     &-calendar {
         position: fixed;
-        top: 210px;
+        top: 232px;
         left: 18px;
         right: auto;
         width: 312px;
@@ -45,6 +45,84 @@
         letter-spacing: 0.06em;
         text-align: center;
         font-variant-numeric: tabular-nums;
+    }
+
+    &-calendar-weather {
+        margin: 0 0 8px;
+        min-height: 46px;
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+        padding: 5px 6px;
+        border-radius: 10px !important;
+        border: 1px solid rgba(176, 208, 239, 0.26);
+        background: rgba(92, 136, 183, 0.17);
+    }
+
+    &-calendar-weather-loading {
+        grid-column: 1 / -1;
+        min-height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        color: rgba(207, 226, 245, 0.92) !important;
+    }
+
+    &-calendar-weather-item {
+        min-height: 44px;
+        border-radius: 8px !important;
+        border: 1px solid rgba(167, 198, 229, 0.2);
+        background: rgba(129, 171, 214, 0.16);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 3px 2px;
+    }
+
+    &-calendar-weather-headline {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 2px;
+        line-height: 1;
+    }
+
+    &-calendar-weather-date {
+        font-size: 0.58rem;
+        color: rgba(224, 239, 254, 0.94) !important;
+        font-weight: 650;
+    }
+
+    &-calendar-weather-day {
+        font-size: 0.54rem;
+        color: rgba(206, 225, 243, 0.92) !important;
+        line-height: 1;
+    }
+
+    &-calendar-weather-icon {
+        font-size: 0.74rem;
+        line-height: 1.1;
+    }
+
+    &-calendar-weather-temp {
+        font-size: 0.56rem;
+        color: rgba(220, 238, 254, 0.92) !important;
+        line-height: 1;
+        letter-spacing: 0.01em;
+    }
+
+    &-calendar-weather-location {
+        margin: 0 0 8px;
+        padding: 0 2px;
+        font-size: 0.66rem;
+        line-height: 1.2;
+        color: rgba(200, 220, 240, 0.9) !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     &-calendar-btn {
@@ -161,6 +239,7 @@
     &-calendar-day {
         width: 100%;
         height: 30px;
+        position: relative;
         border-radius: 9px !important;
         background: rgba(136, 175, 217, 0.08);
         border: 1px solid rgba(164, 197, 230, 0.18);
@@ -175,6 +254,29 @@
             background: rgba(134, 179, 224, 0.2);
             border-color: rgba(184, 216, 248, 0.42);
         }
+    }
+
+    &-calendar-weather-mark {
+        position: absolute;
+        top: 1px;
+        right: 2px;
+        font-size: 0.58rem;
+        line-height: 1;
+        opacity: 0.78;
+        pointer-events: none;
+        filter: saturate(0.92);
+    }
+
+    &-calendar-weather-mark-rain {
+        color: rgba(156, 218, 255, 0.86) !important;
+    }
+
+    &-calendar-weather-mark-snow {
+        color: rgba(216, 238, 255, 0.92) !important;
+    }
+
+    &-calendar-weather-mark-extreme {
+        color: rgba(255, 208, 138, 0.9) !important;
     }
 
     &-calendar-day-number {
@@ -312,7 +414,7 @@
 @media screen and (max-width: 1200px) {
     .#{$kaguya}-calendar {
         width: 312px;
-        top: 206px;
+        top: 226px;
         left: 10px;
         right: auto;
     }

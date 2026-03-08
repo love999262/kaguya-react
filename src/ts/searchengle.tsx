@@ -251,6 +251,24 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         if (event.key === '`' || event.keyCode === 192 || event.key === '\\' || event.keyCode === 220) {
             return;
         }
+
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+            return;
+        }
+
+        const target = event.target as HTMLElement | null;
+        if (target) {
+            const tag = target.tagName;
+            const isTypingNode = tag === 'INPUT'
+                || tag === 'TEXTAREA'
+                || tag === 'SELECT'
+                || target.isContentEditable
+                || !!target.closest('.kaguya-deep-panel');
+            if (isTypingNode) {
+                return;
+            }
+        }
+
         if (!this.input) {
             return;
         }
@@ -393,6 +411,11 @@ class SearchEngle extends React.Component <Props, StateInterface> {
             activeSuggestIndex: -1,
         }, () => {
             this.handleInputSuggest(nextValue);
+            window.dispatchEvent(new CustomEvent('kaguya:search-input', {
+                detail: {
+                    value: nextValue,
+                },
+            }));
         });
     }
 

@@ -39,6 +39,107 @@
     height: 100%;
     border: 0;
     background: transparent;
+    transform-origin: center bottom;
+}
+
+.kaguya-live2d-bubble {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, 10px);
+    min-width: 104px;
+    max-width: 188px;
+    max-height: 74px;
+    overflow-y: auto;
+    padding: 5px 8px;
+    border-radius: 10px !important;
+    border: 1px solid rgba(190, 221, 248, 0.44);
+    background: linear-gradient(160deg, rgba(14, 32, 55, 0.9), rgba(10, 24, 44, 0.9));
+    color: #eaf5ff !important;
+    font-size: 0.74rem;
+    line-height: 1.28;
+    box-shadow: 0 10px 20px rgba(8, 20, 38, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease;
+    z-index: 3;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.kaguya-live2d-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 9px;
+    height: 9px;
+    transform: translateX(-50%) rotate(45deg);
+    background: rgba(12, 29, 50, 0.95);
+    border-right: 1px solid rgba(183, 217, 247, 0.44);
+    border-bottom: 1px solid rgba(183, 217, 247, 0.44);
+}
+
+.kaguya-live2d-bubble-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.kaguya-live2d-shell-action-happy .kaguya-live2d-frame {
+    animation: kaguya-live2d-happy 850ms ease-in-out 1;
+}
+
+.kaguya-live2d-shell-action-curious .kaguya-live2d-frame {
+    animation: kaguya-live2d-curious 950ms ease-in-out 1;
+}
+
+.kaguya-live2d-shell-action-thinking .kaguya-live2d-frame {
+    animation: kaguya-live2d-thinking 1000ms ease-in-out 1;
+}
+
+.kaguya-live2d-shell-action-calm .kaguya-live2d-frame {
+    animation: kaguya-live2d-calm 950ms ease-in-out 1;
+}
+
+.kaguya-live2d-shell-action-surprised .kaguya-live2d-frame {
+    animation: kaguya-live2d-surprised 520ms ease-in-out 1;
+}
+
+@keyframes kaguya-live2d-happy {
+    0% { transform: translateY(0) scale(1); filter: brightness(1); }
+    30% { transform: translateY(-8px) scale(1.03); filter: brightness(1.08); }
+    60% { transform: translateY(0) scale(1); filter: brightness(1.02); }
+    100% { transform: translateY(0) scale(1); filter: brightness(1); }
+}
+
+@keyframes kaguya-live2d-curious {
+    0% { transform: rotate(0deg) scale(1); }
+    20% { transform: rotate(-2deg) scale(1.01); }
+    50% { transform: rotate(2deg) scale(1.02); }
+    80% { transform: rotate(-1deg) scale(1.01); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+@keyframes kaguya-live2d-thinking {
+    0% { transform: translateY(0); filter: saturate(1); }
+    35% { transform: translateY(-5px); filter: saturate(1.18); }
+    70% { transform: translateY(-2px); filter: saturate(1.1); }
+    100% { transform: translateY(0); filter: saturate(1); }
+}
+
+@keyframes kaguya-live2d-calm {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-3px); opacity: 0.96; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes kaguya-live2d-surprised {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
 }
 
 @media screen and (max-width: 1680px) {

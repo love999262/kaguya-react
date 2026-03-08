@@ -4,6 +4,7 @@ import Navigator from './navigator';
 import Clock from './clock';
 import Calendar from './calendar';
 import Live2D from './live2d';
+import DeepMode from './deepmode';
 interface StateInterface {
     prefix: string;
 }
@@ -23,6 +24,7 @@ class Kaguya extends React.Component <any, any> {
                 <Navigator prefix={this.state.prefix} />
                 <Clock prefix={this.state.prefix} />
                 <Live2D />
+                <DeepMode />
             </div>
         );
     }
@@ -30,3 +32,4 @@ class Kaguya extends React.Component <any, any> {
 
 export default Kaguya;
 export type { StateInterface as KaguyaProps };
+

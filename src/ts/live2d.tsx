@@ -10,6 +10,9 @@ const MODEL_MAP: Record<'22' | '33', string> = {
 
 type ModelId = '22' | '33';
 type OffsetState = Record<ModelId, { x: number; y: number }>;
+type Live2DAction = 'neutral' | 'happy' | 'curious' | 'thinking' | 'calm' | 'surprised';
+type ActionState = Record<ModelId, Live2DAction>;
+type BubbleState = Record<ModelId, string>;
 
 type DragState = {
     id: ModelId;
@@ -85,12 +88,28 @@ const Live2D = (): JSX.Element => {
         '22': { x: 0, y: 0 },
         '33': { x: 0, y: 0 },
     });
+    const [actions, setActions] = React.useState<ActionState>({
+        '22': 'neutral',
+        '33': 'neutral',
+    });
+    const [bubbles, setBubbles] = React.useState<BubbleState>({
+        '22': '',
+        '33': '',
+    });
 
     const offsetsRef = React.useRef<OffsetState>(offsets);
     const dragRef = React.useRef<DragState | null>(null);
     const frame22Ref = React.useRef<HTMLIFrameElement | null>(null);
     const frame33Ref = React.useRef<HTMLIFrameElement | null>(null);
     const cleanupsRef = React.useRef<Array<() => void>>([]);
+    const actionTimerRef = React.useRef<Record<ModelId, number | null>>({
+        '22': null,
+        '33': null,
+    });
+    const bubbleTimerRef = React.useRef<Record<ModelId, number | null>>({
+        '22': null,
+        '33': null,
+    });
 
     React.useEffect(() => {
         offsetsRef.current = offsets;
@@ -106,6 +125,25 @@ const Live2D = (): JSX.Element => {
         return () => {
             window.removeEventListener('resize', onResize);
         };
+    }, []);
+
+    const applyAction = React.useCallback((id: ModelId, action: Live2DAction): void => {
+        setActions((prev: ActionState) => ({
+            ...prev,
+            [id]: action,
+        }));
+
+        const timer = actionTimerRef.current[id];
+        if (timer) {
+            window.clearTimeout(timer);
+        }
+        actionTimerRef.current[id] = window.setTimeout(() => {
+            setActions((prev: ActionState) => ({
+                ...prev,
+                [id]: 'neutral',
+            }));
+            actionTimerRef.current[id] = null;
+        }, 1200);
     }, []);
 
     const clearFrameListeners = React.useCallback((): void => {
@@ -195,8 +233,101 @@ const Live2D = (): JSX.Element => {
     }, [clearFrameListeners, visible]);
 
     React.useEffect(() => {
+        const onAction = (event: Event): void => {
+            const detail = (event as CustomEvent<{ target?: string; action?: Live2DAction; }>).detail;
+            const action = detail?.action || 'neutral';
+            const target = detail?.target;
+            if (target === '22') {
+                applyAction('22', action);
+                return;
+            }
+            if (target === '33') {
+                applyAction('33', action);
+                return;
+            }
+            if (target === 'all') {
+                applyAction('22', action);
+                applyAction('33', action);
+            }
+        };
+
+        window.addEventListener('kaguya:live2d-action', onAction as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:live2d-action', onAction as EventListener);
+        };
+    }, [applyAction]);
+
+    React.useEffect(() => {
+        const onBubble = (event: Event): void => {
+            const detail = (event as CustomEvent<{ target?: string; text?: string; }>).detail;
+            const text = typeof detail?.text === 'string' ? detail.text.trim() : '';
+            const target = detail?.target;
+            if (!text) {
+                return;
+            }
+
+            const setBubbleText = (id: ModelId) => {
+                setBubbles((prev: BubbleState) => ({
+                    ...prev,
+                    [id]: text,
+                }));
+
+                const timer = bubbleTimerRef.current[id];
+                if (timer) {
+                    window.clearTimeout(timer);
+                }
+                bubbleTimerRef.current[id] = window.setTimeout(() => {
+                    setBubbles((prev: BubbleState) => ({
+                        ...prev,
+                        [id]: '',
+                    }));
+                    bubbleTimerRef.current[id] = null;
+                }, 4800);
+            };
+
+            if (target === '22') {
+                setBubbleText('22');
+                return;
+            }
+            if (target === '33') {
+                setBubbleText('33');
+                return;
+            }
+            if (target === 'all') {
+                setBubbleText('22');
+                setBubbleText('33');
+            }
+        };
+
+        window.addEventListener('kaguya:live2d-bubble', onBubble as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:live2d-bubble', onBubble as EventListener);
+        };
+    }, []);
+
+    React.useEffect(() => {
         return () => {
             clearFrameListeners();
+            const timer22 = actionTimerRef.current['22'];
+            const timer33 = actionTimerRef.current['33'];
+            if (timer22) {
+                window.clearTimeout(timer22);
+                actionTimerRef.current['22'] = null;
+            }
+            if (timer33) {
+                window.clearTimeout(timer33);
+                actionTimerRef.current['33'] = null;
+            }
+            const bubble22 = bubbleTimerRef.current['22'];
+            const bubble33 = bubbleTimerRef.current['33'];
+            if (bubble22) {
+                window.clearTimeout(bubble22);
+                bubbleTimerRef.current['22'] = null;
+            }
+            if (bubble33) {
+                window.clearTimeout(bubble33);
+                bubbleTimerRef.current['33'] = null;
+            }
         };
     }, [clearFrameListeners]);
 
@@ -214,9 +345,10 @@ const Live2D = (): JSX.Element => {
     return (
         <div className='kaguya-live2d-group'>
             <div
-                className='kaguya-live2d-shell kaguya-live2d-shell-22'
+                className={`kaguya-live2d-shell kaguya-live2d-shell-22 kaguya-live2d-shell-action-${actions['22']}`}
                 style={{ transform: `translate3d(${offsets['22'].x}px, ${offsets['22'].y}px, 0)` }}
             >
+                <div className={`kaguya-live2d-bubble ${bubbles['22'] ? 'kaguya-live2d-bubble-visible' : ''}`}>{bubbles['22']}</div>
                 <iframe
                     ref={frame22Ref}
                     className='kaguya-live2d-frame'
@@ -227,9 +359,10 @@ const Live2D = (): JSX.Element => {
                 />
             </div>
             <div
-                className='kaguya-live2d-shell kaguya-live2d-shell-33'
+                className={`kaguya-live2d-shell kaguya-live2d-shell-33 kaguya-live2d-shell-action-${actions['33']}`}
                 style={{ transform: `translate3d(${offsets['33'].x}px, ${offsets['33'].y}px, 0)` }}
             >
+                <div className={`kaguya-live2d-bubble ${bubbles['33'] ? 'kaguya-live2d-bubble-visible' : ''}`}>{bubbles['33']}</div>
                 <iframe
                     ref={frame33Ref}
                     className='kaguya-live2d-frame'
