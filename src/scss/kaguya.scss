@@ -1,4 +1,5 @@
-@import './global.scss';
+@use './global.scss' as *;
+
 .#{$kaguya} {
     display: flex;
     justify-content: center;

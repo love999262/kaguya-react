@@ -1,4 +1,5 @@
-﻿import * as React from 'react';
+import * as React from 'react';
+import utils from './utils';
 
 const SHOW_MIN_WIDTH = 1320;
 const LIVE2D_SCRIPT_URL = 'live2d/lib/L2Dwidget.min.js';
@@ -84,6 +85,7 @@ window.addEventListener('load', function () {
 
 const Live2D = (): JSX.Element => {
     const [visible, setVisible] = React.useState<boolean>(window.innerWidth >= SHOW_MIN_WIDTH);
+    const [isPageActive, setIsPageActive] = React.useState<boolean>(true);
     const [offsets, setOffsets] = React.useState<OffsetState>({
         '22': { x: 0, y: 0 },
         '33': { x: 0, y: 0 },
@@ -125,6 +127,15 @@ const Live2D = (): JSX.Element => {
         return () => {
             window.removeEventListener('resize', onResize);
         };
+    }, []);
+
+    React.useEffect(() => {
+        const handleVisibilityChange = (isVisible: boolean): void => {
+            setIsPageActive(isVisible);
+        };
+
+        const removeListener = utils.addVisibilityListener(handleVisibilityChange);
+        return removeListener;
     }, []);
 
     const applyAction = React.useCallback((id: ModelId, action: Live2DAction): void => {
@@ -338,7 +349,7 @@ const Live2D = (): JSX.Element => {
         };
     }, []);
 
-    if (!visible) {
+    if (!visible || !isPageActive) {
         return <></>;
     }
 

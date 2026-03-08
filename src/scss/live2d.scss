@@ -1,4 +1,4 @@
-@import './global.scss';
+@use './global.scss' as *;
 
 #live2d-widget {
     display: none !important;

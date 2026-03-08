@@ -1,10 +1,9 @@
-@import './global.scss';
-@import './reset.scss';
-@import './app.scss';
-@import './kaguya.scss';
-@import './navigator.scss';
-@import './clock.scss';
-@import './calendar.scss';
-@import './live2d.scss';
-@import './deepmode.scss';
-
+@use './global.scss' as *;
+@use './reset.scss';
+@use './app.scss';
+@use './kaguya.scss';
+@use './navigator.scss';
+@use './clock.scss';
+@use './calendar.scss';
+@use './live2d.scss';
+@use './deepmode.scss';

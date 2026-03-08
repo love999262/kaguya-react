@@ -1,3 +1,25 @@
+type VisibilityCallback = (isVisible: boolean) => void;
+
+const visibilityListeners: VisibilityCallback[] = [];
+let isPageVisible = document.visibilityState === 'visible';
+
+const handleVisibilityChange = (): void => {
+    const newVisible = document.visibilityState === 'visible';
+    if (newVisible !== isPageVisible) {
+        isPageVisible = newVisible;
+        visibilityListeners.forEach((callback) => {
+            try {
+                callback(newVisible);
+            } catch {
+            }
+        });
+    }
+};
+
+if (typeof document !== 'undefined' && 'visibilityState' in document) {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
 const utils = {
     getRandomColor() {
         let r: string | number = Math.floor(Math.random() * 256);
@@ -32,8 +54,19 @@ const utils = {
                 newWindow.opener = null;
             }
         } catch (error) {
-            // Ignore malformed URLs from external data sources.
         }
+    },
+    isPageVisible(): boolean {
+        return isPageVisible;
+    },
+    addVisibilityListener(callback: VisibilityCallback): () => void {
+        visibilityListeners.push(callback);
+        return () => {
+            const index = visibilityListeners.indexOf(callback);
+            if (index > -1) {
+                visibilityListeners.splice(index, 1);
+            }
+        };
     },
 };
 

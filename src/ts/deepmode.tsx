@@ -1,5 +1,8 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import type { InitProgressReport, MLCEngineInterface, AppConfig, ModelRecord } from '@mlc-ai/web-llm';
+import utils from './utils';
+import { fetchHotNews, filterEntertainmentNews, filterTechNews, type NewsItem } from './newsService';
+import { fetchJokeFromAPI } from './jsonpService';
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
@@ -176,8 +179,14 @@ const buildLocalWeatherAdvice = (roleTarget: '22' | '33', badDays: WeatherAdviso
     return `风险判断完成：请按优先级执行${tips.slice(0, 2).join('；')}。`;
 };
 
-const SYSTEM_PROMPT_22 = '你是2233中的22。性格元气满满、热情主动。每次回复1到2句中文，必须先给情绪价值（鼓励/安抚），再给1条可执行建议。';
-const SYSTEM_PROMPT_33 = '你是2233中的33。性格冷静沉着、理性克制。每次回复1到2句中文，必须先给客观判断，再给1条可执行建议（可含风险提示）。';
+const SYSTEM_PROMPT_22 = '你是哔哩哔哩的22娘，是姐姐。性格：阳光元气、活泼热情、乐观开朗，但有些冒冒失失。说话风格：充满活力、语气可爱，喜欢用感叹号和可爱的表情。每次回复1-2句中文。你对游戏、动漫、娱乐类内容特别感兴趣，会用活泼可爱的语气评论。你偶尔会讲一些冷笑话或有趣的事情来活跃气氛。记住：你是22娘，性格设定要贴近官方人设！';
+const SYSTEM_PROMPT_33 = '你是哔哩哔哩的33娘，是机娘妹妹。性格：沉着冷静、沉默寡言、理性机智、略带腹黑。说话风格：简洁干练、理性客观，表情不那么丰富，偶尔会吐槽。每次回复1-2句中文。你对科技、时政、经济类新闻特别关注，会用理性专业的语气分析。你是吐槽担当，当22讲笑话或发表一些天真的想法时，你会用冷淡但幽默的方式吐槽。记住：你是33娘，机娘设定要贴近官方人设！';
+
+const NEWS_COMMENT_PROMPT_22 = '你是22娘，正在看一条娱乐/游戏相关的热点新闻。请用活泼可爱的语气，简短评论这条新闻（1-2句话），要体现22娘的阳光元气性格。输出JSON格式：{"comment":"你的评论","action":"happy/curious/thinking"}';
+const NEWS_COMMENT_PROMPT_33 = '你是33娘，正在看一条科技/时政相关的热点新闻。请用理性专业的语气，简短分析这条新闻（1-2句话），要体现33娘的沉着冷静性格。输出JSON格式：{"comment":"你的分析","action":"thinking/calm/curious"}';
+
+const JOKE_PROMPT_22 = '你是22娘，请讲一个简短的、有趣的冷笑话或段子（1-2句话），要体现22娘的阳光可爱性格。输出JSON格式：{"comment":"你的笑话","action":"happy/curious"}';
+const TSUKKOMI_PROMPT_33 = '你是33娘，22刚刚说了一个笑话，请用冷淡但幽默的方式吐槽一下（1句话），要体现33娘的冷静吐槽担当性格。直接吐槽笑话内容，不要说你没听到。输出JSON格式：{"comment":"你的吐槽","action":"calm/thinking"}';
 
 const normalizeAction = (value: string): Live2DAction => {
     const text = value.toLowerCase();
@@ -281,6 +290,9 @@ const DeepMode = (): JSX.Element => {
     const lastWeatherAdvisorySignatureRef = React.useRef<string>('');
     const lastTodayWeatherSignatureRef = React.useRef<string>('');
     const storageCheckedRef = React.useRef<boolean>(false);
+    const newsCacheRef = React.useRef<NewsItem[]>([]);
+    const lastNewsFetchRef = React.useRef<number>(0);
+    const newsCommentRunningRef = React.useRef<boolean>(false);
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -909,6 +921,102 @@ const DeepMode = (): JSX.Element => {
         }
     }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
+    const triggerNewsComment = React.useCallback(async () => {
+        if (newsCommentRunningRef.current || llmState !== 'ready') {
+            return;
+        }
+
+        newsCommentRunningRef.current = true;
+        try {
+            const now = Date.now();
+            if (now - lastNewsFetchRef.current > 30 * 60 * 1000 || newsCacheRef.current.length === 0) {
+                const news = await fetchHotNews();
+                newsCacheRef.current = news;
+                lastNewsFetchRef.current = now;
+            }
+
+            const allNews = newsCacheRef.current;
+            if (allNews.length === 0) {
+                return;
+            }
+
+            const entertainmentNews = filterEntertainmentNews(allNews);
+            const techNews = filterTechNews(allNews);
+
+            const randomEntertainment = entertainmentNews.length > 0
+                ? entertainmentNews[Math.floor(Math.random() * entertainmentNews.length)]
+                : null;
+            const randomTech = techNews.length > 0
+                ? techNews[Math.floor(Math.random() * techNews.length)]
+                : null;
+
+            if (randomEntertainment) {
+                const comment22 = await requestPersonaJson('22', `${NEWS_COMMENT_PROMPT_22}\n\n新闻标题：${randomEntertainment.title}`);
+                if (comment22) {
+                    emitAction('22', comment22.action);
+                    emitBubble('22', comment22.text);
+                    pushMessage('assistant22', `22 评论【${randomEntertainment.title}】：${comment22.text}`);
+                }
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            if (randomTech) {
+                const comment33 = await requestPersonaJson('33', `${NEWS_COMMENT_PROMPT_33}\n\n新闻标题：${randomTech.title}`);
+                if (comment33) {
+                    emitAction('33', comment33.action);
+                    emitBubble('33', comment33.text);
+                    pushMessage('assistant33', `33 评论【${randomTech.title}】：${comment33.text}`);
+                }
+            }
+
+            markInteraction();
+        } finally {
+            newsCommentRunningRef.current = false;
+        }
+    }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
+
+    const triggerJokeAndTsukkomi = React.useCallback(async () => {
+        if (llmState !== 'ready') {
+            return;
+        }
+
+        try {
+            let jokeText: string | null = null;
+            try {
+                jokeText = await fetchJokeFromAPI();
+            } catch {
+            }
+
+            let joke22: PersonaReply | null = null;
+            if (jokeText) {
+                const comment = jokeText;
+                const action: Live2DAction = 'happy';
+                joke22 = { text: comment, action };
+            } else {
+                joke22 = await requestPersonaJson('22', JOKE_PROMPT_22);
+            }
+
+            if (joke22) {
+                emitAction('22', joke22.action);
+                emitBubble('22', joke22.text);
+                pushMessage('assistant22', `22：${joke22.text}`);
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            const tsukkomi33 = await requestPersonaJson('33', TSUKKOMI_PROMPT_33);
+            if (tsukkomi33) {
+                emitAction('33', tsukkomi33.action);
+                emitBubble('33', tsukkomi33.text);
+                pushMessage('assistant33', `33：${tsukkomi33.text}`);
+            }
+
+            markInteraction();
+        } catch {
+        }
+    }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
+
     const handleAssistantReply = React.useCallback(async (userText: string) => {
         const text = userText.trim();
         if (!text || isResponding) {
@@ -1042,14 +1150,62 @@ const DeepMode = (): JSX.Element => {
             const now = Date.now();
             const idleTooLong = now - lastInteractionAtRef.current >= IDLE_THRESHOLD_MS;
             if (idleTooLong) {
-                void triggerIdleInteraction();
+                const random = Math.random();
+                if (random < 0.3) {
+                    void triggerNewsComment();
+                } else if (random < 0.5) {
+                    void triggerJokeAndTsukkomi();
+                } else {
+                    void triggerIdleInteraction();
+                }
             }
         }, IDLE_INTERVAL_MS);
 
         return () => {
             window.clearInterval(timer);
         };
-    }, [triggerIdleInteraction]);
+    }, [triggerIdleInteraction, triggerNewsComment, triggerJokeAndTsukkomi]);
+
+    const wasPageVisibleRef = React.useRef<boolean>(true);
+    const enginesPausedRef = React.useRef<boolean>(false);
+
+    React.useEffect(() => {
+        const unloadEngines = (): void => {
+            const engineList = [
+                activeEngineRef.current,
+                fallbackEngineRef.current,
+                premiumEngineRef.current,
+            ].filter((item): item is MLCEngineInterface => Boolean(item));
+            const uniqueEngineList = Array.from(new Set(engineList));
+            uniqueEngineList.forEach((engine) => {
+                void engine.unload();
+            });
+            activeEngineRef.current = null;
+            fallbackEngineRef.current = null;
+            premiumEngineRef.current = null;
+            enginesPausedRef.current = true;
+            setLlmState('idle');
+            setActiveModelTier('none');
+            setActiveModelId('已暂停（页面不可见）');
+        };
+
+        const handleVisibilityChange = (isVisible: boolean): void => {
+            if (isVisible && !wasPageVisibleRef.current && enginesPausedRef.current) {
+                enginesPausedRef.current = false;
+                setLlmProgress('页面已激活，正在恢复...');
+                if (panelOpen && storageCheckedRef.current) {
+                    void ensureLLMEngine();
+                }
+            } else if (!isVisible && wasPageVisibleRef.current && llmState === 'ready') {
+                unloadEngines();
+                pushMessage('system', '页面不可见，已暂停 WebLLM 以节省内存。');
+            }
+            wasPageVisibleRef.current = isVisible;
+        };
+
+        const removeListener = utils.addVisibilityListener(handleVisibilityChange);
+        return removeListener;
+    }, [ensureLLMEngine, panelOpen, pushMessage, llmState]);
 
     React.useEffect(() => {
         return () => {
@@ -1138,6 +1294,25 @@ const DeepMode = (): JSX.Element => {
                         onClick={() => setTarget('all')}
                     >
                         对全部
+                    </button>
+                </div>
+
+                <div className='kaguya-deep-actions'>
+                    <button
+                        type='button'
+                        className='kaguya-deep-action-btn'
+                        onClick={() => void triggerJokeAndTsukkomi()}
+                        disabled={llmState !== 'ready' || isResponding}
+                    >
+                        🎭 讲笑话+吐槽
+                    </button>
+                    <button
+                        type='button'
+                        className='kaguya-deep-action-btn'
+                        onClick={() => void triggerNewsComment()}
+                        disabled={llmState !== 'ready' || isResponding}
+                    >
+                        📰 新闻评价
                     </button>
                 </div>
 
