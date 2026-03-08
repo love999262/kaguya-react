@@ -374,21 +374,16 @@ const DeepMode = (): JSX.Element => {
 
     const getStrategyOrder = React.useCallback((): LLMLoadStrategy[] => {
         const storedStrategyId = getStoredStrategyId();
-        return [...LLM_LOAD_STRATEGIES].sort((a, b) => {
-            if (a.id === PREFERRED_CACHE_STRATEGY_ID) {
-                return -1;
+        const score = (id: LLMLoadStrategy['id']): number => {
+            if (id === PREFERRED_CACHE_STRATEGY_ID) {
+                return 0;
             }
-            if (b.id === PREFERRED_CACHE_STRATEGY_ID) {
+            if (id === storedStrategyId) {
                 return 1;
             }
-            if (a.id === storedStrategyId) {
-                return -1;
-            }
-            if (b.id === storedStrategyId) {
-                return 1;
-            }
-            return 0;
-        });
+            return 2;
+        };
+        return [...LLM_LOAD_STRATEGIES].sort((a, b) => score(a.id) - score(b.id));
     }, []);
 
     const loadModelWithStrategies = React.useCallback(async (
@@ -951,7 +946,12 @@ const DeepMode = (): JSX.Element => {
                 : null;
 
             if (randomEntertainment) {
-                const comment22 = await requestPersonaJson('22', `${NEWS_COMMENT_PROMPT_22}\n\n新闻标题：${randomEntertainment.title}`);
+                const comment22 = await requestPersonaJson(
+                    '22',
+                    `${NEWS_COMMENT_PROMPT_22}\n\n新闻标题：${randomEntertainment.title}`,
+                    `这条新闻有点意思，我先记下重点：${randomEntertainment.title}`,
+                    'curious',
+                );
                 if (comment22) {
                     emitAction('22', comment22.action);
                     emitBubble('22', comment22.text);
@@ -962,7 +962,12 @@ const DeepMode = (): JSX.Element => {
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
             if (randomTech) {
-                const comment33 = await requestPersonaJson('33', `${NEWS_COMMENT_PROMPT_33}\n\n新闻标题：${randomTech.title}`);
+                const comment33 = await requestPersonaJson(
+                    '33',
+                    `${NEWS_COMMENT_PROMPT_33}\n\n新闻标题：${randomTech.title}`,
+                    `这条信息的核心在于可验证性与影响范围：${randomTech.title}`,
+                    'thinking',
+                );
                 if (comment33) {
                     emitAction('33', comment33.action);
                     emitBubble('33', comment33.text);
@@ -994,7 +999,12 @@ const DeepMode = (): JSX.Element => {
                 const action: Live2DAction = 'happy';
                 joke22 = { text: comment, action };
             } else {
-                joke22 = await requestPersonaJson('22', JOKE_PROMPT_22);
+                joke22 = await requestPersonaJson(
+                    '22',
+                    JOKE_PROMPT_22,
+                    '先来个热身笑话：程序员把闹钟改成 cron，结果周末也准时上班了。',
+                    'happy',
+                );
             }
 
             if (joke22) {
@@ -1005,7 +1015,12 @@ const DeepMode = (): JSX.Element => {
 
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            const tsukkomi33 = await requestPersonaJson('33', TSUKKOMI_PROMPT_33);
+            const tsukkomi33 = await requestPersonaJson(
+                '33',
+                TSUKKOMI_PROMPT_33,
+                '吐槽一句：包袱到了，但逻辑还在排队。',
+                'calm',
+            );
             if (tsukkomi33) {
                 emitAction('33', tsukkomi33.action);
                 emitBubble('33', tsukkomi33.text);
