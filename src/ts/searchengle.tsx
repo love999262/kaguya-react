@@ -180,13 +180,19 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         const viewportBottomPadding = 12;
         const panelTop = panelElement.getBoundingClientRect().top;
         const availableHeight = Math.max(120, Math.floor(window.innerHeight - panelTop - viewportBottomPadding));
+        const viewportRatioCap = Math.floor(window.innerHeight * 0.72);
+        const hardCap = 620;
+        const heightCap = Math.max(120, Math.min(viewportRatioCap, hardCap));
+        const cappedHeight = Math.min(availableHeight, heightCap);
+        const rowHeight = 40;
+        const finalHeight = Math.max(120, Math.floor(cappedHeight / rowHeight) * rowHeight);
 
         if (panelType === 'drop') {
-            this.setState({ dropMenuMaxHeight: availableHeight });
+            this.setState({ dropMenuMaxHeight: finalHeight });
         } else if (panelType === 'history') {
-            this.setState({ historyPanelMaxHeight: availableHeight });
+            this.setState({ historyPanelMaxHeight: finalHeight });
         } else {
-            this.setState({ suggestPanelMaxHeight: availableHeight });
+            this.setState({ suggestPanelMaxHeight: finalHeight });
         }
     }
 

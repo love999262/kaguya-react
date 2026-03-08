@@ -1,97 +1,69 @@
 @import './global.scss';
 
 #live2d-widget {
-    z-index: 1160 !important;
-    pointer-events: auto !important;
+    display: none !important;
 }
 
-#live2d-widget canvas {
-    pointer-events: auto !important;
+#live2d,
+#live2d-widget-tips {
+    display: none !important;
 }
 
-#live2d-widget.kaguya-live2d-miku {
-    position: fixed !important;
-    right: 12px !important;
-    bottom: -28px !important;
-    left: auto !important;
-    top: auto !important;
-}
-
-#live2d.kaguya-live2d-luo {
+.kaguya-live2d-group {
     position: fixed;
-    right: 208px;
+    inset: 0;
+    z-index: 1160;
+    pointer-events: none;
+}
+
+.kaguya-live2d-shell {
+    position: fixed;
     bottom: -24px;
-    left: auto;
-    top: auto;
-    width: 320px;
-    height: 520px;
-    z-index: 1158;
+    width: 282px;
+    height: 548px;
     pointer-events: auto;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none;
 }
 
-.kaguya-live2d-panel {
-    position: fixed;
-    right: 14px;
-    bottom: 22px;
-    z-index: 1175;
-    display: flex;
-    gap: 8px;
+.kaguya-live2d-shell-22 {
+    right: 196px;
 }
 
-.kaguya-live2d-btn {
-    min-width: 78px;
-    height: 32px;
-    border-radius: 10px !important;
-    background: linear-gradient(140deg, rgba(42, 128, 230, 0.88), rgba(63, 169, 243, 0.82));
-    border: 1px solid rgba(174, 211, 245, 0.5);
-    color: #f3f9ff !important;
-    font-size: 0.84rem;
-    font-weight: 640;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    box-shadow: 0 8px 16px rgba(7, 18, 34, 0.32);
-    transition: filter 140ms ease, transform 140ms ease;
-    &:hover {
-        filter: brightness(1.06);
+.kaguya-live2d-shell-33 {
+    right: -24px;
+}
+
+.kaguya-live2d-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+}
+
+@media screen and (max-width: 1680px) {
+    .kaguya-live2d-shell {
+        width: 260px;
+        height: 504px;
     }
-    &:active {
-        transform: translateY(1px);
+
+    .kaguya-live2d-shell-22 {
+        right: 182px;
+    }
+
+    .kaguya-live2d-shell-33 {
+        right: -18px;
     }
 }
 
-.kaguya-live2d-tip {
-    position: fixed;
-    right: 20px;
-    bottom: 64px;
-    max-width: 280px;
-    padding: 8px 12px;
-    border-radius: 12px !important;
-    background: linear-gradient(160deg, rgba(15, 33, 60, 0.94), rgba(8, 23, 45, 0.92));
-    border: 1px solid rgba(144, 196, 241, 0.45);
-    color: #eaf4ff !important;
-    font-size: 0.84rem;
-    line-height: 1.35;
-    z-index: 1178;
-    opacity: 0;
-    transform: translateY(8px);
-    pointer-events: none;
-    transition: opacity 180ms ease, transform 180ms ease;
-    box-shadow: 0 12px 26px rgba(7, 18, 34, 0.32);
-}
-
-.kaguya-live2d-tip-visible {
-    opacity: 1;
-    transform: translateY(0);
+@media screen and (max-width: 1500px) {
+    .kaguya-live2d-shell-22 {
+        display: none;
+    }
 }
 
 @media screen and (max-width: 1320px) {
-    #live2d-widget,
-    #live2d,
-    .kaguya-live2d-panel,
-    .kaguya-live2d-tip {
+    .kaguya-live2d-group {
         display: none !important;
     }
 }
