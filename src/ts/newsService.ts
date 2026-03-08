@@ -1,3 +1,5 @@
+import { jsonpRequest } from './jsonpService';
+
 type NewsItem = {
     title: string;
     url: string;
@@ -8,18 +10,6 @@ type NewsItem = {
 type NewsResponse = {
     items: NewsItem[];
     timestamp: number;
-};
-
-type ZhihuDailyItem = {
-    title: string;
-    url: string;
-    hint: string;
-    images?: string[];
-};
-
-type ZhihuDailyResponse = {
-    date: string;
-    stories: ZhihuDailyItem[];
 };
 
 type HotlistAPIResponse = {
@@ -55,19 +45,6 @@ const parseHotlistResponse = (data: unknown): NewsItem[] => {
             source: '',
             category: 'general' as const,
         }));
-};
-
-const parseZhihuDailyResponse = (data: unknown): NewsItem[] => {
-    const response = data as ZhihuDailyResponse;
-    if (!Array.isArray(response?.stories)) {
-        return [];
-    }
-    return response.stories.slice(0, 10).map((item) => ({
-        title: item.title,
-        url: item.url,
-        source: '知乎日报',
-        category: 'general' as const,
-    }));
 };
 
 const NEWS_API_SOURCES: NewsAPISource[] = [
@@ -113,12 +90,6 @@ const NEWS_API_SOURCES: NewsAPISource[] = [
         category: 'general',
         parser: parseHotlistResponse,
     },
-    {
-        url: 'https://news-at.zhihu.com/api/4/news/latest',
-        source: '知乎日报',
-        category: 'general',
-        parser: parseZhihuDailyResponse,
-    },
 ];
 
 const shuffleArray = <T>(array: T[]): T[] => {
@@ -132,14 +103,7 @@ const shuffleArray = <T>(array: T[]): T[] => {
 
 const fetchFromAPI = async (source: NewsAPISource): Promise<NewsItem[]> => {
     try {
-        const response = await fetch(source.url, {
-            method: 'GET',
-            mode: 'cors',
-        });
-        if (!response.ok) {
-            return [];
-        }
-        const data = await response.json();
+        const data = await jsonpRequest(source.url);
         const items = source.parser(data);
         return items.map((item) => ({
             ...item,
