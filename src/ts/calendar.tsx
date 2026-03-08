@@ -34,6 +34,9 @@ interface WeatherLocation {
     longitude: number;
     label: string;
     isFallback: boolean;
+    province?: string;
+    city?: string;
+    district?: string;
 }
 
 interface WeatherResponse {
@@ -49,6 +52,13 @@ interface ReverseGeoResponse {
     principalSubdivision?: string;
     city?: string;
     locality?: string;
+    address?: {
+        state?: string;
+        city?: string;
+        county?: string;
+        suburb?: string;
+        town?: string;
+    };
 }
 
 interface WeeklyWeatherItem {
@@ -78,10 +88,84 @@ interface WeatherAdvisoryRiskItem {
     tags: string[];
 }
 
+type WeatherMarkKind = 'normal' | 'rain' | 'snow' | 'extreme';
+
+type WeatherSourceId = 'nmc' | 'openmeteo' | 'cache';
+
+type WeatherLoadResult = {
+    source: WeatherSourceId;
+    providerLabel: string;
+    locationLabel: string;
+    weatherRows: WeeklyWeatherItem[];
+};
+
+type NmcProvinceItem = {
+    code: string;
+    name: string;
+};
+
+type NmcStationItem = {
+    code: string;
+    province: string;
+    city: string;
+};
+
+type NmcPositionResponse = {
+    code?: string;
+    province?: string;
+    city?: string;
+};
+
+type NmcWeatherResponse = {
+    code?: number;
+    data?: {
+        predict?: {
+            detail?: Array<{
+                date?: string;
+                day?: {
+                    weather?: {
+                        info?: string;
+                        img?: string;
+                        temperature?: string;
+                    };
+                };
+                night?: {
+                    weather?: {
+                        info?: string;
+                        img?: string;
+                        temperature?: string;
+                    };
+                };
+            }>;
+        };
+    };
+};
+
+type CachedWeatherPayload = {
+    savedAt: number;
+    providerLabel: string;
+    locationLabel: string;
+    weatherRows: WeeklyWeatherItem[];
+};
+
+type AreaInfo = {
+    label: string | null;
+    province: string;
+    city: string;
+    district: string;
+};
+
 type WeatherAdvisoryEventDetail = {
     location: string;
     forecastDays: number;
     badDays: WeatherAdvisoryRiskItem[];
+};
+
+type TodayWeatherEventDetail = {
+    location: string;
+    provider: string;
+    today: WeeklyWeatherItem;
+    forecastDays: number;
 };
 
 interface StateInterface {
@@ -100,13 +184,16 @@ interface StateInterface {
     weatherError: boolean;
     weatherLocationLabel: string;
     weatherForecastDays: number;
+    weatherProviderText: string;
 }
 
 const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d', '\u5468\u65e5'];
 const WEEK_TEXT_FULL = ['\u5468\u65e5', '\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d'];
 const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'];
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const WEATHER_FORECAST_TARGET_DAYS = 16;
+const WEATHER_FORECAST_TARGET_DAYS = 14;
+const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
+const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
 const SHANGHAI_LOCATION: WeatherLocation = {
     latitude: 31.2304,
@@ -147,6 +234,7 @@ class Calendar extends React.Component<Props, StateInterface> {
             weatherError: false,
             weatherLocationLabel: SHANGHAI_LOCATION.label,
             weatherForecastDays: 0,
+            weatherProviderText: '中国气象局(NMC)',
         };
     }
 
@@ -248,7 +336,7 @@ class Calendar extends React.Component<Props, StateInterface> {
         return { icon: '\ud83c\udf25\ufe0f', text: '\u591a\u4e91' };
     }
 
-    private getDayWeatherAlert(code: number): { icon: string; kind: 'rain' | 'snow' | 'extreme'; text: string; } | null {
+    private getDayWeatherMark(code: number): { icon: string; kind: WeatherMarkKind; text: string; } {
         if ((code >= 51 && code <= 57) || (code >= 61 && code <= 67) || (code >= 80 && code <= 82)) {
             return { icon: '\ud83c\udf27\ufe0f', kind: 'rain', text: '\u964d\u96e8' };
         }
@@ -258,7 +346,12 @@ class Calendar extends React.Component<Props, StateInterface> {
         if (code >= 95) {
             return { icon: '\u26C8\ufe0f', kind: 'extreme', text: '\u5f3a\u5bf9\u6d41' };
         }
-        return null;
+        const meta = this.getWeatherMeta(code);
+        return {
+            icon: meta.icon,
+            kind: 'normal',
+            text: meta.text,
+        };
     }
 
     private getExtremeWeatherAlert(code: number): { icon: string; text: string; } | null {
@@ -323,7 +416,7 @@ class Calendar extends React.Component<Props, StateInterface> {
         }));
     }
 
-    private buildWeatherUrl(location: WeatherLocation, forecastDays: number): string {
+    private buildOpenMeteoWeatherUrl(location: WeatherLocation, forecastDays: number): string {
         const params = new URLSearchParams({
             latitude: `${location.latitude}`,
             longitude: `${location.longitude}`,
@@ -334,45 +427,436 @@ class Calendar extends React.Component<Props, StateInterface> {
         return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
     }
 
-    private normalizeAreaText(value: string): string {
-        return value.replace(/\s+/g, '').trim();
-    }
-
-    private async reverseGeocodeToCounty(latitude: number, longitude: number): Promise<string | null> {
+    private async fetchJsonWithTimeout<T>(url: string, timeoutMs: number = 6200): Promise<T | null> {
         const controller = new AbortController();
         const timer = window.setTimeout(() => {
             controller.abort();
-        }, 4500);
-
+        }, timeoutMs);
         try {
-            const endpoint = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=zh-Hans`;
-            const response = await fetch(endpoint, { signal: controller.signal });
+            const response = await fetch(url, { signal: controller.signal });
             if (!response.ok) {
                 return null;
             }
-            const payload = await response.json() as ReverseGeoResponse;
-            const province = typeof payload.principalSubdivision === 'string' ? this.normalizeAreaText(payload.principalSubdivision) : '';
-            const locality = typeof payload.locality === 'string' ? this.normalizeAreaText(payload.locality) : '';
-            const city = typeof payload.city === 'string' ? this.normalizeAreaText(payload.city) : '';
-
-            if (province && locality) {
-                return province.includes(locality) ? province : `${province}${locality}`;
-            }
-            if (province && city) {
-                return province.includes(city) ? province : `${province}${city}`;
-            }
-            if (city && locality) {
-                return city.includes(locality) ? city : `${city}${locality}`;
-            }
-            if (locality) {
-                return locality;
-            }
-            return province || city || null;
+            const payload = await response.json() as T;
+            return payload;
         } catch {
             return null;
         } finally {
             window.clearTimeout(timer);
         }
+    }
+
+    private normalizeAreaText(value: string): string {
+        return value.replace(/\s+/g, '').trim();
+    }
+
+    private normalizeAreaToken(value: string): string {
+        return this.normalizeAreaText(value)
+            .replace(/(特别行政区|自治州|自治县|地区|新区|林区|县|区|市|省|盟|旗)$/g, '')
+            .trim();
+    }
+
+    private parseReverseGeoPayload(payload: ReverseGeoResponse): AreaInfo | null {
+        const province = typeof payload.principalSubdivision === 'string'
+            ? this.normalizeAreaText(payload.principalSubdivision)
+            : (typeof payload.address?.state === 'string' ? this.normalizeAreaText(payload.address.state) : '');
+        const city = typeof payload.city === 'string'
+            ? this.normalizeAreaText(payload.city)
+            : (typeof payload.address?.city === 'string' ? this.normalizeAreaText(payload.address.city) : '');
+        const district = typeof payload.locality === 'string'
+            ? this.normalizeAreaText(payload.locality)
+            : (
+                typeof payload.address?.county === 'string'
+                    ? this.normalizeAreaText(payload.address.county)
+                    : (
+                        typeof payload.address?.suburb === 'string'
+                            ? this.normalizeAreaText(payload.address.suburb)
+                            : (typeof payload.address?.town === 'string' ? this.normalizeAreaText(payload.address.town) : '')
+                    )
+            );
+
+        if (!province && !city && !district) {
+            return null;
+        }
+
+        let label = '';
+        if (province && district) {
+            label = province.includes(district) ? province : `${province}${district}`;
+        } else if (province && city) {
+            label = province.includes(city) ? province : `${province}${city}`;
+        } else if (city && district) {
+            label = city.includes(district) ? city : `${city}${district}`;
+        } else {
+            label = province || city || district;
+        }
+
+        return {
+            label: label || null,
+            province,
+            city,
+            district,
+        };
+    }
+
+    private async reverseGeocodeViaBigDataCloud(latitude: number, longitude: number): Promise<AreaInfo | null> {
+        const endpoint = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=zh-Hans`;
+        const payload = await this.fetchJsonWithTimeout<ReverseGeoResponse>(endpoint, 4600);
+        return payload ? this.parseReverseGeoPayload(payload) : null;
+    }
+
+    private async reverseGeocodeViaNominatim(latitude: number, longitude: number): Promise<AreaInfo | null> {
+        const endpoint = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=zh-CN&lat=${latitude}&lon=${longitude}&zoom=12`;
+        const payload = await this.fetchJsonWithTimeout<ReverseGeoResponse>(endpoint, 5200);
+        return payload ? this.parseReverseGeoPayload(payload) : null;
+    }
+
+    private async reverseGeocodeToCounty(latitude: number, longitude: number): Promise<AreaInfo | null> {
+        const primary = await this.reverseGeocodeViaBigDataCloud(latitude, longitude);
+        if (primary) {
+            return primary;
+        }
+        return this.reverseGeocodeViaNominatim(latitude, longitude);
+    }
+
+    private getNmcTextToCode(text: string): number {
+        const normalized = this.normalizeAreaText(text);
+        if (!normalized || normalized === '9999') {
+            return -1;
+        }
+        if (normalized.includes('雷') || normalized.includes('冰雹')) {
+            return 95;
+        }
+        if (normalized.includes('雪')) {
+            return 71;
+        }
+        if (normalized.includes('雨')) {
+            return 63;
+        }
+        if (normalized.includes('雾') || normalized.includes('霾')) {
+            return 45;
+        }
+        if (normalized.includes('阴')) {
+            return 3;
+        }
+        if (normalized.includes('多云')) {
+            return 2;
+        }
+        if (normalized.includes('晴')) {
+            return 0;
+        }
+        return 2;
+    }
+
+    private pickNmcWeatherCode(dayText: string, nightText: string): number {
+        const dayCode = this.getNmcTextToCode(dayText);
+        if (dayCode >= 0) {
+            return dayCode;
+        }
+        const nightCode = this.getNmcTextToCode(nightText);
+        if (nightCode >= 0) {
+            return nightCode;
+        }
+        return 2;
+    }
+
+    private toNmcTemp(value: string | undefined): number | null {
+        if (typeof value !== 'string') {
+            return null;
+        }
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed === 9999) {
+            return null;
+        }
+        return Math.round(parsed);
+    }
+
+    private pickNmcLabel(...candidates: Array<string | undefined>): string {
+        for (let index = 0; index < candidates.length; index++) {
+            const current = typeof candidates[index] === 'string' ? this.normalizeAreaText(candidates[index] as string) : '';
+            if (current && current !== '9999') {
+                return current;
+            }
+        }
+        return '多云';
+    }
+
+    private parseNmcPredictRows(payload: NmcWeatherResponse, targetDays: number): WeeklyWeatherItem[] {
+        const detail = payload.data?.predict?.detail;
+        if (!Array.isArray(detail) || !detail.length) {
+            return [];
+        }
+
+        const rows: WeeklyWeatherItem[] = [];
+        for (let index = 0; index < detail.length && rows.length < targetDays; index++) {
+            const item = detail[index];
+            const dateKey = typeof item.date === 'string' ? item.date : '';
+            if (!dateKey) {
+                continue;
+            }
+
+            const dayText = this.pickNmcLabel(item.day?.weather?.info);
+            const nightText = this.pickNmcLabel(item.night?.weather?.info);
+            const weatherCode = this.pickNmcWeatherCode(dayText, nightText);
+            const meta = this.getWeatherMeta(weatherCode);
+            const dayTemp = this.toNmcTemp(item.day?.weather?.temperature);
+            const nightTemp = this.toNmcTemp(item.night?.weather?.temperature);
+            const max = dayTemp !== null
+                ? dayTemp
+                : (nightTemp !== null ? nightTemp : 0);
+            const min = nightTemp !== null
+                ? nightTemp
+                : (dayTemp !== null ? dayTemp : 0);
+
+            const day = new Date(`${dateKey}T00:00:00`);
+            const weekText = Number.isNaN(day.getTime()) ? '--' : WEEK_TEXT_FULL[day.getDay()];
+            const weekTextShort = Number.isNaN(day.getTime()) ? '-' : WEEK_TEXT_SHORT[day.getDay()];
+            const weatherText = this.pickNmcLabel(item.day?.weather?.info, item.night?.weather?.info, meta.text);
+            rows.push({
+                dateKey,
+                weekday: weekText,
+                weekdayShort: weekTextShort,
+                icon: meta.icon,
+                weatherCode,
+                weatherText,
+                min: Math.min(min, max),
+                max: Math.max(min, max),
+            });
+        }
+        return rows;
+    }
+
+    private pickBestNmcStation(stations: NmcStationItem[], location: WeatherLocation): NmcStationItem | null {
+        if (!stations.length) {
+            return null;
+        }
+
+        const tokenList = [
+            this.normalizeAreaToken(location.district || ''),
+            this.normalizeAreaToken(location.city || ''),
+            this.normalizeAreaToken(location.province || ''),
+            this.normalizeAreaToken(location.label || ''),
+        ].filter((item) => item);
+
+        if (!tokenList.length) {
+            return stations[0];
+        }
+
+        let best: NmcStationItem | null = null;
+        let bestScore = -1;
+        stations.forEach((station) => {
+            const stationCity = this.normalizeAreaToken(station.city || '');
+            let score = 0;
+            tokenList.forEach((token) => {
+                if (!token || !stationCity) {
+                    return;
+                }
+                if (stationCity === token) {
+                    score += 12;
+                    return;
+                }
+                if (stationCity.includes(token) || token.includes(stationCity)) {
+                    score += 8;
+                    return;
+                }
+                if (stationCity.slice(0, 2) === token.slice(0, 2)) {
+                    score += 3;
+                }
+            });
+
+            if (score > bestScore) {
+                best = station;
+                bestScore = score;
+            }
+        });
+
+        return best || stations[0];
+    }
+
+    private async resolveNmcStation(location: WeatherLocation): Promise<NmcStationItem | null> {
+        const provinceList = await this.fetchJsonWithTimeout<NmcProvinceItem[]>('https://www.nmc.cn/rest/province');
+        const provinceToken = this.normalizeAreaToken(location.province || location.city || location.label || '');
+        if (Array.isArray(provinceList) && provinceList.length && provinceToken) {
+            const matchedProvince = provinceList.find((provinceItem) => {
+                const normalizedProvinceName = this.normalizeAreaToken(provinceItem.name || '');
+                return normalizedProvinceName
+                    && (normalizedProvinceName.includes(provinceToken) || provinceToken.includes(normalizedProvinceName));
+            });
+
+            if (matchedProvince?.code) {
+                const stationList = await this.fetchJsonWithTimeout<NmcStationItem[]>(`https://www.nmc.cn/rest/province/${matchedProvince.code}`);
+                if (Array.isArray(stationList) && stationList.length) {
+                    const bestMatch = this.pickBestNmcStation(stationList, location);
+                    if (bestMatch?.code) {
+                        return bestMatch;
+                    }
+                }
+            }
+        }
+
+        const ipStation = await this.fetchJsonWithTimeout<NmcPositionResponse>('https://www.nmc.cn/rest/position');
+        if (ipStation?.code) {
+            return {
+                code: ipStation.code,
+                province: this.normalizeAreaText(ipStation.province || ''),
+                city: this.normalizeAreaText(ipStation.city || ''),
+            };
+        }
+        return null;
+    }
+
+    private async loadFromNmc(location: WeatherLocation, targetDays: number): Promise<WeatherLoadResult | null> {
+        const station = await this.resolveNmcStation(location);
+        if (!station?.code) {
+            return null;
+        }
+
+        const payload = await this.fetchJsonWithTimeout<NmcWeatherResponse>(`https://www.nmc.cn/rest/weather?stationid=${station.code}`, 7200);
+        if (!payload || payload.code !== 0) {
+            return null;
+        }
+
+        const weatherRows = this.parseNmcPredictRows(payload, targetDays);
+        if (!weatherRows.length) {
+            return null;
+        }
+
+        const stationLabel = this.normalizeAreaText(`${station.province || ''}${station.city || ''}`) || location.label;
+        return {
+            source: 'nmc',
+            providerLabel: '中国气象局(NMC)',
+            locationLabel: stationLabel,
+            weatherRows,
+        };
+    }
+
+    private async loadFromOpenMeteo(location: WeatherLocation, targetDays: number): Promise<WeatherLoadResult | null> {
+        const response = await fetch(this.buildOpenMeteoWeatherUrl(location, targetDays));
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = await response.json() as WeatherResponse;
+        const days = data.daily?.time ?? [];
+        const codes = data.daily?.weather_code ?? [];
+        const maxList = data.daily?.temperature_2m_max ?? [];
+        const minList = data.daily?.temperature_2m_min ?? [];
+        if (!days.length || !codes.length || !maxList.length || !minList.length) {
+            return null;
+        }
+
+        const weatherRows = days.slice(0, Math.min(targetDays, days.length)).map((dateKey: string, index: number) => {
+            const day = new Date(`${dateKey}T00:00:00`);
+            const weekText = Number.isNaN(day.getTime()) ? '--' : WEEK_TEXT_FULL[day.getDay()];
+            const weekTextShort = Number.isNaN(day.getTime()) ? '-' : WEEK_TEXT_SHORT[day.getDay()];
+            const weatherCode = Number(codes[index] ?? -1);
+            const meta = this.getWeatherMeta(weatherCode);
+            return {
+                dateKey,
+                weekday: weekText,
+                weekdayShort: weekTextShort,
+                icon: meta.icon,
+                weatherCode,
+                weatherText: meta.text,
+                min: Math.round(Number(minList[index] ?? 0)),
+                max: Math.round(Number(maxList[index] ?? 0)),
+            };
+        });
+
+        if (!weatherRows.length) {
+            return null;
+        }
+
+        const locationLabel = location.isFallback
+            ? `${location.label}（默认）`
+            : location.label;
+
+        return {
+            source: 'openmeteo',
+            providerLabel: 'Open-Meteo',
+            locationLabel,
+            weatherRows,
+        };
+    }
+
+    private mergeForecastRows(primaryRows: WeeklyWeatherItem[], fallbackRows: WeeklyWeatherItem[], targetDays: number): WeeklyWeatherItem[] {
+        const mergedMap: Record<string, WeeklyWeatherItem> = {};
+        primaryRows.forEach((item) => {
+            mergedMap[item.dateKey] = item;
+        });
+        fallbackRows.forEach((item) => {
+            if (!mergedMap[item.dateKey]) {
+                mergedMap[item.dateKey] = item;
+            }
+        });
+        return Object.keys(mergedMap)
+            .sort()
+            .slice(0, targetDays)
+            .map((dateKey) => mergedMap[dateKey]);
+    }
+
+    private saveWeatherCache(result: WeatherLoadResult): void {
+        try {
+            const payload: CachedWeatherPayload = {
+                savedAt: Date.now(),
+                providerLabel: result.providerLabel,
+                locationLabel: result.locationLabel,
+                weatherRows: result.weatherRows,
+            };
+            window.localStorage.setItem(WEATHER_CACHE_STORAGE_KEY, JSON.stringify(payload));
+        } catch {
+            // ignore storage issues
+        }
+    }
+
+    private loadWeatherCache(): WeatherLoadResult | null {
+        try {
+            const raw = window.localStorage.getItem(WEATHER_CACHE_STORAGE_KEY);
+            if (!raw) {
+                return null;
+            }
+            const parsed = JSON.parse(raw) as CachedWeatherPayload;
+            if (!parsed || !Array.isArray(parsed.weatherRows) || !parsed.weatherRows.length) {
+                return null;
+            }
+            const weatherRows = parsed.weatherRows.filter((item) => {
+                return item
+                    && typeof item.dateKey === 'string'
+                    && typeof item.icon === 'string'
+                    && typeof item.weatherText === 'string'
+                    && Number.isFinite(item.min)
+                    && Number.isFinite(item.max);
+            });
+            if (!weatherRows.length) {
+                return null;
+            }
+
+            return {
+                source: 'cache',
+                providerLabel: parsed.providerLabel || '本地缓存',
+                locationLabel: parsed.locationLabel || SHANGHAI_LOCATION.label,
+                weatherRows,
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    private emitTodayWeatherSnapshot(locationText: string, providerText: string, weatherRows: WeeklyWeatherItem[]) {
+        if (!weatherRows.length) {
+            return;
+        }
+        const todayKey = this.toDateKey(new Date());
+        const todayItem = weatherRows.find((item) => item.dateKey === todayKey) || weatherRows[0];
+        if (!todayItem) {
+            return;
+        }
+        const detail: TodayWeatherEventDetail = {
+            location: locationText,
+            provider: providerText,
+            today: todayItem,
+            forecastDays: weatherRows.length,
+        };
+        window.dispatchEvent(new CustomEvent<TodayWeatherEventDetail>('kaguya:today-weather', { detail }));
     }
 
     private postExtremeWeatherMessage(locationText: string, forecastDays: number, alerts: ExtremeWeatherAlertItem[]) {
@@ -435,12 +919,15 @@ class Calendar extends React.Component<Props, StateInterface> {
             return SHANGHAI_LOCATION;
         }
 
-        const areaLabel = await this.reverseGeocodeToCounty(coordinates.latitude, coordinates.longitude);
+        const areaInfo = await this.reverseGeocodeToCounty(coordinates.latitude, coordinates.longitude);
         const location: WeatherLocation = {
             latitude: coordinates.latitude,
             longitude: coordinates.longitude,
-            label: areaLabel || `\u5f53\u524d\u4f4d\u7f6e (${coordinates.latitude.toFixed(2)}, ${coordinates.longitude.toFixed(2)})`,
+            label: areaInfo?.label || `\u5f53\u524d\u4f4d\u7f6e (${coordinates.latitude.toFixed(2)}, ${coordinates.longitude.toFixed(2)})`,
             isFallback: false,
+            province: areaInfo?.province,
+            city: areaInfo?.city,
+            district: areaInfo?.district,
         };
         this.resolvedWeatherLocation = location;
         return location;
@@ -450,47 +937,53 @@ class Calendar extends React.Component<Props, StateInterface> {
         this.setState({ weatherLoading: true, weatherError: false });
         try {
             const location = await this.resolveWeatherLocation();
-            const locationText = location.isFallback
-                ? `${location.label}\uff08\u9ed8\u8ba4\uff09`
-                : location.label;
             const targetDays = WEATHER_FORECAST_TARGET_DAYS;
-            const response = await fetch(this.buildWeatherUrl(location, targetDays));
-            if (!response.ok) {
-                throw new Error(`weather api failed: ${response.status}`);
+            const providerChain: Array<() => Promise<WeatherLoadResult | null>> = [
+                async () => this.loadFromNmc(location, targetDays),
+                async () => this.loadFromOpenMeteo(location, targetDays),
+                async () => this.loadWeatherCache(),
+            ];
+
+            let selectedResult: WeatherLoadResult | null = null;
+            for (let index = 0; index < providerChain.length; index++) {
+                try {
+                    const current = await providerChain[index]();
+                    if (current && current.weatherRows.length) {
+                        selectedResult = current;
+                        break;
+                    }
+                } catch {
+                    continue;
+                }
             }
 
-            const data = await response.json() as WeatherResponse;
-            const days = data.daily?.time ?? [];
-            const codes = data.daily?.weather_code ?? [];
-            const maxList = data.daily?.temperature_2m_max ?? [];
-            const minList = data.daily?.temperature_2m_min ?? [];
-
-            if (!days.length || !codes.length || !maxList.length || !minList.length) {
-                throw new Error('weather payload invalid');
+            if (!selectedResult) {
+                throw new Error('no weather source available');
             }
 
-            const forecastLimit = Math.min(targetDays, days.length);
+            if (selectedResult.source === 'nmc' && selectedResult.weatherRows.length < targetDays) {
+                const supplement = await this.loadFromOpenMeteo(location, targetDays);
+                if (supplement?.weatherRows?.length) {
+                    selectedResult = {
+                        source: 'nmc',
+                        providerLabel: '中国气象局(NMC)+Open-Meteo',
+                        locationLabel: selectedResult.locationLabel || supplement.locationLabel,
+                        weatherRows: this.mergeForecastRows(selectedResult.weatherRows, supplement.weatherRows, targetDays),
+                    };
+                }
+            }
 
-            const weeklyWeather = days.slice(0, forecastLimit).map((dateKey: string, index: number) => {
-                const day = new Date(`${dateKey}T00:00:00`);
-                const weekText = Number.isNaN(day.getTime()) ? '--' : WEEK_TEXT_FULL[day.getDay()];
-                const weekTextShort = Number.isNaN(day.getTime()) ? '-' : WEEK_TEXT_SHORT[day.getDay()];
-                const weatherCode = Number(codes[index] ?? -1);
-                const meta = this.getWeatherMeta(weatherCode);
-                return {
-                    dateKey,
-                    weekday: weekText,
-                    weekdayShort: weekTextShort,
-                    icon: meta.icon,
-                    weatherCode,
-                    weatherText: meta.text,
-                    min: Math.round(Number(minList[index] ?? 0)),
-                    max: Math.round(Number(maxList[index] ?? 0)),
-                };
-            });
+            selectedResult.weatherRows = selectedResult.weatherRows.slice(0, targetDays);
+            if (!selectedResult.weatherRows.length) {
+                throw new Error('weather rows empty');
+            }
+
+            if (selectedResult.source !== 'cache') {
+                this.saveWeatherCache(selectedResult);
+            }
 
             const extremeAlerts: ExtremeWeatherAlertItem[] = [];
-            weeklyWeather.forEach((item) => {
+            selectedResult.weatherRows.forEach((item) => {
                 const alert = this.getExtremeWeatherAlert(item.weatherCode);
                 if (!alert) {
                     return;
@@ -502,18 +995,48 @@ class Calendar extends React.Component<Props, StateInterface> {
                     text: alert.text,
                 });
             });
-            this.postExtremeWeatherMessage(locationText, weeklyWeather.length, extremeAlerts);
-            this.emitThreeDayWeatherAdvisory(locationText, weeklyWeather.length, weeklyWeather);
+            this.postExtremeWeatherMessage(selectedResult.locationLabel, selectedResult.weatherRows.length, extremeAlerts);
+            this.emitThreeDayWeatherAdvisory(selectedResult.locationLabel, selectedResult.weatherRows.length, selectedResult.weatherRows);
+            this.emitTodayWeatherSnapshot(selectedResult.locationLabel, selectedResult.providerLabel, selectedResult.weatherRows);
 
             this.setState({
-                weeklyWeather,
+                weeklyWeather: selectedResult.weatherRows,
                 weatherLoading: false,
-                weatherError: false,
-                weatherLocationLabel: locationText,
-                weatherForecastDays: weeklyWeather.length,
+                weatherError: selectedResult.source === 'cache',
+                weatherLocationLabel: selectedResult.locationLabel,
+                weatherForecastDays: selectedResult.weatherRows.length,
+                weatherProviderText: selectedResult.providerLabel,
             });
         } catch {
             this.setState({ weatherLoading: false, weatherError: true });
+        }
+    }
+
+    private getHolidayCacheKey(year: number): string {
+        return `${HOLIDAY_CACHE_STORAGE_PREFIX}${year}`;
+    }
+
+    private loadHolidayCache(year: number): HolidayCnYearResponse | null {
+        try {
+            const raw = window.localStorage.getItem(this.getHolidayCacheKey(year));
+            if (!raw) {
+                return null;
+            }
+            const parsed = JSON.parse(raw) as HolidayCnYearResponse;
+            if (!parsed || !Array.isArray(parsed.days)) {
+                return null;
+            }
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    private saveHolidayCache(year: number, data: HolidayCnYearResponse): void {
+        try {
+            window.localStorage.setItem(this.getHolidayCacheKey(year), JSON.stringify(data));
+        } catch {
+            // ignore storage issues
         }
     }
 
@@ -530,6 +1053,7 @@ class Calendar extends React.Component<Props, StateInterface> {
         try {
             const endpointList = [
                 `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`,
+                `https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`,
                 `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${year}.json`,
             ];
 
@@ -551,6 +1075,10 @@ class Calendar extends React.Component<Props, StateInterface> {
             }
 
             if (!data) {
+                data = this.loadHolidayCache(year);
+            }
+
+            if (!data) {
                 throw new Error('Holiday API request failed.');
             }
 
@@ -564,6 +1092,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                     isOffDay: item.isOffDay,
                 };
             });
+            this.saveHolidayCache(year, data);
 
             this.setState((prevState) => ({
                 specialDaysByYear: { ...prevState.specialDaysByYear, [year]: specialDayMap },
@@ -640,6 +1169,11 @@ class Calendar extends React.Component<Props, StateInterface> {
         const infoText = selectedSpecialDay
             ? `${selectedSpecialDay.isOffDay ? '\u4f11' : '\u73ed'} \u00b7 ${selectedSpecialDay.name}`
             : (isSelectedWeekend ? '\u5468\u672b' : '\u5de5\u4f5c\u65e5');
+        const statusText = [
+            this.state.weatherError ? '\u5929\u6c14\u63a5\u53e3\u6682\u4e0d\u53ef\u7528\uff0c\u5df2\u81ea\u52a8\u964d\u7ea7\u4e3a\u5907\u7528\u6570\u636e\u3002' : '',
+            isYearLoading ? '\u5047\u65e5\u4e0e\u8c03\u4f11\u6570\u636e\u52a0\u8f7d\u4e2d...' : '',
+            (!isYearLoading && isYearError) ? '\u8282\u5047\u65e5\u63a5\u53e3\u4e0d\u53ef\u7528\uff0c\u5df2\u56de\u9000\u666e\u901a\u65e5\u5386\u3002' : '',
+        ].filter((item) => item).join(' ');
         const quickDaysMax = this.getDaysInMonth(this.state.quickYear, this.state.quickMonth);
         const yearOptions = this.getYearOptions();
         const liveTimeText = this.formatTime(this.state.now);
@@ -676,7 +1210,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                             {'\u5929\u6c14\u52a0\u8f7d\u4e2d...'}
                         </div>
                     ) : (
-                        this.state.weeklyWeather.slice(0, 7).map((item) => (
+                        this.state.weeklyWeather.map((item) => (
                             <div className={`${this.props.prefix}-calendar-weather-item`} key={item.dateKey} title={`${item.dateKey} ${item.weatherText} ${item.min}\u00b0~${item.max}\u00b0`}>
                                 <div className={`${this.props.prefix}-calendar-weather-headline`}>
                                     <span className={`${this.props.prefix}-calendar-weather-date`}>{this.formatShortDate(item.dateKey)}</span>
@@ -689,7 +1223,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                     )}
                 </div>
                 <div className={`${this.props.prefix}-calendar-weather-location`}>
-                    {`\u5929\u6c14\u5b9a\u4f4d\uff1a${this.state.weatherLocationLabel} \u00b7 \u9884\u62a5${this.state.weatherForecastDays}\u5929`}
+                    {`\u5929\u6c14\u5b9a\u4f4d\uff1a${this.state.weatherLocationLabel} \u00b7 \u6570\u636e\u6e90\uff1a${this.state.weatherProviderText} \u00b7 \u9884\u62a5${this.state.weatherForecastDays}\u5929`}
                 </div>
 
                 <div className={`${this.props.prefix}-calendar-quick`}>
@@ -759,7 +1293,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const specialDay = this.state.specialDaysByYear[date.getFullYear()]?.[dateKey];
                         const weatherItem = weatherByDate[dateKey];
-                        const weatherAlert = weatherItem ? this.getDayWeatherAlert(weatherItem.weatherCode) : null;
+                        const weatherMark = weatherItem ? this.getDayWeatherMark(weatherItem.weatherCode) : null;
                         const hasHoliday = Boolean(specialDay && specialDay.isOffDay);
                         const hasWorkday = Boolean(specialDay && !specialDay.isOffDay);
                         const isPlainWeekend = isWeekend && !hasHoliday && !hasWorkday;
@@ -795,9 +1329,9 @@ class Calendar extends React.Component<Props, StateInterface> {
                                 >
                                     <span className={`${this.props.prefix}-calendar-day-number`}>{date.getDate()}</span>
                                     <span className={`${this.props.prefix}-calendar-day-tag`}>{tagText}</span>
-                                    {weatherAlert ? (
-                                        <span className={`${this.props.prefix}-calendar-weather-mark ${this.props.prefix}-calendar-weather-mark-${weatherAlert.kind}`} title={weatherAlert.text}>
-                                            {weatherAlert.icon}
+                                    {weatherMark ? (
+                                        <span className={`${this.props.prefix}-calendar-weather-mark ${this.props.prefix}-calendar-weather-mark-${weatherMark.kind}`} title={weatherMark.text}>
+                                            {weatherMark.icon}
                                         </span>
                                     ) : null}
                                 </button>
@@ -820,12 +1354,9 @@ class Calendar extends React.Component<Props, StateInterface> {
                     </button>
                 </div>
 
-                <div className={`${this.props.prefix}-calendar-status`}>
-                    {this.state.weatherError ? '\u5929\u6c14\u63a5\u53e3\u6682\u4e0d\u53ef\u7528\uff0c\u5df2\u4f7f\u7528\u4e0a\u6b21\u6570\u636e\u3002' : ''}
-                    {isYearLoading ? ' \u5047\u65e5\u4e0e\u8c03\u4f11\u6570\u636e\u52a0\u8f7d\u4e2d...' : ''}
-                    {!isYearLoading && isYearError ? ' \u8282\u5047\u65e5\u63a5\u53e3\u4e0d\u53ef\u7528\uff0c\u5df2\u56de\u9000\u666e\u901a\u65e5\u5386\u3002' : ''}
-                    {!isYearLoading && !isYearError ? ' \u6807\u8bb0\u8bf4\u660e\uff1a\u4f11=\u6cd5\u5b9a\u4f11\uff0c\u73ed=\u8c03\u4f11\u4e0a\u73ed' : ''}
-                </div>
+                {statusText ? (
+                    <div className={`${this.props.prefix}-calendar-status`}>{statusText}</div>
+                ) : null}
             </div>
         );
     }

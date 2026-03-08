@@ -282,7 +282,7 @@ const Live2D = (): JSX.Element => {
                         [id]: '',
                     }));
                     bubbleTimerRef.current[id] = null;
-                }, 4800);
+                }, 11000);
             };
 
             if (target === '22') {

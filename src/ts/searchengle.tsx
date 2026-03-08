@@ -9,6 +9,14 @@ interface SearchEngleInterface {
     href: string;
 }
 
+interface BaiduSuPayload {
+    s?: unknown[];
+}
+
+interface BaiduSugrecPayload {
+    g?: Array<{ q?: unknown }>;
+}
+
 const DEFAULT_SEARCH_ENGINE: SearchEngleInterface = {
     name: 'Bing',
     url: 'https://www.bing.com/search?q=',
@@ -419,10 +427,17 @@ class SearchEngle extends React.Component <Props, StateInterface> {
         });
     }
 
-    private async fetchBaiduSuggest(keyword: string) {
+    private normalizeSuggestList(input: unknown[]): string[] {
+        return input
+            .filter((item) => typeof item === 'string')
+            .map((item) => (item as string).trim())
+            .filter((item) => item);
+    }
+
+    private fetchBaiduSuggestByJsonp(keyword: string, sourceUrl: (callbackName: string) => string, timeoutMs: number = 2800): Promise<string[]> {
         return new Promise<string[]>((resolve) => {
             const callbackName = `kaguyaBaiduSug_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-            const runtimeWindow = window as Window & { [key: string]: any };
+            const runtimeWindow = window as Window & Record<string, unknown>;
             let script: HTMLScriptElement | null = null;
             let timeoutId: number | null = null;
 
@@ -435,21 +450,19 @@ class SearchEngle extends React.Component <Props, StateInterface> {
                 }
                 try {
                     delete runtimeWindow[callbackName];
-                } catch (error) {
+                } catch {
                     runtimeWindow[callbackName] = undefined;
                 }
             };
 
-            runtimeWindow[callbackName] = (payload: { s?: any[] }) => {
-                const list = Array.isArray(payload?.s)
-                    ? payload.s.filter((item) => typeof item === 'string').map((item) => item.trim()).filter((item) => item)
-                    : [];
+            runtimeWindow[callbackName] = (payload: BaiduSuPayload) => {
+                const list = Array.isArray(payload?.s) ? this.normalizeSuggestList(payload.s) : [];
                 cleanup();
                 resolve(list);
             };
 
             script = document.createElement('script');
-            script.src = `https://suggestion.baidu.com/su?wd=${encodeURIComponent(keyword)}&cb=${callbackName}`;
+            script.src = sourceUrl(callbackName);
             script.async = true;
             script.onerror = () => {
                 cleanup();
@@ -459,14 +472,55 @@ class SearchEngle extends React.Component <Props, StateInterface> {
             timeoutId = window.setTimeout(() => {
                 cleanup();
                 resolve([]);
-            }, 2800);
+            }, timeoutMs);
 
             document.body.appendChild(script);
         });
     }
 
+    private async fetchBaiduSuggestByFetch(keyword: string): Promise<string[]> {
+        try {
+            const endpoint = `https://www.baidu.com/sugrec?prod=pc&wd=${encodeURIComponent(keyword)}`;
+            const response = await fetch(endpoint);
+            if (!response.ok) {
+                return [];
+            }
+            const payload = await response.json() as BaiduSugrecPayload;
+            if (!Array.isArray(payload.g)) {
+                return [];
+            }
+            return payload.g
+                .map((item) => (typeof item?.q === 'string' ? item.q.trim() : ''))
+                .filter((item) => item);
+        } catch {
+            return [];
+        }
+    }
+
+    private async fetchRemoteSuggestWithFallback(keyword: string): Promise<string[]> {
+        const strategyList: Array<() => Promise<string[]>> = [
+            async () => this.fetchBaiduSuggestByJsonp(
+                keyword,
+                (callbackName) => `https://suggestion.baidu.com/su?wd=${encodeURIComponent(keyword)}&cb=${callbackName}`,
+            ),
+            async () => this.fetchBaiduSuggestByJsonp(
+                keyword,
+                (callbackName) => `https://www.baidu.com/su?wd=${encodeURIComponent(keyword)}&cb=${callbackName}`,
+            ),
+            async () => this.fetchBaiduSuggestByFetch(keyword),
+        ];
+
+        for (let index = 0; index < strategyList.length; index++) {
+            const currentList = await strategyList[index]();
+            if (currentList.length > 0) {
+                return currentList;
+            }
+        }
+        return [];
+    }
+
     private async loadSuggestList(keyword: string, requestToken: number) {
-        const remoteList = await this.fetchBaiduSuggest(keyword);
+        const remoteList = await this.fetchRemoteSuggestWithFallback(keyword);
         if (requestToken !== this.suggestRequestToken) {
             return;
         }

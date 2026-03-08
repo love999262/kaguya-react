@@ -46,6 +46,19 @@ type WeatherAdvisoryEventDetail = {
     badDays: WeatherAdvisoryRiskItem[];
 };
 
+type TodayWeatherEventDetail = {
+    location: string;
+    provider: string;
+    today: {
+        dateKey: string;
+        weatherCode: number;
+        weatherText: string;
+        min: number;
+        max: number;
+    };
+    forecastDays: number;
+};
+
 const MAX_MESSAGES = 18;
 const MAX_CONTEXT_MESSAGES = 10;
 const DEFAULT_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
@@ -54,37 +67,25 @@ const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
 const LLM_RETRY_COOLDOWN_MS = 12000;
 const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
+const TODAY_WEATHER_COMMENT_STORAGE_KEY = 'kaguya:today-weather-commented';
 
 type LLMLoadStrategy = {
-    id: 'cache-api' | 'cache-api-mirror' | 'indexeddb';
+    id: 'cache-api' | 'indexeddb';
     label: string;
     useIndexedDBCache: boolean;
-    useMirror: boolean;
 };
 
 const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
-    { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false, useMirror: false },
-    { id: 'cache-api-mirror', label: 'CacheAPI-Mirror', useIndexedDBCache: false, useMirror: true },
-    { id: 'indexeddb', label: 'IndexedDB', useIndexedDBCache: true, useMirror: false },
+    { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false },
+    { id: 'indexeddb', label: 'IndexedDB', useIndexedDBCache: true },
 ];
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
 });
 
-const withMirrorHost = (url: string): string => {
-    return url.startsWith('https://huggingface.co/')
-        ? url.replace('https://huggingface.co/', 'https://hf-mirror.com/')
-        : url;
-};
-
 const buildAppConfigWithStrategy = (baseConfig: AppConfig, strategy: LLMLoadStrategy): AppConfig => {
-    const modelList = strategy.useMirror
-        ? baseConfig.model_list.map((item: ModelRecord) => ({
-            ...item,
-            model: withMirrorHost(item.model),
-        }))
-        : baseConfig.model_list.map((item: ModelRecord) => ({ ...item }));
+    const modelList = baseConfig.model_list.map((item: ModelRecord) => ({ ...item }));
 
     return {
         model_list: modelList,
@@ -95,7 +96,7 @@ const buildAppConfigWithStrategy = (baseConfig: AppConfig, strategy: LLMLoadStra
 const getStoredStrategyId = (): LLMLoadStrategy['id'] | null => {
     try {
         const value = window.localStorage.getItem(LLM_STRATEGY_STORAGE_KEY);
-        if (value === 'cache-api' || value === 'cache-api-mirror' || value === 'indexeddb') {
+        if (value === 'cache-api' || value === 'indexeddb') {
             return value;
         }
     } catch {
@@ -110,6 +111,20 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
     } catch {
         // ignore storage quota / private mode issues
     }
+};
+
+const getWebLLMFailureHint = (message: string): string => {
+    const lower = message.toLowerCase();
+    if (lower.includes('cors') || lower.includes('access-control-allow-origin')) {
+        return '跨域被拦截：当前模型源不支持浏览器跨域读取。';
+    }
+    if (lower.includes('timed_out') || lower.includes('timeout') || lower.includes('failed to fetch') || lower.includes('network')) {
+        return '网络不可达：当前网络无法稳定访问模型源（huggingface）。';
+    }
+    if (lower.includes('oom') || lower.includes('out of memory') || lower.includes('device lost')) {
+        return '显存/内存不足：请关闭占用高的页面后重试。';
+    }
+    return '';
 };
 
 const buildWeatherSummary = (badDays: WeatherAdvisoryRiskItem[]): string => {
@@ -245,6 +260,7 @@ const DeepMode = (): JSX.Element => {
     const idleRunningRef = React.useRef<boolean>(false);
     const lastLoadFailedAtRef = React.useRef<number>(0);
     const lastWeatherAdvisorySignatureRef = React.useRef<string>('');
+    const lastTodayWeatherSignatureRef = React.useRef<string>('');
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -377,14 +393,22 @@ const DeepMode = (): JSX.Element => {
                 setLlmState('error');
                 setLlmProgress('加载失败，可稍后自动重试');
                 lastLoadFailedAtRef.current = Date.now();
-                pushMessage('system', `WebLLM 加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}`);
+                const hint = getWebLLMFailureHint(lastErrorText);
+                pushMessage(
+                    'system',
+                    `WebLLM 加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                );
                 return null;
             } catch (error) {
                 const errorText = error instanceof Error ? error.message : String(error);
                 setLlmState('error');
                 setLlmProgress('加载失败，可稍后重试');
                 lastLoadFailedAtRef.current = Date.now();
-                pushMessage('system', `WebLLM 加载失败，已自动回退到本地规则回复。${errorText ? `（${errorText.slice(0, 70)}）` : ''}`);
+                const hint = getWebLLMFailureHint(errorText);
+                pushMessage(
+                    'system',
+                    `WebLLM 加载失败，已自动回退到本地规则回复。${errorText ? `（${errorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                );
                 return null;
             } finally {
                 loadingPromiseRef.current = null;
@@ -558,6 +582,59 @@ const DeepMode = (): JSX.Element => {
         }
     }, [emitAction, emitBubble, pushMessage, requestPersonaJson]);
 
+    const handleTodayWeather = React.useCallback(async (detail: TodayWeatherEventDetail) => {
+        if (!detail || !detail.today || !detail.today.dateKey) {
+            return;
+        }
+
+        const signature = `${detail.today.dateKey}:${detail.today.weatherCode}:${detail.location}`;
+        if (signature === lastTodayWeatherSignatureRef.current) {
+            return;
+        }
+
+        try {
+            const lastCommentedDate = window.sessionStorage.getItem(TODAY_WEATHER_COMMENT_STORAGE_KEY);
+            if (lastCommentedDate === detail.today.dateKey) {
+                return;
+            }
+        } catch {
+            // ignore session storage failures
+        }
+
+        lastTodayWeatherSignatureRef.current = signature;
+        const summary = `${detail.today.dateKey} ${detail.today.weatherText} ${detail.today.min}~${detail.today.max}°`;
+        const fallback22 = `22觉得今天${detail.location}${detail.today.weatherText}，温度${detail.today.min}到${detail.today.max}度，出门也要保持好心情。`;
+        const fallback33 = `33提示：今天${summary}，按温度和天气合理安排出行。`;
+
+        const [reply22, reply33] = await Promise.all([
+            requestPersonaJson(
+                '22',
+                `请基于今天的天气做一句热情点评。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                fallback22,
+                'happy',
+            ),
+            requestPersonaJson(
+                '33',
+                `请基于今天的天气做一句冷静点评。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
+                fallback33,
+                'calm',
+            ),
+        ]);
+
+        pushMessage('assistant22', `22（今天天气）：${reply22.text}`);
+        pushMessage('assistant33', `33（今天天气）：${reply33.text}`);
+        emitAction('22', reply22.action);
+        emitAction('33', reply33.action);
+        emitBubble('22', reply22.text);
+        emitBubble('33', reply33.text);
+
+        try {
+            window.sessionStorage.setItem(TODAY_WEATHER_COMMENT_STORAGE_KEY, detail.today.dateKey);
+        } catch {
+            // ignore session storage failures
+        }
+    }, [emitAction, emitBubble, pushMessage, requestPersonaJson]);
+
     const triggerIdleInteraction = React.useCallback(async () => {
         if (idleRunningRef.current || llmState !== 'ready') {
             return;
@@ -702,6 +779,18 @@ const DeepMode = (): JSX.Element => {
             window.removeEventListener('kaguya:weather-advisory', onWeatherAdvisory as EventListener);
         };
     }, [handleWeatherAdvisory]);
+
+    React.useEffect(() => {
+        const onTodayWeather = (event: Event): void => {
+            const detail = (event as CustomEvent<TodayWeatherEventDetail>).detail;
+            void handleTodayWeather(detail);
+        };
+
+        window.addEventListener('kaguya:today-weather', onTodayWeather as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:today-weather', onTodayWeather as EventListener);
+        };
+    }, [handleTodayWeather]);
 
     React.useEffect(() => {
         const timer = window.setInterval(() => {

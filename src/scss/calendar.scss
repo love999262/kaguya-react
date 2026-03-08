@@ -51,12 +51,15 @@
         margin: 0 0 8px;
         min-height: 46px;
         display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
         gap: 4px;
         padding: 5px 6px;
         border-radius: 10px !important;
         border: 1px solid rgba(176, 208, 239, 0.26);
         background: rgba(92, 136, 183, 0.17);
+        max-height: 108px;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
     &-calendar-weather-loading {
@@ -70,7 +73,7 @@
     }
 
     &-calendar-weather-item {
-        min-height: 44px;
+        min-height: 42px;
         border-radius: 8px !important;
         border: 1px solid rgba(167, 198, 229, 0.2);
         background: rgba(129, 171, 214, 0.16);
@@ -267,6 +270,10 @@
         filter: saturate(0.92);
     }
 
+    &-calendar-weather-mark-normal {
+        color: rgba(184, 216, 245, 0.88) !important;
+    }
+
     &-calendar-weather-mark-rain {
         color: rgba(156, 218, 255, 0.86) !important;
     }
@@ -403,10 +410,9 @@
     }
 
     &-calendar-status {
-        min-height: 18px;
-        margin-top: 6px;
+        margin-top: 5px;
         color: rgba(197, 217, 238, 0.8) !important;
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         line-height: 1.2;
     }
 }
