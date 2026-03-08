@@ -1,5 +1,5 @@
 ﻿import * as React from 'react';
-import type { InitProgressReport, MLCEngineInterface } from '@mlc-ai/web-llm';
+import type { InitProgressReport, MLCEngineInterface, AppConfig, ModelRecord } from '@mlc-ai/web-llm';
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
@@ -37,6 +37,65 @@ const DEFAULT_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
+const LLM_RETRY_COOLDOWN_MS = 12000;
+const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
+
+type LLMLoadStrategy = {
+    id: 'cache-api' | 'cache-api-mirror' | 'indexeddb';
+    label: string;
+    useIndexedDBCache: boolean;
+    useMirror: boolean;
+};
+
+const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
+    { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false, useMirror: false },
+    { id: 'cache-api-mirror', label: 'CacheAPI-Mirror', useIndexedDBCache: false, useMirror: true },
+    { id: 'indexeddb', label: 'IndexedDB', useIndexedDBCache: true, useMirror: false },
+];
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const withMirrorHost = (url: string): string => {
+    return url.startsWith('https://huggingface.co/')
+        ? url.replace('https://huggingface.co/', 'https://hf-mirror.com/')
+        : url;
+};
+
+const buildAppConfigWithStrategy = (baseConfig: AppConfig, strategy: LLMLoadStrategy): AppConfig => {
+    const modelList = strategy.useMirror
+        ? baseConfig.model_list.map((item: ModelRecord) => ({
+            ...item,
+            model: withMirrorHost(item.model),
+        }))
+        : baseConfig.model_list.map((item: ModelRecord) => ({ ...item }));
+
+    return {
+        model_list: modelList,
+        useIndexedDBCache: strategy.useIndexedDBCache,
+    };
+};
+
+const getStoredStrategyId = (): LLMLoadStrategy['id'] | null => {
+    try {
+        const value = window.localStorage.getItem(LLM_STRATEGY_STORAGE_KEY);
+        if (value === 'cache-api' || value === 'cache-api-mirror' || value === 'indexeddb') {
+            return value;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+};
+
+const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
+    try {
+        window.localStorage.setItem(LLM_STRATEGY_STORAGE_KEY, id);
+    } catch {
+        // ignore storage quota / private mode issues
+    }
+};
 
 const SYSTEM_PROMPT_22 = '你是2233中的22。风格热情、可爱、主动，每次回复1到2句中文。';
 const SYSTEM_PROMPT_33 = '你是2233中的33。风格冷静、克制、理性，每次回复1到2句中文。';
@@ -131,6 +190,7 @@ const DeepMode = (): JSX.Element => {
     const lastSearchKeywordRef = React.useRef<string>('');
     const lastInteractionAtRef = React.useRef<number>(Date.now());
     const idleRunningRef = React.useRef<boolean>(false);
+    const lastLoadFailedAtRef = React.useRef<number>(0);
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -180,7 +240,11 @@ const DeepMode = (): JSX.Element => {
             return loadingPromiseRef.current;
         }
 
-        if (llmState === 'unsupported' || llmState === 'error') {
+        if (llmState === 'unsupported') {
+            return null;
+        }
+
+        if (llmState === 'error' && (Date.now() - lastLoadFailedAtRef.current < LLM_RETRY_COOLDOWN_MS)) {
             return null;
         }
 
@@ -205,26 +269,68 @@ const DeepMode = (): JSX.Element => {
                     return null;
                 }
 
-                const engine = await webllm.CreateMLCEngine(DEFAULT_MODEL_ID, {
-                    appConfig: {
-                        ...webllm.prebuiltAppConfig,
-                        useIndexedDBCache: true,
-                    },
-                    initProgressCallback: (report: InitProgressReport) => {
-                        const percent = Math.max(0, Math.min(100, Math.round(report.progress * 100)));
-                        setLlmProgress(`${percent}% ${report.text}`);
-                    },
+                const storedStrategyId = getStoredStrategyId();
+                const strategyOrder = [...LLM_LOAD_STRATEGIES].sort((a, b) => {
+                    if (a.id === storedStrategyId) {
+                        return -1;
+                    }
+                    if (b.id === storedStrategyId) {
+                        return 1;
+                    }
+                    return 0;
                 });
 
-                engineRef.current = engine;
-                setLlmState('ready');
-                setLlmProgress('模型已就绪');
-                pushMessage('system', `WebLLM 就绪：${DEFAULT_MODEL_ID}`);
-                return engine;
-            } catch {
+                let lastErrorText = '';
+                for (let strategyIndex = 0; strategyIndex < strategyOrder.length; strategyIndex++) {
+                    const strategy = strategyOrder[strategyIndex];
+                    const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                    const hasCachedModel = await webllm.hasModelInCache(DEFAULT_MODEL_ID, appConfig).catch(() => false);
+                    if (hasCachedModel) {
+                        setLlmProgress(`命中本地缓存(${strategy.label})，正在恢复...`);
+                    }
+
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            const engine = await webllm.CreateMLCEngine(DEFAULT_MODEL_ID, {
+                                appConfig,
+                                initProgressCallback: (report: InitProgressReport) => {
+                                    const percent = Math.max(0, Math.min(100, Math.round(report.progress * 100)));
+                                    setLlmProgress(`${percent}% ${report.text}`);
+                                },
+                            });
+
+                            engineRef.current = engine;
+                            setLlmState('ready');
+                            setLlmProgress(`模型已就绪(${strategy.label})`);
+                            lastLoadFailedAtRef.current = 0;
+                            setStoredStrategyId(strategy.id);
+                            pushMessage('system', `WebLLM 就绪：${DEFAULT_MODEL_ID}（${strategy.label}）`);
+                            return engine;
+                        } catch (error) {
+                            lastErrorText = error instanceof Error ? error.message : String(error);
+                            const canCleanupAndRetry = attempt === 1 && hasCachedModel;
+                            if (canCleanupAndRetry) {
+                                setLlmProgress(`检测到缓存异常，清理后重试(${strategy.label})...`);
+                                await webllm.deleteModelAllInfoInCache(DEFAULT_MODEL_ID, appConfig).catch((): void => {});
+                                await wait(220);
+                                continue;
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 setLlmState('error');
-                setLlmProgress('加载失败');
-                pushMessage('system', 'WebLLM 加载失败，已自动回退到本地规则回复。');
+                setLlmProgress('加载失败，可稍后自动重试');
+                lastLoadFailedAtRef.current = Date.now();
+                pushMessage('system', `WebLLM 加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}`);
+                return null;
+            } catch (error) {
+                const errorText = error instanceof Error ? error.message : String(error);
+                setLlmState('error');
+                setLlmProgress('加载失败，可稍后重试');
+                lastLoadFailedAtRef.current = Date.now();
+                pushMessage('system', `WebLLM 加载失败，已自动回退到本地规则回复。${errorText ? `（${errorText.slice(0, 70)}）` : ''}`);
                 return null;
             } finally {
                 loadingPromiseRef.current = null;

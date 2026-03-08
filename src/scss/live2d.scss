@@ -45,12 +45,12 @@
 .kaguya-live2d-bubble {
     position: absolute;
     left: 50%;
-    top: 56%;
+    top: 22%;
     transform: translate(-50%, 10px);
     min-width: 104px;
-    max-width: 188px;
-    max-height: 74px;
-    overflow-y: auto;
+    max-width: 196px;
+    max-height: none;
+    overflow: hidden;
     padding: 5px 8px;
     border-radius: 10px !important;
     border: 1px solid rgba(190, 221, 248, 0.44);
@@ -66,6 +66,10 @@
     text-align: center;
     white-space: normal;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
 }
 
 .kaguya-live2d-bubble::after {
