@@ -1586,34 +1586,6 @@ const DeepMode = (): React.JSX.Element => {
                 <div className='kaguya-deep-meta'>设备评估：{deviceHint}</div>
                 <div className='kaguya-deep-model-row'>
                     <span className='kaguya-deep-model-label'>模型</span>
-                    <div className='kaguya-deep-model-switch'>
-                        {modelOptionList.map((item) => {
-                            const isActive = modelPreference === item;
-                            const isCached = item === 'auto'
-                                ? currentTargetCached
-                                : cachedModelIdSet.has(item);
-                            const label = item === 'auto'
-                                ? `自动(${getModelDisplayName(recommendedModelId).replace('Qwen3 ', '')})`
-                                : getModelDisplayName(item).replace('Qwen3 ', '');
-                            const title = item === 'auto'
-                                ? `自动模式，当前推荐 ${getModelDisplayName(recommendedModelId)}`
-                                : getModelDisplayName(item);
-                            return (
-                                <button
-                                    key={item}
-                                    type='button'
-                                    className={`kaguya-deep-model-chip${isActive ? ' kaguya-deep-model-chip-active' : ''}${isCached ? ' kaguya-deep-model-chip-cached' : ''}`}
-                                    onClick={() => handleModelPreferenceChange(item)}
-                                    title={title}
-                                >
-                                    {`${label}${isCached ? ' · 已缓存' : ''}`}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-                <div className='kaguya-deep-model-all'>
-                    <span className='kaguya-deep-model-all-label'>全部</span>
                     <select
                         className='kaguya-deep-model-all-select'
                         value={allModelSelectValue}
