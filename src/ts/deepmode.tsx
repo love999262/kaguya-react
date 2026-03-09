@@ -64,12 +64,19 @@ type TodayWeatherEventDetail = {
 
 const MAX_MESSAGES = 18;
 const MAX_CONTEXT_MESSAGES = 10;
+const QWEN25_MODEL_IDS = [
+    'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-7B-Instruct-q4f16_1-MLC',
+] as const;
 const QWEN3_MODEL_IDS = [
     'Qwen3-0.6B-q4f16_1-MLC',
     'Qwen3-1.7B-q4f16_1-MLC',
     'Qwen3-4B-q4f16_1-MLC',
     'Qwen3-8B-q4f16_1-MLC',
 ] as const;
+const DEFAULT_MODEL_ID = QWEN25_MODEL_IDS[0];
 
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
