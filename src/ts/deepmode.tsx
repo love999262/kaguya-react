@@ -77,6 +77,7 @@ const QWEN3_MODEL_IDS = [
     'Qwen3-8B-q4f16_1-MLC',
 ] as const;
 const DEFAULT_MODEL_ID = QWEN25_MODEL_IDS[0];
+const FALLBACK_MODEL_ID = QWEN25_MODEL_IDS[0]; // 降级到 Qwen2.5-0.5B
 
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
@@ -727,16 +728,9 @@ const DeepMode = (): React.JSX.Element => {
     }, []);
 
     const getDowngradedModel = React.useCallback((modelId: string, availableModelSet: Set<string>): string | null => {
-        const qwen3ModelIdList = QWEN3_MODEL_IDS as readonly string[];
-        const index = qwen3ModelIdList.indexOf(modelId);
-        if (index <= 0) {
-            return null;
-        }
-        for (let i = index - 1; i >= 0; i--) {
-            const candidate = qwen3ModelIdList[i];
-            if (availableModelSet.has(candidate)) {
-                return candidate;
-            }
+        // 降级到固定的 Qwen2.5-0.5B 模型
+        if (availableModelSet.has(FALLBACK_MODEL_ID)) {
+            return FALLBACK_MODEL_ID;
         }
         return null;
     }, []);
