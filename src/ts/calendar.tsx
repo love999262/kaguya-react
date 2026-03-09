@@ -234,7 +234,7 @@ class Calendar extends React.Component<Props, StateInterface> {
             weatherError: false,
             weatherLocationLabel: SHANGHAI_LOCATION.label,
             weatherForecastDays: 0,
-            weatherProviderText: '中国气象局(NMC)',
+            weatherProviderText: 'NMC',
         };
     }
 
@@ -321,6 +321,17 @@ class Calendar extends React.Component<Props, StateInterface> {
         const monthText = `${day.getMonth() + 1}`.padStart(2, '0');
         const dateText = `${day.getDate()}`.padStart(2, '0');
         return `${monthText}/${dateText}`;
+    }
+
+    private compactWeatherProviderText(value: string) {
+        const text = (value || '').trim();
+        if (!text) {
+            return 'NMC';
+        }
+        return text
+            .replace(/中国气象局\(NMC\)\+Open-Meteo/gi, 'NMC + OpenMeteo')
+            .replace(/中国气象局\(NMC\)/gi, 'NMC')
+            .replace(/Open-Meteo/gi, 'OpenMeteo');
     }
 
     private getWeatherMeta(code: number): { icon: string; text: string; } {
@@ -723,7 +734,7 @@ class Calendar extends React.Component<Props, StateInterface> {
         const stationLabel = this.normalizeAreaText(`${station.province || ''}${station.city || ''}`) || location.label;
         return {
             source: 'nmc',
-            providerLabel: '中国气象局(NMC)',
+            providerLabel: 'NMC',
             locationLabel: stationLabel,
             weatherRows,
         };
@@ -772,7 +783,7 @@ class Calendar extends React.Component<Props, StateInterface> {
 
         return {
             source: 'openmeteo',
-            providerLabel: 'Open-Meteo',
+            providerLabel: 'OpenMeteo',
             locationLabel,
             weatherRows,
         };
@@ -966,7 +977,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                 if (supplement?.weatherRows?.length) {
                     selectedResult = {
                         source: 'nmc',
-                        providerLabel: '中国气象局(NMC)+Open-Meteo',
+                        providerLabel: 'NMC + OpenMeteo',
                         locationLabel: selectedResult.locationLabel || supplement.locationLabel,
                         weatherRows: this.mergeForecastRows(selectedResult.weatherRows, supplement.weatherRows, targetDays),
                     };
@@ -1181,6 +1192,8 @@ class Calendar extends React.Component<Props, StateInterface> {
         this.state.weeklyWeather.forEach((item) => {
             weatherByDate[item.dateKey] = item;
         });
+        const weatherProviderCompact = this.compactWeatherProviderText(this.state.weatherProviderText);
+        const weatherMetaText = `定位 ${this.state.weatherLocationLabel} · 源 ${weatherProviderCompact} · ${this.state.weatherForecastDays}天`;
 
         return (
             <div className={`${this.props.prefix}-calendar`}>
@@ -1223,7 +1236,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                     )}
                 </div>
                 <div className={`${this.props.prefix}-calendar-weather-location`}>
-                    {`\u5929\u6c14\u5b9a\u4f4d\uff1a${this.state.weatherLocationLabel} \u00b7 \u6570\u636e\u6e90\uff1a${this.state.weatherProviderText} \u00b7 \u9884\u62a5${this.state.weatherForecastDays}\u5929`}
+                    {weatherMetaText}
                 </div>
 
                 <div className={`${this.props.prefix}-calendar-quick`}>

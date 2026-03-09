@@ -110,31 +110,83 @@
 .kaguya-deep-model-row {
     margin-top: 6px;
     margin-bottom: 8px;
-    display: grid;
-    grid-template-columns: 34px 1fr;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     gap: 6px;
 }
 
 .kaguya-deep-model-label {
     font-size: 0.75rem;
     color: rgba(210, 231, 252, 0.82) !important;
+    line-height: 24px;
+    min-width: 28px;
 }
 
-.kaguya-deep-model-select {
-    height: 30px;
-    border-radius: 9px !important;
+.kaguya-deep-model-switch {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.kaguya-deep-model-chip {
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 8px !important;
     border: 1px solid rgba(178, 211, 243, 0.34);
-    background: rgba(99, 143, 193, 0.2);
-    color: rgba(236, 246, 255, 0.94) !important;
-    font-size: 0.75rem;
+    background: rgba(91, 133, 180, 0.22);
+    color: rgba(224, 238, 252, 0.9) !important;
+    font-size: 0.7rem;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+
+    &:hover {
+        border-color: rgba(196, 224, 249, 0.5);
+        background: rgba(105, 154, 209, 0.3);
+    }
+}
+
+.kaguya-deep-model-chip-active {
+    border-color: rgba(207, 232, 252, 0.66);
+    background: linear-gradient(145deg, rgba(112, 180, 240, 0.46), rgba(87, 145, 209, 0.4));
+    color: rgba(246, 252, 255, 0.98) !important;
+}
+
+.kaguya-deep-model-chip-cached {
+    border-color: rgba(142, 230, 188, 0.55);
+    box-shadow: 0 0 0 1px rgba(122, 210, 170, 0.25) inset;
+}
+
+.kaguya-deep-model-all {
+    margin-top: -2px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kaguya-deep-model-all-label {
+    min-width: 28px;
+    font-size: 0.74rem;
+    color: rgba(207, 230, 251, 0.82) !important;
+}
+
+.kaguya-deep-model-all-select {
+    flex: 1;
+    height: 26px;
+    border-radius: 8px !important;
+    border: 1px solid rgba(174, 208, 242, 0.34);
+    background: rgba(77, 116, 160, 0.24);
+    color: rgba(232, 244, 255, 0.94) !important;
+    font-size: 0.72rem;
     padding: 0 8px;
     outline: none;
 
     &:focus,
     &:focus-visible {
-        border-color: rgba(203, 228, 252, 0.56);
-        box-shadow: 0 0 0 2px rgba(123, 178, 229, 0.26);
+        border-color: rgba(199, 226, 250, 0.56);
+        box-shadow: 0 0 0 1px rgba(128, 184, 235, 0.28);
     }
 }
 

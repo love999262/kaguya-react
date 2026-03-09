@@ -81,8 +81,7 @@ const LLM_MODEL_PREF_STORAGE_KEY = 'kaguya:webllm:model-pref';
 const TODAY_WEATHER_COMMENT_STORAGE_KEY = 'kaguya:today-weather-commented';
 
 type StoragePersistenceState = 'unknown' | 'persisted' | 'granted' | 'denied' | 'unsupported';
-type Qwen3ModelId = typeof QWEN3_MODEL_IDS[number];
-type ModelPreference = 'auto' | Qwen3ModelId;
+type ModelPreference = 'auto' | string;
 type PlatformType = 'mac' | 'win' | 'other';
 type GpuTier = 'discrete' | 'integrated' | 'unknown';
 
@@ -115,7 +114,11 @@ const wait = (ms: number): Promise<void> => new Promise((resolve) => {
 });
 
 const buildAppConfigWithStrategy = (baseConfig: AppConfig, strategy: LLMLoadStrategy): AppConfig => {
-    const modelList = baseConfig.model_list.map((item: ModelRecord) => ({ ...item }));
+    const modelList = baseConfig.model_list.map((item: ModelRecord) => ({
+        ...item,
+        model: rewriteModelHubUrl(item.model || ''),
+        model_lib: rewriteModelLibUrl(item.model_lib || ''),
+    }));
 
     return {
         model_list: modelList,
@@ -143,17 +146,13 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
     }
 };
 
-const isQwen3ModelId = (value: string): value is Qwen3ModelId => {
-    return (QWEN3_MODEL_IDS as readonly string[]).includes(value);
-};
-
 const getStoredModelPreference = (): ModelPreference => {
     try {
         const value = window.localStorage.getItem(LLM_MODEL_PREF_STORAGE_KEY);
         if (value === 'auto') {
             return 'auto';
         }
-        if (value && isQwen3ModelId(value)) {
+        if (value && value.trim()) {
             return value;
         }
     } catch {
@@ -171,18 +170,81 @@ const setStoredModelPreference = (value: ModelPreference): void => {
 };
 
 const getModelDisplayName = (modelId: string): string => {
-    switch (modelId) {
-        case 'Qwen3-0.6B-q4f16_1-MLC':
-            return 'Qwen3 0.6B';
-        case 'Qwen3-1.7B-q4f16_1-MLC':
-            return 'Qwen3 1.7B';
-        case 'Qwen3-4B-q4f16_1-MLC':
-            return 'Qwen3 4B';
-        case 'Qwen3-8B-q4f16_1-MLC':
-            return 'Qwen3 8B';
-        default:
-            return modelId;
+    if (!modelId) {
+        return '';
     }
+    return modelId
+        .replace(/-MLC$/i, '')
+        .replace(/-q[0-9a-z_]+$/i, '')
+        .replace(/-Instruct$/i, '');
+};
+
+const extractQwenLevelScore = (modelId: string): number => {
+    const match = modelId.match(/qwen(?:2\.5|3)?[-_]?([0-9]+(?:\.[0-9]+)?)b/i);
+    if (!match) {
+        return 0;
+    }
+    return Number(match[1]) || 0;
+};
+
+const getStrongestQwenModel = (modelIds: string[]): string | null => {
+    const qwenModels = modelIds.filter((id) => /qwen/i.test(id));
+    if (!qwenModels.length) {
+        return null;
+    }
+
+    const preferredExactOrder = [
+        'Qwen3-8B-q4f16_1-MLC',
+        'Qwen3-8B-q4f32_1-MLC',
+        'Qwen3-4B-q4f16_1-MLC',
+        'Qwen3-4B-q4f32_1-MLC',
+        'Qwen3-1.7B-q4f16_1-MLC',
+        'Qwen3-1.7B-q4f32_1-MLC',
+        'Qwen3-0.6B-q4f16_1-MLC',
+        'Qwen3-0.6B-q4f32_1-MLC',
+        'Qwen3-0.6B-q0f16-MLC',
+    ];
+    for (let i = 0; i < preferredExactOrder.length; i++) {
+        if (qwenModels.includes(preferredExactOrder[i])) {
+            return preferredExactOrder[i];
+        }
+    }
+
+    const sorted = [...qwenModels].sort((a, b) => {
+        const scoreA = extractQwenLevelScore(a);
+        const scoreB = extractQwenLevelScore(b);
+        if (scoreA !== scoreB) {
+            return scoreB - scoreA;
+        }
+        const isQ4A = /q4f16_1/i.test(a) ? 1 : 0;
+        const isQ4B = /q4f16_1/i.test(b) ? 1 : 0;
+        if (isQ4A !== isQ4B) {
+            return isQ4B - isQ4A;
+        }
+        return a.localeCompare(b);
+    });
+    return sorted[0];
+};
+
+const rewriteModelHubUrl = (url: string): string => {
+    if (!url) {
+        return url;
+    }
+    if (url.startsWith('https://huggingface.co/')) {
+        return url.replace('https://huggingface.co/', 'https://hf-mirror.com/');
+    }
+    return url;
+};
+
+const rewriteModelLibUrl = (url: string): string => {
+    if (!url) {
+        return url;
+    }
+    if (url.startsWith('https://raw.githubusercontent.com/')) {
+        const path = url.replace('https://raw.githubusercontent.com/', '');
+        return `https://cdn.jsdelivr.net/gh/${path}`;
+    }
+    return url;
 };
 
 const getWebLLMFailureHint = (message: string): string => {
@@ -322,8 +384,11 @@ const DeepMode = (): JSX.Element => {
     const [llmState, setLlmState] = React.useState<LLMState>('idle');
     const [llmProgress, setLlmProgress] = React.useState<string>('未加载');
     const [activeModelId, setActiveModelId] = React.useState<string>('未加载');
+    const [activeModelSource, setActiveModelSource] = React.useState<string>('未解析');
     const [modelPreference, setModelPreference] = React.useState<ModelPreference>(getStoredModelPreference);
-    const [recommendedModelId, setRecommendedModelId] = React.useState<Qwen3ModelId>(DEFAULT_QWEN3_MODEL_ID);
+    const [recommendedModelId, setRecommendedModelId] = React.useState<string>(DEFAULT_QWEN3_MODEL_ID);
+    const [allModelIds, setAllModelIds] = React.useState<string[]>([]);
+    const [cachedModelIds, setCachedModelIds] = React.useState<string[]>([]);
     const [deviceHint, setDeviceHint] = React.useState<string>('待检测');
     const [isResponding, setIsResponding] = React.useState<boolean>(false);
     const [storagePersistence, setStoragePersistence] = React.useState<StoragePersistenceState>('unknown');
@@ -340,6 +405,7 @@ const DeepMode = (): JSX.Element => {
     const loadingPromiseRef = React.useRef<Promise<MLCEngineInterface | null> | null>(null);
     const loadingModelIdRef = React.useRef<string | null>(null);
     const availableModelSetRef = React.useRef<Set<string>>(new Set());
+    const modelRecordMapRef = React.useRef<Map<string, ModelRecord>>(new Map());
     const autoProfileReadyRef = React.useRef<boolean>(false);
     const searchDebounceRef = React.useRef<number | null>(null);
     const lastSearchKeywordRef = React.useRef<string>('');
@@ -501,22 +567,65 @@ const DeepMode = (): JSX.Element => {
         return { result: null, lastErrorText };
     }, [getStrategyOrder]);
 
-    const getAvailableQwen3ModelSet = React.useCallback(async (): Promise<Set<string>> => {
+    const ensureModelCatalog = React.useCallback(async (): Promise<Set<string>> => {
         if (availableModelSetRef.current.size > 0) {
             return availableModelSetRef.current;
         }
         const webllm = await getWebLLMModule();
-        const modelSet = new Set<string>(
-            webllm.prebuiltAppConfig.model_list
-                .map((item: ModelRecord) => item.model_id)
-                .filter((id: string) => isQwen3ModelId(id)),
+        const modelIds = webllm.prebuiltAppConfig.model_list
+            .map((item: ModelRecord) => item.model_id)
+            .filter((id: string) => Boolean(id));
+        const modelSet = new Set<string>(modelIds);
+        modelRecordMapRef.current = new Map(
+            webllm.prebuiltAppConfig.model_list.map((item: ModelRecord) => [item.model_id, item]),
         );
+        const qwenModels = modelIds.filter((id: string) => /qwen/i.test(id));
+        const sorted = [
+            ...qwenModels.sort((a: string, b: string) => a.localeCompare(b)),
+            ...modelIds.filter((id: string) => !/qwen/i.test(id)).sort((a: string, b: string) => a.localeCompare(b)),
+        ];
+        setAllModelIds(sorted);
         availableModelSetRef.current = modelSet;
         return modelSet;
     }, [getWebLLMModule]);
 
-    const detectRecommendedModel = React.useCallback(async (): Promise<Qwen3ModelId> => {
-        const modelSet = await getAvailableQwen3ModelSet();
+    const refreshCachedModelIds = React.useCallback(async (): Promise<void> => {
+        const modelSet = await ensureModelCatalog();
+        const modelIds = Array.from(modelSet);
+        if (!modelIds.length) {
+            setCachedModelIds([]);
+            return;
+        }
+        const webllm = await getWebLLMModule();
+        const strategyOrder = getStrategyOrder();
+        const cached: string[] = [];
+        for (let i = 0; i < modelIds.length; i++) {
+            const modelId = modelIds[i];
+            let hasCache = false;
+            for (let j = 0; j < strategyOrder.length; j++) {
+                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategyOrder[j]);
+                hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
+                if (hasCache) {
+                    break;
+                }
+            }
+            if (hasCache) {
+                cached.push(modelId);
+            }
+        }
+        setCachedModelIds(cached);
+    }, [ensureModelCatalog, getStrategyOrder, getWebLLMModule]);
+
+    const detectRecommendedModel = React.useCallback(async (): Promise<string> => {
+        const modelSet = await ensureModelCatalog();
+        const modelIds = Array.from(modelSet);
+        const strongestQwen = getStrongestQwenModel(modelIds);
+        if (!strongestQwen) {
+            const firstModel = modelIds[0] || DEFAULT_QWEN3_MODEL_ID;
+            setRecommendedModelId(firstModel);
+            autoProfileReadyRef.current = true;
+            return firstModel;
+        }
         const platformText = (
             ((navigator as any).userAgentData?.platform as string | undefined)
             || navigator.platform
@@ -562,26 +671,29 @@ const DeepMode = (): JSX.Element => {
         }
 
         const profile: DeviceProfile = { platform, memoryGB, gpuTier, gpuName };
-        const pick = (ids: Qwen3ModelId[]): Qwen3ModelId => {
+        const pick = (ids: string[]): string => {
             for (let i = 0; i < ids.length; i++) {
                 if (modelSet.has(ids[i])) {
                     return ids[i];
                 }
+            }
+            if (modelSet.has(strongestQwen)) {
+                return strongestQwen;
             }
             for (let i = 0; i < QWEN3_MODEL_IDS.length; i++) {
                 if (modelSet.has(QWEN3_MODEL_IDS[i])) {
                     return QWEN3_MODEL_IDS[i];
                 }
             }
-            return DEFAULT_QWEN3_MODEL_ID;
+            return modelIds[0] || DEFAULT_QWEN3_MODEL_ID;
         };
 
-        let recommended: Qwen3ModelId;
+        let recommended: string;
         if (profile.platform === 'mac') {
             if (profile.memoryGB >= 32) {
-                recommended = pick(['Qwen3-8B-q4f16_1-MLC', 'Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC']);
+                recommended = pick(['Qwen3-8B-q4f16_1-MLC', 'Qwen3-8B-q4f32_1-MLC', 'Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC']);
             } else if (profile.memoryGB >= 24) {
-                recommended = pick(['Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+                recommended = pick(['Qwen3-4B-q4f16_1-MLC', 'Qwen3-4B-q4f32_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
             } else if (profile.memoryGB >= 16) {
                 recommended = pick(['Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
             } else {
@@ -609,22 +721,26 @@ const DeepMode = (): JSX.Element => {
         setRecommendedModelId(recommended);
         autoProfileReadyRef.current = true;
         return recommended;
-    }, [getAvailableQwen3ModelSet]);
+    }, [ensureModelCatalog]);
 
-    const resolveTargetModel = React.useCallback((pref: ModelPreference, autoModel: Qwen3ModelId): Qwen3ModelId => {
+    const resolveTargetModel = React.useCallback((pref: ModelPreference, autoModel: string, availableModelSet: Set<string>): string => {
         if (pref === 'auto') {
             return autoModel;
         }
-        return pref;
+        if (pref && availableModelSet.has(pref)) {
+            return pref;
+        }
+        return autoModel;
     }, []);
 
-    const getDowngradedModel = React.useCallback((modelId: Qwen3ModelId, availableModelSet: Set<string>): Qwen3ModelId | null => {
-        const index = QWEN3_MODEL_IDS.indexOf(modelId);
+    const getDowngradedModel = React.useCallback((modelId: string, availableModelSet: Set<string>): string | null => {
+        const qwen3ModelIdList = QWEN3_MODEL_IDS as readonly string[];
+        const index = qwen3ModelIdList.indexOf(modelId);
         if (index <= 0) {
             return null;
         }
         for (let i = index - 1; i >= 0; i--) {
-            const candidate = QWEN3_MODEL_IDS[i];
+            const candidate = qwen3ModelIdList[i];
             if (availableModelSet.has(candidate)) {
                 return candidate;
             }
@@ -632,7 +748,7 @@ const DeepMode = (): JSX.Element => {
         return null;
     }, []);
 
-    const ensureLLMEngine = React.useCallback(async (requestedModel?: Qwen3ModelId): Promise<MLCEngineInterface | null> => {
+    const ensureLLMEngine = React.useCallback(async (requestedModel?: string): Promise<MLCEngineInterface | null> => {
         if (!('gpu' in navigator)) {
             setLlmState('unsupported');
             setLlmProgress('浏览器不支持 WebGPU');
@@ -644,8 +760,9 @@ const DeepMode = (): JSX.Element => {
             return null;
         }
 
+        const availableModelSet = await ensureModelCatalog();
         const autoModel = autoProfileReadyRef.current ? recommendedModelId : await detectRecommendedModel();
-        const targetModel = requestedModel || resolveTargetModel(modelPreference, autoModel);
+        const targetModel = requestedModel || resolveTargetModel(modelPreference, autoModel, availableModelSet);
 
         if (activeEngineRef.current && activeModelId === targetModel) {
             return activeEngineRef.current;
@@ -665,7 +782,13 @@ const DeepMode = (): JSX.Element => {
                 setLlmProgress(`正在加载 ${getModelDisplayName(targetModel)}...`);
 
                 const webllm = await getWebLLMModule();
-                const availableModelSet = await getAvailableQwen3ModelSet();
+                const modelRecord = modelRecordMapRef.current.get(targetModel);
+                const resolvedModelHubUrl = rewriteModelHubUrl(modelRecord?.model || '');
+                if (resolvedModelHubUrl) {
+                    setActiveModelSource(resolvedModelHubUrl);
+                } else if (modelRecord?.model) {
+                    setActiveModelSource(modelRecord.model);
+                }
                 if (!availableModelSet.has(targetModel)) {
                     if (modelPreference !== 'auto' && availableModelSet.has(autoModel)) {
                         setModelPreference('auto');
@@ -697,7 +820,7 @@ const DeepMode = (): JSX.Element => {
                     activeEngineRef.current = null;
                 }
 
-                let finalModelId: Qwen3ModelId = targetModel;
+                let finalModelId = targetModel;
                 let loadResult = await loadModelWithStrategies(webllm, targetModel, `${getModelDisplayName(targetModel)} 加载：`);
                 if (!loadResult.result) {
                     const downgraded = getDowngradedModel(targetModel, availableModelSet);
@@ -721,13 +844,14 @@ const DeepMode = (): JSX.Element => {
                     const hint = getWebLLMFailureHint(loadResult.lastErrorText);
                     pushMessage(
                         'system',
-                        `模型加载失败，已回退本地规则回复。${loadResult.lastErrorText ? `（${loadResult.lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                        `模型加载失败，已回退本地规则回复。${loadResult.lastErrorText ? `（${loadResult.lastErrorText.slice(0, 90)}）` : ''}${hint ? ` ${hint}` : ''}${resolvedModelHubUrl ? ` 请求地址：${resolvedModelHubUrl}` : ''}`,
                     );
                     return null;
                 }
 
                 activeEngineRef.current = loadResult.result.engine;
                 setActiveModelId(finalModelId);
+                setCachedModelIds((prev) => (prev.includes(finalModelId) ? prev : [...prev, finalModelId]));
                 setLlmState('ready');
                 setLlmProgress(`${getModelDisplayName(finalModelId)} 已就绪（${loadResult.result.strategy.label}）`);
                 lastLoadFailedAtRef.current = 0;
@@ -754,7 +878,7 @@ const DeepMode = (): JSX.Element => {
     }, [
         activeModelId,
         detectRecommendedModel,
-        getAvailableQwen3ModelSet,
+        ensureModelCatalog,
         getDowngradedModel,
         getWebLLMModule,
         llmState,
@@ -1213,12 +1337,7 @@ const DeepMode = (): JSX.Element => {
         setPanelOpen((prev: boolean) => !prev);
     }, []);
 
-    const handleModelPreferenceChange = React.useCallback((event: React.ChangeEvent<HTMLSelectElement>): void => {
-        const value = event.target.value;
-        if (value !== 'auto' && !isQwen3ModelId(value)) {
-            return;
-        }
-        const nextPref: ModelPreference = value === 'auto' ? 'auto' : value;
+    const handleModelPreferenceChange = React.useCallback((nextPref: ModelPreference): void => {
         setModelPreference(nextPref);
         setStoredModelPreference(nextPref);
         const message = nextPref === 'auto'
@@ -1226,10 +1345,18 @@ const DeepMode = (): JSX.Element => {
             : `已切换模型：${getModelDisplayName(nextPref)}。`;
         pushMessage('system', message);
         if (panelOpen) {
-            const nextModel = resolveTargetModel(nextPref, recommendedModelId);
+            const nextModel = resolveTargetModel(nextPref, recommendedModelId, new Set(allModelIds));
             void ensureLLMEngine(nextModel);
         }
-    }, [ensureLLMEngine, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
+    }, [allModelIds, ensureLLMEngine, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
+
+    const handleAllModelSelectChange = React.useCallback((event: React.ChangeEvent<HTMLSelectElement>): void => {
+        const value = event.target.value;
+        if (!value) {
+            return;
+        }
+        handleModelPreferenceChange(value === 'auto' ? 'auto' : value);
+    }, [handleModelPreferenceChange]);
 
     React.useEffect(() => {
         if (!panelOpen) {
@@ -1248,10 +1375,11 @@ const DeepMode = (): JSX.Element => {
 
         void (async () => {
             const autoModel = await detectRecommendedModel();
-            const targetModel = resolveTargetModel(modelPreference, autoModel);
+            const targetModel = resolveTargetModel(modelPreference, autoModel, new Set(allModelIds));
+            await refreshCachedModelIds();
             await ensureLLMEngine(targetModel);
         })();
-    }, [detectRecommendedModel, ensureLLMEngine, ensurePersistentStorage, modelPreference, panelOpen, pushMessage, resolveTargetModel]);
+    }, [allModelIds, detectRecommendedModel, ensureLLMEngine, ensurePersistentStorage, modelPreference, panelOpen, pushMessage, refreshCachedModelIds, resolveTargetModel]);
 
     React.useEffect(() => {
         const onSearchInput = (event: Event): void => {
@@ -1359,7 +1487,7 @@ const DeepMode = (): JSX.Element => {
                     enginesPausedRef.current = false;
                     setLlmProgress('页面已激活，正在恢复...');
                     if (panelOpen && storageCheckedRef.current) {
-                        const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId);
+                        const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
                         void ensureLLMEngine(nextTargetModel);
                     }
                 }
@@ -1383,7 +1511,7 @@ const DeepMode = (): JSX.Element => {
             clearHiddenUnloadTimer();
             removeListener();
         };
-    }, [ensureLLMEngine, llmState, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
+    }, [allModelIds, ensureLLMEngine, llmState, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
     React.useEffect(() => {
         return () => {
@@ -1415,7 +1543,15 @@ const DeepMode = (): JSX.Element => {
             : (storagePersistence === 'denied'
                 ? '未授权持久化'
                 : (storagePersistence === 'unsupported' ? '浏览器不支持' : '待检测')));
-    const selectedModelId = resolveTargetModel(modelPreference, recommendedModelId);
+    const modelOptionList: ModelPreference[] = ['auto', ...QWEN3_MODEL_IDS.filter((id) => allModelIds.includes(id))];
+    const allModelSelectValue = modelPreference === 'auto' || allModelIds.includes(modelPreference) ? modelPreference : 'auto';
+    const cachedModelIdSet = React.useMemo(() => new Set(cachedModelIds), [cachedModelIds]);
+    const cachedModelCount = React.useMemo(
+        () => allModelIds.filter((id) => cachedModelIdSet.has(id)).length,
+        [allModelIds, cachedModelIdSet],
+    );
+    const currentTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
+    const currentTargetCached = cachedModelIdSet.has(currentTargetModel);
 
     return (
         <div className='kaguya-deep'>
@@ -1443,20 +1579,50 @@ const DeepMode = (): JSX.Element => {
                 <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
                 <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
                 <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
+                <div className='kaguya-deep-meta'>模型地址：{activeModelSource}</div>
                 <div className='kaguya-deep-meta'>模型缓存：{storageText}</div>
+                <div className='kaguya-deep-meta'>{`目标缓存：${currentTargetCached ? '已缓存' : '未缓存'}（${getModelDisplayName(currentTargetModel)}）`}</div>
+                <div className='kaguya-deep-meta'>{`本地缓存模型：${cachedModelCount}/${allModelIds.length || 0}`}</div>
                 <div className='kaguya-deep-meta'>设备评估：{deviceHint}</div>
                 <div className='kaguya-deep-model-row'>
-                    <label className='kaguya-deep-model-label' htmlFor='kaguya-model-select'>模型</label>
+                    <span className='kaguya-deep-model-label'>模型</span>
+                    <div className='kaguya-deep-model-switch'>
+                        {modelOptionList.map((item) => {
+                            const isActive = modelPreference === item;
+                            const isCached = item === 'auto'
+                                ? currentTargetCached
+                                : cachedModelIdSet.has(item);
+                            const label = item === 'auto'
+                                ? `自动(${getModelDisplayName(recommendedModelId).replace('Qwen3 ', '')})`
+                                : getModelDisplayName(item).replace('Qwen3 ', '');
+                            const title = item === 'auto'
+                                ? `自动模式，当前推荐 ${getModelDisplayName(recommendedModelId)}`
+                                : getModelDisplayName(item);
+                            return (
+                                <button
+                                    key={item}
+                                    type='button'
+                                    className={`kaguya-deep-model-chip${isActive ? ' kaguya-deep-model-chip-active' : ''}${isCached ? ' kaguya-deep-model-chip-cached' : ''}`}
+                                    onClick={() => handleModelPreferenceChange(item)}
+                                    title={title}
+                                >
+                                    {`${label}${isCached ? ' · 已缓存' : ''}`}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className='kaguya-deep-model-all'>
+                    <span className='kaguya-deep-model-all-label'>全部</span>
                     <select
-                        id='kaguya-model-select'
-                        className='kaguya-deep-model-select'
-                        value={modelPreference}
-                        onChange={handleModelPreferenceChange}
+                        className='kaguya-deep-model-all-select'
+                        value={allModelSelectValue}
+                        onChange={handleAllModelSelectChange}
                     >
-                        <option value='auto'>自动（推荐：{getModelDisplayName(recommendedModelId)}）</option>
-                        {QWEN3_MODEL_IDS.map((modelId) => (
+                        <option value='auto'>{`自动（Qwen优先：${getModelDisplayName(recommendedModelId)}${currentTargetCached ? ' [已缓存]' : ''}）`}</option>
+                        {allModelIds.map((modelId) => (
                             <option key={modelId} value={modelId}>
-                                {getModelDisplayName(modelId)}{selectedModelId === modelId ? ' · 当前目标' : ''}
+                                {`${modelId}${cachedModelIdSet.has(modelId) ? ' [已缓存]' : ''}`}
                             </option>
                         ))}
                     </select>
