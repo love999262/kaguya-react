@@ -581,9 +581,17 @@ const DeepMode = (): React.JSX.Element => {
             return webllmModuleRef.current;
         }
         const webllm = await import('@mlc-ai/web-llm');
+        // 根据当前模型源策略，重写 prebuiltAppConfig 中的 URL
+        if (webllm.prebuiltAppConfig?.model_list) {
+            webllm.prebuiltAppConfig.model_list = webllm.prebuiltAppConfig.model_list.map((item: ModelRecord) => ({
+                ...item,
+                model: rewriteModelHubUrl(item.model || '', sourceStrategyId),
+                model_lib: rewriteModelLibUrl(item.model_lib || '', sourceStrategyId),
+            }));
+        }
         webllmModuleRef.current = webllm;
         return webllm;
-    }, []);
+    }, [sourceStrategyId]);
 
     const getStrategyOrder = React.useCallback((): LLMLoadStrategy[] => {
         const storedStrategyId = getStoredStrategyId();
