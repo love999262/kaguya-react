@@ -232,31 +232,7 @@ const getStrongestQwenModel = (modelIds: string[]): string | null => {
     return sorted[0];
 };
 
-// CORS 代理服务列表，按优先级排序
-const CORS_PROXIES = [
-    'https://api.allorigins.win/raw?url=',
-    'https://api.codetabs.com/v1/proxy?quest=',
-];
 
-const getCorsProxyUrl = (url: string, proxyIndex: number = 0): string => {
-    if (!url || proxyIndex >= CORS_PROXIES.length) {
-        return url;
-    }
-    return `${CORS_PROXIES[proxyIndex]}${encodeURIComponent(url)}`;
-};
-
-// 全局拦截 fetch 请求，自动添加 CORS 代理
-const originalFetch = window.fetch;
-window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    let url = typeof input === 'string' ? input : input.toString();
-    // 如果是 HuggingFace 或 hf-mirror 的请求，添加 CORS 代理
-    if ((url.includes('huggingface.co') || url.includes('hf-mirror.com')) && !url.includes('api.allorigins.win')) {
-        const proxiedUrl = getCorsProxyUrl(url);
-        console.log('[CORS Proxy] Redirecting:', url, '->', proxiedUrl);
-        return originalFetch(proxiedUrl, init);
-    }
-    return originalFetch(input, init);
-};
 
 const getWebLLMFailureHint = (message: string): string => {
     const lower = message.toLowerCase();
@@ -504,16 +480,11 @@ const DeepMode = (): React.JSX.Element => {
             return webllmModuleRef.current;
         }
         const webllm = await import('@mlc-ai/web-llm');
-        // 强制使用 CORS 代理，并只保留 Qwen 系列模型
+        // 只保留 Qwen 系列模型，使用原生 URL
         if (webllm.prebuiltAppConfig?.model_list) {
-            const qwenModels = webllm.prebuiltAppConfig.model_list.filter((item: ModelRecord) =>
+            webllm.prebuiltAppConfig.model_list = webllm.prebuiltAppConfig.model_list.filter((item: ModelRecord) =>
                 item.model_id && (item.model_id.includes('Qwen2.5') || item.model_id.includes('Qwen3'))
             );
-            webllm.prebuiltAppConfig.model_list = qwenModels.map((item: ModelRecord) => ({
-                ...item,
-                model: getCorsProxyUrl(item.model || ''),
-                model_lib: getCorsProxyUrl(item.model_lib || ''),
-            }));
         }
         webllmModuleRef.current = webllm;
         return webllm;
