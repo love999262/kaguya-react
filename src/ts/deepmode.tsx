@@ -70,7 +70,7 @@ const QWEN3_MODEL_IDS = [
     'Qwen3-4B-q4f16_1-MLC',
     'Qwen3-8B-q4f16_1-MLC',
 ] as const;
-const DEFAULT_QWEN3_MODEL_ID = QWEN3_MODEL_IDS[1];
+
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
@@ -687,7 +687,7 @@ const DeepMode = (): React.JSX.Element => {
                     return QWEN3_MODEL_IDS[i];
                 }
             }
-            return modelIds[0] || DEFAULT_QWEN3_MODEL_ID;
+            return modelIds[0] || DEFAULT_MODEL_ID;
         };
 
         let recommended: string;
