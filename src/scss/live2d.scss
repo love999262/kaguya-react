@@ -145,26 +145,58 @@
 
 @media screen and (max-width: 1680px) {
     .kaguya-live2d-shell {
-        width: 260px;
-        height: 504px;
+        width: 250px;
+        height: 486px;
     }
 
     .kaguya-live2d-shell-22 {
-        right: 120px;
+        right: 112px;
     }
 
     .kaguya-live2d-shell-33 {
-        right: -18px;
+        right: -14px;
     }
 }
 
 @media screen and (max-width: 1500px) {
+    .kaguya-live2d-shell {
+        width: 220px;
+        height: 428px;
+        bottom: -14px;
+    }
+
     .kaguya-live2d-shell-22 {
-        display: none;
+        right: 92px;
+    }
+
+    .kaguya-live2d-shell-33 {
+        right: -12px;
     }
 }
 
 @media screen and (max-width: 1320px) {
+    .kaguya-live2d-shell {
+        width: 198px;
+        height: 386px;
+        bottom: -8px;
+    }
+
+    .kaguya-live2d-shell-22 {
+        right: 76px;
+    }
+
+    .kaguya-live2d-shell-33 {
+        right: -16px;
+    }
+
+    .kaguya-live2d-bubble {
+        font-size: 0.72rem;
+        max-width: min(220px, calc(100vw - 16px));
+        padding: 6px 8px;
+    }
+}
+
+@media screen and (max-width: 1120px) {
     .kaguya-live2d-group {
         display: none !important;
     }

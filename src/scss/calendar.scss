@@ -451,11 +451,42 @@
 
 @media screen and (max-width: 1480px) {
     .#{$kaguya}-calendar {
-        display: none;
+        width: 236px;
+        left: 8px;
+        top: 188px;
+        padding: 8px 8px 6px;
+    }
+
+    .#{$kaguya}-calendar-week,
+    .#{$kaguya}-calendar-grid {
+        gap: 3px;
+    }
+
+    .#{$kaguya}-calendar-week-item,
+    .#{$kaguya}-calendar-day-number {
+        font-size: 0.72rem;
     }
 }
 
 @media screen and (max-width: 1320px) {
+    .#{$kaguya}-calendar {
+        width: 214px;
+        left: 6px;
+        top: 182px;
+        padding: 7px 7px 6px;
+    }
+
+    .#{$kaguya}-calendar-week-item,
+    .#{$kaguya}-calendar-day-number {
+        font-size: 0.68rem;
+    }
+
+    .#{$kaguya}-calendar-day {
+        border-radius: 8px !important;
+    }
+}
+
+@media screen and (max-width: 1120px) {
     .#{$kaguya}-calendar {
         display: none;
     }

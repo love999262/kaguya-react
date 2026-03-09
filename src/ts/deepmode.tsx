@@ -64,18 +64,34 @@ type TodayWeatherEventDetail = {
 
 const MAX_MESSAGES = 18;
 const MAX_CONTEXT_MESSAGES = 10;
-const FALLBACK_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q0f16-MLC';
-const PREMIUM_MODEL_ID = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+const QWEN3_MODEL_IDS = [
+    'Qwen3-0.6B-q4f16_1-MLC',
+    'Qwen3-1.7B-q4f16_1-MLC',
+    'Qwen3-4B-q4f16_1-MLC',
+    'Qwen3-8B-q4f16_1-MLC',
+] as const;
+const DEFAULT_QWEN3_MODEL_ID = QWEN3_MODEL_IDS[1];
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
+const PAGE_HIDDEN_UNLOAD_DELAY_MS = 10 * 60 * 1000;
 const LLM_RETRY_COOLDOWN_MS = 12000;
-const PREMIUM_RETRY_COOLDOWN_MS = 60000;
 const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
+const LLM_MODEL_PREF_STORAGE_KEY = 'kaguya:webllm:model-pref';
 const TODAY_WEATHER_COMMENT_STORAGE_KEY = 'kaguya:today-weather-commented';
 
 type StoragePersistenceState = 'unknown' | 'persisted' | 'granted' | 'denied' | 'unsupported';
-type ModelTier = 'none' | 'fallback' | 'premium';
+type Qwen3ModelId = typeof QWEN3_MODEL_IDS[number];
+type ModelPreference = 'auto' | Qwen3ModelId;
+type PlatformType = 'mac' | 'win' | 'other';
+type GpuTier = 'discrete' | 'integrated' | 'unknown';
+
+type DeviceProfile = {
+    platform: PlatformType;
+    memoryGB: number;
+    gpuTier: GpuTier;
+    gpuName: string;
+};
 
 type LLMLoadStrategy = {
     id: 'cache-api' | 'indexeddb';
@@ -124,6 +140,48 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
         window.localStorage.setItem(LLM_STRATEGY_STORAGE_KEY, id);
     } catch {
         // ignore storage quota / private mode issues
+    }
+};
+
+const isQwen3ModelId = (value: string): value is Qwen3ModelId => {
+    return (QWEN3_MODEL_IDS as readonly string[]).includes(value);
+};
+
+const getStoredModelPreference = (): ModelPreference => {
+    try {
+        const value = window.localStorage.getItem(LLM_MODEL_PREF_STORAGE_KEY);
+        if (value === 'auto') {
+            return 'auto';
+        }
+        if (value && isQwen3ModelId(value)) {
+            return value;
+        }
+    } catch {
+        return 'auto';
+    }
+    return 'auto';
+};
+
+const setStoredModelPreference = (value: ModelPreference): void => {
+    try {
+        window.localStorage.setItem(LLM_MODEL_PREF_STORAGE_KEY, value);
+    } catch {
+        // ignore storage quota / private mode issues
+    }
+};
+
+const getModelDisplayName = (modelId: string): string => {
+    switch (modelId) {
+        case 'Qwen3-0.6B-q4f16_1-MLC':
+            return 'Qwen3 0.6B';
+        case 'Qwen3-1.7B-q4f16_1-MLC':
+            return 'Qwen3 1.7B';
+        case 'Qwen3-4B-q4f16_1-MLC':
+            return 'Qwen3 4B';
+        case 'Qwen3-8B-q4f16_1-MLC':
+            return 'Qwen3 8B';
+        default:
+            return modelId;
     }
 };
 
@@ -263,8 +321,10 @@ const DeepMode = (): JSX.Element => {
     const [target, setTarget] = React.useState<TalkTarget>('all');
     const [llmState, setLlmState] = React.useState<LLMState>('idle');
     const [llmProgress, setLlmProgress] = React.useState<string>('未加载');
-    const [activeModelTier, setActiveModelTier] = React.useState<ModelTier>('none');
     const [activeModelId, setActiveModelId] = React.useState<string>('未加载');
+    const [modelPreference, setModelPreference] = React.useState<ModelPreference>(getStoredModelPreference);
+    const [recommendedModelId, setRecommendedModelId] = React.useState<Qwen3ModelId>(DEFAULT_QWEN3_MODEL_ID);
+    const [deviceHint, setDeviceHint] = React.useState<string>('待检测');
     const [isResponding, setIsResponding] = React.useState<boolean>(false);
     const [storagePersistence, setStoragePersistence] = React.useState<StoragePersistenceState>('unknown');
     const [messages, setMessages] = React.useState<ChatMessage[]>([
@@ -276,17 +336,16 @@ const DeepMode = (): JSX.Element => {
     const nextIdRef = React.useRef<number>(2);
     const openedHintRef = React.useRef<boolean>(false);
     const activeEngineRef = React.useRef<MLCEngineInterface | null>(null);
-    const fallbackEngineRef = React.useRef<MLCEngineInterface | null>(null);
-    const premiumEngineRef = React.useRef<MLCEngineInterface | null>(null);
     const webllmModuleRef = React.useRef<any | null>(null);
     const loadingPromiseRef = React.useRef<Promise<MLCEngineInterface | null> | null>(null);
-    const premiumLoadingPromiseRef = React.useRef<Promise<void> | null>(null);
+    const loadingModelIdRef = React.useRef<string | null>(null);
+    const availableModelSetRef = React.useRef<Set<string>>(new Set());
+    const autoProfileReadyRef = React.useRef<boolean>(false);
     const searchDebounceRef = React.useRef<number | null>(null);
     const lastSearchKeywordRef = React.useRef<string>('');
     const lastInteractionAtRef = React.useRef<number>(Date.now());
     const idleRunningRef = React.useRef<boolean>(false);
     const lastLoadFailedAtRef = React.useRef<number>(0);
-    const premiumLastLoadFailedAtRef = React.useRef<number>(0);
     const lastWeatherAdvisorySignatureRef = React.useRef<string>('');
     const lastTodayWeatherSignatureRef = React.useRef<string>('');
     const storageCheckedRef = React.useRef<boolean>(false);
@@ -442,123 +501,138 @@ const DeepMode = (): JSX.Element => {
         return { result: null, lastErrorText };
     }, [getStrategyOrder]);
 
-    const hasModelInAnyStrategy = React.useCallback(async (webllm: any, modelId: string): Promise<boolean> => {
-        const strategyOrder = getStrategyOrder();
-        for (let index = 0; index < strategyOrder.length; index++) {
-            const strategy = strategyOrder[index];
-            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-            const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
-            if (hasCache) {
-                return true;
-            }
+    const getAvailableQwen3ModelSet = React.useCallback(async (): Promise<Set<string>> => {
+        if (availableModelSetRef.current.size > 0) {
+            return availableModelSetRef.current;
         }
-        return false;
-    }, [getStrategyOrder]);
+        const webllm = await getWebLLMModule();
+        const modelSet = new Set<string>(
+            webllm.prebuiltAppConfig.model_list
+                .map((item: ModelRecord) => item.model_id)
+                .filter((id: string) => isQwen3ModelId(id)),
+        );
+        availableModelSetRef.current = modelSet;
+        return modelSet;
+    }, [getWebLLMModule]);
 
-    const warmupPremiumModel = React.useCallback(async (): Promise<void> => {
-        if (premiumEngineRef.current || premiumLoadingPromiseRef.current) {
-            return;
-        }
+    const detectRecommendedModel = React.useCallback(async (): Promise<Qwen3ModelId> => {
+        const modelSet = await getAvailableQwen3ModelSet();
+        const platformText = (
+            ((navigator as any).userAgentData?.platform as string | undefined)
+            || navigator.platform
+            || navigator.userAgent
+            || ''
+        ).toLowerCase();
+        const platform: PlatformType = platformText.includes('mac')
+            ? 'mac'
+            : (platformText.includes('win') ? 'win' : 'other');
+        const memoryRaw = Number((navigator as any).deviceMemory);
+        const memoryGB = Number.isFinite(memoryRaw) && memoryRaw > 0
+            ? memoryRaw
+            : (platform === 'mac' ? 16 : 8);
 
-        const now = Date.now();
-        if (premiumLastLoadFailedAtRef.current && (now - premiumLastLoadFailedAtRef.current < PREMIUM_RETRY_COOLDOWN_MS)) {
-            return;
-        }
-
-        premiumLoadingPromiseRef.current = (async () => {
-            try {
-                const webllm = await getWebLLMModule();
-                const hasPremiumModel = webllm.prebuiltAppConfig.model_list.some((item: ModelRecord) => item.model_id === PREMIUM_MODEL_ID);
-                if (!hasPremiumModel) {
-                    pushMessage('system', `优质模型不可用：${PREMIUM_MODEL_ID} 不在可用列表。`);
-                    return;
+        let gpuName = 'unknown';
+        let gpuTier: GpuTier = 'unknown';
+        try {
+            const navGpu = (navigator as Navigator & {
+                gpu?: { requestAdapter?: () => Promise<any>; };
+            }).gpu;
+            if (navGpu && typeof navGpu.requestAdapter === 'function') {
+                const adapter = await navGpu.requestAdapter();
+                const info = adapter && 'info' in adapter ? (adapter as any).info : undefined;
+                const nameParts = [
+                    typeof info?.vendor === 'string' ? info.vendor : '',
+                    typeof info?.architecture === 'string' ? info.architecture : '',
+                    typeof info?.description === 'string' ? info.description : '',
+                ].filter(Boolean);
+                gpuName = nameParts.join(' ').trim() || 'unknown';
+                const lower = gpuName.toLowerCase();
+                if (/nvidia|geforce|rtx|gtx|amd|radeon/.test(lower)) {
+                    gpuTier = 'discrete';
+                } else if (/intel|iris|uhd|xe|apple|m1|m2|m3|m4/.test(lower)) {
+                    gpuTier = 'integrated';
                 }
-
-                const hasPremiumCache = await hasModelInAnyStrategy(webllm, PREMIUM_MODEL_ID);
-                if (storagePersistence === 'denied' && !hasPremiumCache) {
-                    setLlmProgress('已启用兜底模型（未授权持久化，已跳过优质模型预热）');
-                    pushMessage('system', '当前浏览器未授权持久化，且优质模型未缓存：为避免每次刷新重复下载，已自动跳过优质模型预热。');
-                    return;
-                }
-
-                setLlmProgress((prev) => {
-                    if (!prev || prev === '未加载') {
-                        if (hasPremiumCache) {
-                            return '已启用兜底模型，检测到优质模型缓存，正在激活...';
-                        }
-                        return '已启用兜底模型，优质模型预热中...';
-                    }
-                    if (prev.includes('优质模型预热中') || prev.includes('优质模型缓存')) {
-                        return prev;
-                    }
-                    if (hasPremiumCache) {
-                        return `${prev} · 检测到优质模型缓存，正在激活...`;
-                    }
-                    return `${prev} · 优质模型预热中...`;
-                });
-
-                const { result, lastErrorText } = await loadModelWithStrategies(webllm, PREMIUM_MODEL_ID, '优质模型预热：', true);
-                if (!result) {
-                    premiumLastLoadFailedAtRef.current = Date.now();
-                    const hint = getWebLLMFailureHint(lastErrorText);
-                    pushMessage(
-                        'system',
-                        `优质模型预热失败，继续使用兜底模型。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
-                    );
-                    return;
-                }
-
-                premiumEngineRef.current = result.engine;
-                activeEngineRef.current = result.engine;
-                setActiveModelTier('premium');
-                setActiveModelId(PREMIUM_MODEL_ID);
-                setLlmState('ready');
-                setLlmProgress(`优质模型已就绪(${result.strategy.label})，已自动切换`);
-                pushMessage('system', `优质模型已就绪：${PREMIUM_MODEL_ID}（${result.strategy.label}），当前优先使用优质模型。`);
-                premiumLastLoadFailedAtRef.current = 0;
-            } catch (error) {
-                premiumLastLoadFailedAtRef.current = Date.now();
-                const errorText = error instanceof Error ? error.message : String(error);
-                const hint = getWebLLMFailureHint(errorText);
-                pushMessage(
-                    'system',
-                    `优质模型预热失败，继续使用兜底模型。${errorText ? `（${errorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
-                );
-            } finally {
-                premiumLoadingPromiseRef.current = null;
             }
-        })();
-
-        await premiumLoadingPromiseRef.current;
-    }, [getWebLLMModule, hasModelInAnyStrategy, loadModelWithStrategies, pushMessage, storagePersistence]);
-
-    const ensureLLMEngine = React.useCallback(async (): Promise<MLCEngineInterface | null> => {
-        if (premiumEngineRef.current) {
-            activeEngineRef.current = premiumEngineRef.current;
-            setActiveModelTier('premium');
-            setActiveModelId(PREMIUM_MODEL_ID);
-            return premiumEngineRef.current;
+        } catch {
+            gpuName = 'unknown';
         }
 
-        if (activeEngineRef.current) {
-            if (!premiumEngineRef.current) {
-                void warmupPremiumModel();
+        if (platform === 'mac' && gpuTier === 'unknown') {
+            gpuTier = 'integrated';
+        }
+
+        const profile: DeviceProfile = { platform, memoryGB, gpuTier, gpuName };
+        const pick = (ids: Qwen3ModelId[]): Qwen3ModelId => {
+            for (let i = 0; i < ids.length; i++) {
+                if (modelSet.has(ids[i])) {
+                    return ids[i];
+                }
             }
-            return activeEngineRef.current;
+            for (let i = 0; i < QWEN3_MODEL_IDS.length; i++) {
+                if (modelSet.has(QWEN3_MODEL_IDS[i])) {
+                    return QWEN3_MODEL_IDS[i];
+                }
+            }
+            return DEFAULT_QWEN3_MODEL_ID;
+        };
+
+        let recommended: Qwen3ModelId;
+        if (profile.platform === 'mac') {
+            if (profile.memoryGB >= 32) {
+                recommended = pick(['Qwen3-8B-q4f16_1-MLC', 'Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC']);
+            } else if (profile.memoryGB >= 24) {
+                recommended = pick(['Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+            } else if (profile.memoryGB >= 16) {
+                recommended = pick(['Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+            } else {
+                recommended = pick(['Qwen3-0.6B-q4f16_1-MLC']);
+            }
+        } else if (profile.platform === 'win' && profile.gpuTier === 'discrete') {
+            if (profile.memoryGB >= 24) {
+                recommended = pick(['Qwen3-8B-q4f16_1-MLC', 'Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC']);
+            } else if (profile.memoryGB >= 12) {
+                recommended = pick(['Qwen3-4B-q4f16_1-MLC', 'Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+            } else if (profile.memoryGB >= 8) {
+                recommended = pick(['Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+            } else {
+                recommended = pick(['Qwen3-0.6B-q4f16_1-MLC']);
+            }
+        } else if (profile.memoryGB >= 16) {
+            recommended = pick(['Qwen3-1.7B-q4f16_1-MLC', 'Qwen3-0.6B-q4f16_1-MLC']);
+        } else {
+            recommended = pick(['Qwen3-0.6B-q4f16_1-MLC']);
         }
 
-        if (loadingPromiseRef.current) {
-            return loadingPromiseRef.current;
-        }
+        const tierText = profile.gpuTier === 'discrete' ? '独显' : (profile.gpuTier === 'integrated' ? '集显' : '未知显卡');
+        const platformLabel = profile.platform === 'mac' ? 'macOS' : (profile.platform === 'win' ? 'Windows' : 'Other');
+        setDeviceHint(`${platformLabel} / ${tierText} / ${profile.memoryGB}GB`);
+        setRecommendedModelId(recommended);
+        autoProfileReadyRef.current = true;
+        return recommended;
+    }, [getAvailableQwen3ModelSet]);
 
-        if (llmState === 'unsupported') {
+    const resolveTargetModel = React.useCallback((pref: ModelPreference, autoModel: Qwen3ModelId): Qwen3ModelId => {
+        if (pref === 'auto') {
+            return autoModel;
+        }
+        return pref;
+    }, []);
+
+    const getDowngradedModel = React.useCallback((modelId: Qwen3ModelId, availableModelSet: Set<string>): Qwen3ModelId | null => {
+        const index = QWEN3_MODEL_IDS.indexOf(modelId);
+        if (index <= 0) {
             return null;
         }
-
-        if (llmState === 'error' && (Date.now() - lastLoadFailedAtRef.current < LLM_RETRY_COOLDOWN_MS)) {
-            return null;
+        for (let i = index - 1; i >= 0; i--) {
+            const candidate = QWEN3_MODEL_IDS[i];
+            if (availableModelSet.has(candidate)) {
+                return candidate;
+            }
         }
+        return null;
+    }, []);
 
+    const ensureLLMEngine = React.useCallback(async (requestedModel?: Qwen3ModelId): Promise<MLCEngineInterface | null> => {
         if (!('gpu' in navigator)) {
             setLlmState('unsupported');
             setLlmProgress('浏览器不支持 WebGPU');
@@ -566,43 +640,99 @@ const DeepMode = (): JSX.Element => {
             return null;
         }
 
+        if (llmState === 'error' && (Date.now() - lastLoadFailedAtRef.current < LLM_RETRY_COOLDOWN_MS)) {
+            return null;
+        }
+
+        const autoModel = autoProfileReadyRef.current ? recommendedModelId : await detectRecommendedModel();
+        const targetModel = requestedModel || resolveTargetModel(modelPreference, autoModel);
+
+        if (activeEngineRef.current && activeModelId === targetModel) {
+            return activeEngineRef.current;
+        }
+
+        if (loadingPromiseRef.current) {
+            if (loadingModelIdRef.current === targetModel) {
+                return loadingPromiseRef.current;
+            }
+            return null;
+        }
+
+        loadingModelIdRef.current = targetModel;
         loadingPromiseRef.current = (async () => {
             try {
                 setLlmState('loading');
-                setLlmProgress('正在加载 WebLLM...');
+                setLlmProgress(`正在加载 ${getModelDisplayName(targetModel)}...`);
 
                 const webllm = await getWebLLMModule();
-                const hasFallbackModel = webllm.prebuiltAppConfig.model_list.some((item: ModelRecord) => item.model_id === FALLBACK_MODEL_ID);
-                if (!hasFallbackModel) {
+                const availableModelSet = await getAvailableQwen3ModelSet();
+                if (!availableModelSet.has(targetModel)) {
+                    if (modelPreference !== 'auto' && availableModelSet.has(autoModel)) {
+                        setModelPreference('auto');
+                        setStoredModelPreference('auto');
+                        pushMessage('system', `手动模型 ${targetModel} 不可用，已自动切回推荐模型 ${autoModel}。`);
+                        loadingModelIdRef.current = autoModel;
+                        const retry = await loadModelWithStrategies(webllm, autoModel, `${getModelDisplayName(autoModel)} 加载：`);
+                        if (retry.result) {
+                            activeEngineRef.current = retry.result.engine;
+                            setActiveModelId(autoModel);
+                            setLlmState('ready');
+                            setLlmProgress(`${getModelDisplayName(autoModel)} 已就绪（${retry.result.strategy.label}）`);
+                            lastLoadFailedAtRef.current = 0;
+                            return retry.result.engine;
+                        }
+                        setLlmState('error');
+                        setLlmProgress('加载失败，可稍后自动重试');
+                        lastLoadFailedAtRef.current = Date.now();
+                        return null;
+                    }
                     setLlmState('error');
-                    setLlmProgress('兜底模型不可用');
-                    pushMessage('system', `兜底模型 ${FALLBACK_MODEL_ID} 不在可用列表中。`);
+                    setLlmProgress('目标模型不可用');
+                    pushMessage('system', `当前 WebLLM 版本未内置 ${targetModel}。`);
                     return null;
                 }
 
-                const { result, lastErrorText } = await loadModelWithStrategies(webllm, FALLBACK_MODEL_ID, '兜底模型加载：');
-                if (!result) {
+                if (activeEngineRef.current) {
+                    void activeEngineRef.current.unload();
+                    activeEngineRef.current = null;
+                }
+
+                let finalModelId: Qwen3ModelId = targetModel;
+                let loadResult = await loadModelWithStrategies(webllm, targetModel, `${getModelDisplayName(targetModel)} 加载：`);
+                if (!loadResult.result) {
+                    const downgraded = getDowngradedModel(targetModel, availableModelSet);
+                    if (downgraded) {
+                        setLlmProgress(`${getModelDisplayName(targetModel)} 加载失败，降级到 ${getModelDisplayName(downgraded)}...`);
+                        const downgradeResult = await loadModelWithStrategies(webllm, downgraded, `${getModelDisplayName(downgraded)} 加载：`);
+                        if (downgradeResult.result) {
+                            finalModelId = downgraded;
+                            loadResult = downgradeResult;
+                            setModelPreference(downgraded);
+                            setStoredModelPreference(downgraded);
+                            pushMessage('system', `模型已自动降级并持久化：${getModelDisplayName(targetModel)} -> ${getModelDisplayName(downgraded)}。`);
+                        }
+                    }
+                }
+
+                if (!loadResult.result) {
                     setLlmState('error');
                     setLlmProgress('加载失败，可稍后自动重试');
                     lastLoadFailedAtRef.current = Date.now();
-                    const hint = getWebLLMFailureHint(lastErrorText);
+                    const hint = getWebLLMFailureHint(loadResult.lastErrorText);
                     pushMessage(
                         'system',
-                        `兜底模型加载失败，已回退本地规则回复。${lastErrorText ? `（${lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
+                        `模型加载失败，已回退本地规则回复。${loadResult.lastErrorText ? `（${loadResult.lastErrorText.slice(0, 70)}）` : ''}${hint ? ` ${hint}` : ''}`,
                     );
                     return null;
                 }
 
-                fallbackEngineRef.current = result.engine;
-                activeEngineRef.current = result.engine;
-                setActiveModelTier('fallback');
-                setActiveModelId(FALLBACK_MODEL_ID);
+                activeEngineRef.current = loadResult.result.engine;
+                setActiveModelId(finalModelId);
                 setLlmState('ready');
-                setLlmProgress(`兜底模型已就绪(${result.strategy.label})，优质模型后台预热中...`);
+                setLlmProgress(`${getModelDisplayName(finalModelId)} 已就绪（${loadResult.result.strategy.label}）`);
                 lastLoadFailedAtRef.current = 0;
-                pushMessage('system', `兜底模型已就绪：${FALLBACK_MODEL_ID}（${result.strategy.label}），开始后台预热优质模型。`);
-                void warmupPremiumModel();
-                return result.engine;
+                pushMessage('system', `模型已就绪：${finalModelId}（${loadResult.result.strategy.label}）。`);
+                return loadResult.result.engine;
             } catch (error) {
                 const errorText = error instanceof Error ? error.message : String(error);
                 setLlmState('error');
@@ -616,11 +746,24 @@ const DeepMode = (): JSX.Element => {
                 return null;
             } finally {
                 loadingPromiseRef.current = null;
+                loadingModelIdRef.current = null;
             }
         })();
 
         return loadingPromiseRef.current;
-    }, [getWebLLMModule, llmState, loadModelWithStrategies, pushMessage, warmupPremiumModel]);
+    }, [
+        activeModelId,
+        detectRecommendedModel,
+        getAvailableQwen3ModelSet,
+        getDowngradedModel,
+        getWebLLMModule,
+        llmState,
+        loadModelWithStrategies,
+        modelPreference,
+        pushMessage,
+        recommendedModelId,
+        resolveTargetModel,
+    ]);
 
     const requestPersonaJson = React.useCallback(async (
         roleTarget: '22' | '33',
@@ -665,16 +808,8 @@ const DeepMode = (): JSX.Element => {
             return primaryReply;
         }
 
-        const backupReply = await tryGenerate(fallbackEngineRef.current);
-        if (backupReply) {
-            if (activeModelTier === 'premium') {
-                pushMessage('system', '优质模型本次响应失败，已自动回退兜底模型继续回复。');
-            }
-            return backupReply;
-        }
-
         return { text: fallbackComment, action: fallbackAction };
-    }, [activeModelTier, ensureLLMEngine, pushMessage]);
+    }, [ensureLLMEngine]);
 
     const askModel = React.useCallback(async (roleTarget: '22' | '33', userText: string): Promise<PersonaReply> => {
         const primaryEngine = await ensureLLMEngine();
@@ -727,14 +862,6 @@ const DeepMode = (): JSX.Element => {
             return primaryReply;
         }
 
-        const backupReply = await tryAsk(fallbackEngineRef.current);
-        if (backupReply) {
-            if (activeModelTier === 'premium') {
-                pushMessage('system', '优质模型本次响应失败，已自动回退兜底模型继续回复。');
-            }
-            return backupReply;
-        }
-
         const fallbackText = roleTarget === '22'
             ? `别有压力，这题可以拆开做。先把“${userText}”里最关键的一项处理掉。`
             : `结论先给你：这件事可以推进。建议先明确优先级，再按顺序执行。`;
@@ -743,7 +870,7 @@ const DeepMode = (): JSX.Element => {
             text: fallbackText,
             action: roleTarget === '22' ? 'curious' : 'thinking',
         };
-    }, [activeModelTier, ensureLLMEngine, pushMessage]);
+    }, [ensureLLMEngine]);
 
     const handleSearchFeedback = React.useCallback(async (keyword: string) => {
         if (!keyword || keyword.length < 2) {
@@ -1086,6 +1213,24 @@ const DeepMode = (): JSX.Element => {
         setPanelOpen((prev: boolean) => !prev);
     }, []);
 
+    const handleModelPreferenceChange = React.useCallback((event: React.ChangeEvent<HTMLSelectElement>): void => {
+        const value = event.target.value;
+        if (value !== 'auto' && !isQwen3ModelId(value)) {
+            return;
+        }
+        const nextPref: ModelPreference = value === 'auto' ? 'auto' : value;
+        setModelPreference(nextPref);
+        setStoredModelPreference(nextPref);
+        const message = nextPref === 'auto'
+            ? `已切回自动模型选择（当前推荐：${getModelDisplayName(recommendedModelId)}）。`
+            : `已切换模型：${getModelDisplayName(nextPref)}。`;
+        pushMessage('system', message);
+        if (panelOpen) {
+            const nextModel = resolveTargetModel(nextPref, recommendedModelId);
+            void ensureLLMEngine(nextModel);
+        }
+    }, [ensureLLMEngine, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
+
     React.useEffect(() => {
         if (!panelOpen) {
             return;
@@ -1101,8 +1246,12 @@ const DeepMode = (): JSX.Element => {
             void ensurePersistentStorage();
         }
 
-        void ensureLLMEngine();
-    }, [ensureLLMEngine, ensurePersistentStorage, panelOpen, pushMessage]);
+        void (async () => {
+            const autoModel = await detectRecommendedModel();
+            const targetModel = resolveTargetModel(modelPreference, autoModel);
+            await ensureLLMEngine(targetModel);
+        })();
+    }, [detectRecommendedModel, ensureLLMEngine, ensurePersistentStorage, modelPreference, panelOpen, pushMessage, resolveTargetModel]);
 
     React.useEffect(() => {
         const onSearchInput = (event: Event): void => {
@@ -1183,44 +1332,58 @@ const DeepMode = (): JSX.Element => {
 
     const wasPageVisibleRef = React.useRef<boolean>(true);
     const enginesPausedRef = React.useRef<boolean>(false);
+    const hiddenUnloadTimerRef = React.useRef<number | null>(null);
 
     React.useEffect(() => {
         const unloadEngines = (): void => {
-            const engineList = [
-                activeEngineRef.current,
-                fallbackEngineRef.current,
-                premiumEngineRef.current,
-            ].filter((item): item is MLCEngineInterface => Boolean(item));
-            const uniqueEngineList = Array.from(new Set(engineList));
-            uniqueEngineList.forEach((engine) => {
-                void engine.unload();
-            });
+            if (activeEngineRef.current) {
+                void activeEngineRef.current.unload();
+            }
             activeEngineRef.current = null;
-            fallbackEngineRef.current = null;
-            premiumEngineRef.current = null;
             enginesPausedRef.current = true;
             setLlmState('idle');
-            setActiveModelTier('none');
             setActiveModelId('已暂停（页面不可见）');
         };
 
+        const clearHiddenUnloadTimer = (): void => {
+            if (hiddenUnloadTimerRef.current !== null) {
+                window.clearTimeout(hiddenUnloadTimerRef.current);
+                hiddenUnloadTimerRef.current = null;
+            }
+        };
+
         const handleVisibilityChange = (isVisible: boolean): void => {
-            if (isVisible && !wasPageVisibleRef.current && enginesPausedRef.current) {
-                enginesPausedRef.current = false;
-                setLlmProgress('页面已激活，正在恢复...');
-                if (panelOpen && storageCheckedRef.current) {
-                    void ensureLLMEngine();
+            if (isVisible) {
+                clearHiddenUnloadTimer();
+                if (!wasPageVisibleRef.current && enginesPausedRef.current) {
+                    enginesPausedRef.current = false;
+                    setLlmProgress('页面已激活，正在恢复...');
+                    if (panelOpen && storageCheckedRef.current) {
+                        const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId);
+                        void ensureLLMEngine(nextTargetModel);
+                    }
                 }
-            } else if (!isVisible && wasPageVisibleRef.current && llmState === 'ready') {
-                unloadEngines();
-                pushMessage('system', '页面不可见，已暂停 WebLLM 以节省内存。');
+            } else if (!isVisible && wasPageVisibleRef.current && llmState === 'ready' && activeEngineRef.current) {
+                clearHiddenUnloadTimer();
+                hiddenUnloadTimerRef.current = window.setTimeout(() => {
+                    hiddenUnloadTimerRef.current = null;
+                    if (utils.isPageVisible() || !activeEngineRef.current) {
+                        return;
+                    }
+                    unloadEngines();
+                    pushMessage('system', '页面连续 10 分钟不可见，已暂停 WebLLM 以节省内存。');
+                }, PAGE_HIDDEN_UNLOAD_DELAY_MS);
+                pushMessage('system', '页面进入后台：10 分钟内如果未返回，将自动暂停 WebLLM。');
             }
             wasPageVisibleRef.current = isVisible;
         };
 
         const removeListener = utils.addVisibilityListener(handleVisibilityChange);
-        return removeListener;
-    }, [ensureLLMEngine, panelOpen, pushMessage, llmState]);
+        return () => {
+            clearHiddenUnloadTimer();
+            removeListener();
+        };
+    }, [ensureLLMEngine, llmState, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
     React.useEffect(() => {
         return () => {
@@ -1228,21 +1391,17 @@ const DeepMode = (): JSX.Element => {
                 window.clearTimeout(searchDebounceRef.current);
                 searchDebounceRef.current = null;
             }
-            const engineList = [
-                activeEngineRef.current,
-                fallbackEngineRef.current,
-                premiumEngineRef.current,
-            ].filter((item): item is MLCEngineInterface => Boolean(item));
-            const uniqueEngineList = Array.from(new Set(engineList));
-            uniqueEngineList.forEach((engine) => {
-                void engine.unload();
-            });
+            if (hiddenUnloadTimerRef.current !== null) {
+                window.clearTimeout(hiddenUnloadTimerRef.current);
+                hiddenUnloadTimerRef.current = null;
+            }
+            if (activeEngineRef.current) {
+                void activeEngineRef.current.unload();
+            }
             activeEngineRef.current = null;
-            fallbackEngineRef.current = null;
-            premiumEngineRef.current = null;
             webllmModuleRef.current = null;
             loadingPromiseRef.current = null;
-            premiumLoadingPromiseRef.current = null;
+            loadingModelIdRef.current = null;
         };
     }, []);
 
@@ -1256,9 +1415,7 @@ const DeepMode = (): JSX.Element => {
             : (storagePersistence === 'denied'
                 ? '未授权持久化'
                 : (storagePersistence === 'unsupported' ? '浏览器不支持' : '待检测')));
-    const modelTierText = activeModelTier === 'premium'
-        ? '优质模型'
-        : (activeModelTier === 'fallback' ? '兜底模型' : '未启用');
+    const selectedModelId = resolveTargetModel(modelPreference, recommendedModelId);
 
     return (
         <div className='kaguya-deep'>
@@ -1285,8 +1442,25 @@ const DeepMode = (): JSX.Element => {
 
                 <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
                 <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
-                <div className='kaguya-deep-meta'>当前模型：{activeModelId}（{modelTierText}）</div>
+                <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
                 <div className='kaguya-deep-meta'>模型缓存：{storageText}</div>
+                <div className='kaguya-deep-meta'>设备评估：{deviceHint}</div>
+                <div className='kaguya-deep-model-row'>
+                    <label className='kaguya-deep-model-label' htmlFor='kaguya-model-select'>模型</label>
+                    <select
+                        id='kaguya-model-select'
+                        className='kaguya-deep-model-select'
+                        value={modelPreference}
+                        onChange={handleModelPreferenceChange}
+                    >
+                        <option value='auto'>自动（推荐：{getModelDisplayName(recommendedModelId)}）</option>
+                        {QWEN3_MODEL_IDS.map((modelId) => (
+                            <option key={modelId} value={modelId}>
+                                {getModelDisplayName(modelId)}{selectedModelId === modelId ? ' · 当前目标' : ''}
+                            </option>
+                        ))}
+                    </select>
+                </div>
 
                 <div className='kaguya-deep-targets'>
                     <button

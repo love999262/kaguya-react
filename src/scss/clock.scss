@@ -81,6 +81,22 @@
 
 @media screen and (max-width: 1320px) {
     .#{$kaguya}-dial {
+        transform: scale(0.74);
+        transform-origin: top left;
+        left: 8px;
+        top: 16px;
+    }
+
+    .#{$kaguya}-digital {
+        transform: scale(0.74);
+        transform-origin: top left;
+        left: 112px;
+        top: 38px;
+    }
+}
+
+@media screen and (max-width: 1120px) {
+    .#{$kaguya}-dial {
         display: none;
     }
 

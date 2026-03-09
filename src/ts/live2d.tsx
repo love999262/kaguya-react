@@ -1,8 +1,8 @@
 import * as React from 'react';
-import utils from './utils';
 
-const SHOW_MIN_WIDTH = 1320;
+const SHOW_MIN_WIDTH = 1120;
 const LIVE2D_SCRIPT_URL = 'live2d/lib/L2Dwidget.min.js';
+const DRAG_EDGE_VISIBLE_MIN = 52;
 
 const MODEL_MAP: Record<'22' | '33', string> = {
     '22': 'live2d/model/bilibili-live/22/index.json',
@@ -21,6 +21,10 @@ type DragState = {
     startScreenY: number;
     baseX: number;
     baseY: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
 };
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -85,7 +89,6 @@ window.addEventListener('load', function () {
 
 const Live2D = (): JSX.Element => {
     const [visible, setVisible] = React.useState<boolean>(window.innerWidth >= SHOW_MIN_WIDTH);
-    const [isPageActive, setIsPageActive] = React.useState<boolean>(true);
     const [offsets, setOffsets] = React.useState<OffsetState>({
         '22': { x: 0, y: 0 },
         '33': { x: 0, y: 0 },
@@ -101,6 +104,8 @@ const Live2D = (): JSX.Element => {
 
     const offsetsRef = React.useRef<OffsetState>(offsets);
     const dragRef = React.useRef<DragState | null>(null);
+    const shell22Ref = React.useRef<HTMLDivElement | null>(null);
+    const shell33Ref = React.useRef<HTMLDivElement | null>(null);
     const frame22Ref = React.useRef<HTMLIFrameElement | null>(null);
     const frame33Ref = React.useRef<HTMLIFrameElement | null>(null);
     const cleanupsRef = React.useRef<Array<() => void>>([]);
@@ -117,9 +122,46 @@ const Live2D = (): JSX.Element => {
         offsetsRef.current = offsets;
     }, [offsets]);
 
+    const getShellElement = React.useCallback((id: ModelId): HTMLDivElement | null => {
+        return id === '22' ? shell22Ref.current : shell33Ref.current;
+    }, []);
+
+    const getDragBounds = React.useCallback((id: ModelId, baseX: number, baseY: number) => {
+        const shell = getShellElement(id);
+        if (!shell) {
+            return {
+                minX: baseX - 520,
+                maxX: baseX + 520,
+                minY: baseY - 340,
+                maxY: baseY + 260,
+            };
+        }
+
+        const rect = shell.getBoundingClientRect();
+        const edgeX = Math.min(96, Math.max(DRAG_EDGE_VISIBLE_MIN, rect.width * 0.32));
+        const edgeY = Math.min(128, Math.max(DRAG_EDGE_VISIBLE_MIN, rect.height * 0.3));
+        const minX = baseX - (rect.right - edgeX);
+        const maxX = baseX + ((window.innerWidth - edgeX) - rect.left);
+        const minY = baseY - (rect.bottom - edgeY);
+        const maxY = baseY + ((window.innerHeight - edgeY) - rect.top);
+        return { minX, maxX, minY, maxY };
+    }, [getShellElement]);
+
+    const clampOffsetByViewport = React.useCallback((id: ModelId, offset: { x: number; y: number }) => {
+        const bounds = getDragBounds(id, offset.x, offset.y);
+        return {
+            x: clamp(offset.x, bounds.minX, bounds.maxX),
+            y: clamp(offset.y, bounds.minY, bounds.maxY),
+        };
+    }, [getDragBounds]);
+
     React.useEffect(() => {
         const onResize = (): void => {
             setVisible(window.innerWidth >= SHOW_MIN_WIDTH);
+            setOffsets((prev: OffsetState) => ({
+                '22': clampOffsetByViewport('22', prev['22']),
+                '33': clampOffsetByViewport('33', prev['33']),
+            }));
         };
 
         onResize();
@@ -127,16 +169,7 @@ const Live2D = (): JSX.Element => {
         return () => {
             window.removeEventListener('resize', onResize);
         };
-    }, []);
-
-    React.useEffect(() => {
-        const handleVisibilityChange = (isVisible: boolean): void => {
-            setIsPageActive(isVisible);
-        };
-
-        const removeListener = utils.addVisibilityListener(handleVisibilityChange);
-        return removeListener;
-    }, []);
+    }, [clampOffsetByViewport]);
 
     const applyAction = React.useCallback((id: ModelId, action: Live2DAction): void => {
         setActions((prev: ActionState) => ({
@@ -181,12 +214,14 @@ const Live2D = (): JSX.Element => {
             }
 
             const current = offsetsRef.current[id];
+            const bounds = getDragBounds(id, current.x, current.y);
             dragRef.current = {
                 id,
                 startScreenX: event.screenX,
                 startScreenY: event.screenY,
                 baseX: current.x,
                 baseY: current.y,
+                ...bounds,
             };
 
             doc.body.style.cursor = 'grabbing';
@@ -202,8 +237,8 @@ const Live2D = (): JSX.Element => {
                 return;
             }
 
-            const nextX = clamp(state.baseX + (event.screenX - state.startScreenX), -460, 320);
-            const nextY = clamp(state.baseY + (event.screenY - state.startScreenY), -240, 180);
+            const nextX = clamp(state.baseX + (event.screenX - state.startScreenX), state.minX, state.maxX);
+            const nextY = clamp(state.baseY + (event.screenY - state.startScreenY), state.minY, state.maxY);
 
             setOffsets((prev: OffsetState) => ({
                 ...prev,
@@ -230,7 +265,7 @@ const Live2D = (): JSX.Element => {
             doc.removeEventListener('pointercancel', onPointerUp);
             frame.dataset.dragBound = '0';
         });
-    }, []);
+    }, [getDragBounds]);
 
     React.useEffect(() => {
         if (!visible) {
@@ -349,13 +384,14 @@ const Live2D = (): JSX.Element => {
         };
     }, []);
 
-    if (!visible || !isPageActive) {
+    if (!visible) {
         return <></>;
     }
 
     return (
         <div className='kaguya-live2d-group'>
             <div
+                ref={shell22Ref}
                 className={`kaguya-live2d-shell kaguya-live2d-shell-22 kaguya-live2d-shell-action-${actions['22']}`}
                 style={{ transform: `translate3d(${offsets['22'].x}px, ${offsets['22'].y}px, 0)` }}
             >
@@ -370,6 +406,7 @@ const Live2D = (): JSX.Element => {
                 />
             </div>
             <div
+                ref={shell33Ref}
                 className={`kaguya-live2d-shell kaguya-live2d-shell-33 kaguya-live2d-shell-action-${actions['33']}`}
                 style={{ transform: `translate3d(${offsets['33'].x}px, ${offsets['33'].y}px, 0)` }}
             >
