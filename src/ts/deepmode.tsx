@@ -77,6 +77,7 @@ const IDLE_THRESHOLD_MS = 80000;
 const PAGE_HIDDEN_UNLOAD_DELAY_MS = 10 * 60 * 1000;
 const LLM_RETRY_COOLDOWN_MS = 12000;
 const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
+const LLM_SOURCE_STORAGE_KEY = 'kaguya:webllm:source';
 const LLM_MODEL_PREF_STORAGE_KEY = 'kaguya:webllm:model-pref';
 const TODAY_WEATHER_COMMENT_STORAGE_KEY = 'kaguya:today-weather-commented';
 
@@ -98,9 +99,12 @@ type LLMLoadStrategy = {
     useIndexedDBCache: boolean;
 };
 
+type LLMSourceStrategyId = 'hf-mirror' | 'huggingface' | 'cors-proxy';
+
 type LLMLoadResult = {
     engine: MLCEngineInterface;
     strategy: LLMLoadStrategy;
+    sourceStrategyId: LLMSourceStrategyId;
 };
 
 const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
@@ -108,16 +112,22 @@ const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
     { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false },
 ];
 const PREFERRED_CACHE_STRATEGY_ID: LLMLoadStrategy['id'] = 'indexeddb';
+const LLM_SOURCE_STRATEGIES: LLMSourceStrategyId[] = ['hf-mirror', 'huggingface', 'cors-proxy'];
+const DEFAULT_SOURCE_STRATEGY_ID: LLMSourceStrategyId = 'cors-proxy';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
 });
 
-const buildAppConfigWithStrategy = (baseConfig: AppConfig, strategy: LLMLoadStrategy): AppConfig => {
+const buildAppConfigWithStrategy = (
+    baseConfig: AppConfig,
+    strategy: LLMLoadStrategy,
+    sourceStrategyId: LLMSourceStrategyId = DEFAULT_SOURCE_STRATEGY_ID,
+): AppConfig => {
     const modelList = baseConfig.model_list.map((item: ModelRecord) => ({
         ...item,
-        model: rewriteModelHubUrl(item.model || ''),
-        model_lib: rewriteModelLibUrl(item.model_lib || ''),
+        model: rewriteModelHubUrl(item.model || '', sourceStrategyId),
+        model_lib: rewriteModelLibUrl(item.model_lib || '', sourceStrategyId),
     }));
 
     return {
@@ -144,6 +154,32 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
     } catch {
         // ignore storage quota / private mode issues
     }
+};
+
+const getStoredSourceStrategyId = (): LLMSourceStrategyId | null => {
+    try {
+        const value = window.localStorage.getItem(LLM_SOURCE_STORAGE_KEY);
+        if (value === 'hf-mirror' || value === 'huggingface' || value === 'cors-proxy') {
+            return value;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+};
+
+const setStoredSourceStrategyId = (id: LLMSourceStrategyId): void => {
+    try {
+        window.localStorage.setItem(LLM_SOURCE_STORAGE_KEY, id);
+    } catch {
+        // ignore storage quota / private mode issues
+    }
+};
+
+const getSourceStrategyLabel = (id: LLMSourceStrategyId): string => {
+    if (id === 'hf-mirror') return 'HF-Mirror';
+    if (id === 'cors-proxy') return 'CORS代理';
+    return 'HuggingFace';
 };
 
 const getStoredModelPreference = (): ModelPreference => {
@@ -226,23 +262,63 @@ const getStrongestQwenModel = (modelIds: string[]): string | null => {
     return sorted[0];
 };
 
-const rewriteModelHubUrl = (url: string): string => {
+// CORS 代理服务列表，按优先级排序
+const CORS_PROXIES = [
+    'https://api.allorigins.win/raw?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+];
+
+const getCorsProxyUrl = (url: string, proxyIndex: number = 0): string => {
+    if (!url || proxyIndex >= CORS_PROXIES.length) {
+        return url;
+    }
+    return `${CORS_PROXIES[proxyIndex]}${encodeURIComponent(url)}`;
+};
+
+const rewriteModelHubUrl = (url: string, sourceStrategyId: LLMSourceStrategyId): string => {
     if (!url) {
         return url;
     }
-    if (url.startsWith('https://huggingface.co/')) {
+    // CORS 代理模式：通过代理访问 HuggingFace
+    if (sourceStrategyId === 'cors-proxy') {
+        // 如果已经是代理 URL，直接返回
+        if (CORS_PROXIES.some(proxy => url.startsWith(proxy))) {
+            return url;
+        }
+        // 将 hf-mirror 或 huggingface 的 URL 转为 huggingface 主站 URL，然后通过代理访问
+        let normalizedUrl = url;
+        if (url.startsWith('https://hf-mirror.com/')) {
+            normalizedUrl = url.replace('https://hf-mirror.com/', 'https://huggingface.co/');
+        }
+        return getCorsProxyUrl(normalizedUrl, 0);
+    }
+    if (sourceStrategyId === 'hf-mirror' && url.startsWith('https://huggingface.co/')) {
         return url.replace('https://huggingface.co/', 'https://hf-mirror.com/');
+    }
+    if (sourceStrategyId === 'huggingface' && url.startsWith('https://hf-mirror.com/')) {
+        return url.replace('https://hf-mirror.com/', 'https://huggingface.co/');
     }
     return url;
 };
 
-const rewriteModelLibUrl = (url: string): string => {
+const rewriteModelLibUrl = (url: string, sourceStrategyId: LLMSourceStrategyId): string => {
     if (!url) {
         return url;
     }
-    if (url.startsWith('https://raw.githubusercontent.com/')) {
+    // CORS 代理模式：通过代理访问
+    if (sourceStrategyId === 'cors-proxy') {
+        if (CORS_PROXIES.some(proxy => url.startsWith(proxy))) {
+            return url;
+        }
+        return getCorsProxyUrl(url, 0);
+    }
+    if (sourceStrategyId === 'hf-mirror' && url.startsWith('https://raw.githubusercontent.com/')) {
         const path = url.replace('https://raw.githubusercontent.com/', '');
         return `https://cdn.jsdelivr.net/gh/${path}`;
+    }
+    if (sourceStrategyId === 'huggingface' && url.startsWith('https://cdn.jsdelivr.net/gh/')) {
+        const path = url.replace('https://cdn.jsdelivr.net/gh/', '');
+        return `https://raw.githubusercontent.com/${path}`;
     }
     return url;
 };
@@ -377,7 +453,7 @@ const parseJsonPayload = (raw: string): { comment: string; action: Live2DAction 
     }
 };
 
-const DeepMode = (): JSX.Element => {
+const DeepMode = (): React.JSX.Element => {
     const [panelOpen, setPanelOpen] = React.useState<boolean>(false);
     const [draft, setDraft] = React.useState<string>('');
     const [target, setTarget] = React.useState<TalkTarget>('all');
@@ -386,6 +462,9 @@ const DeepMode = (): JSX.Element => {
     const [activeModelId, setActiveModelId] = React.useState<string>('未加载');
     const [activeModelSource, setActiveModelSource] = React.useState<string>('未解析');
     const [modelPreference, setModelPreference] = React.useState<ModelPreference>(getStoredModelPreference);
+    const [sourceStrategyId, setSourceStrategyId] = React.useState<LLMSourceStrategyId>(
+        getStoredSourceStrategyId() || DEFAULT_SOURCE_STRATEGY_ID,
+    );
     const [recommendedModelId, setRecommendedModelId] = React.useState<string>(DEFAULT_QWEN3_MODEL_ID);
     const [allModelIds, setAllModelIds] = React.useState<string[]>([]);
     const [cachedModelIds, setCachedModelIds] = React.useState<string[]>([]);
@@ -516,13 +595,14 @@ const DeepMode = (): JSX.Element => {
         modelId: string,
         stageLabel: string,
         silentProgress: boolean = false,
+        currentSourceStrategyId: LLMSourceStrategyId = sourceStrategyId,
     ): Promise<{ result: LLMLoadResult | null; lastErrorText: string; }> => {
         const strategyOrder = getStrategyOrder();
         let lastErrorText = '';
 
         for (let strategyIndex = 0; strategyIndex < strategyOrder.length; strategyIndex++) {
             const strategy = strategyOrder[strategyIndex];
-            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy, currentSourceStrategyId);
             const hasCachedModel = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
             if (hasCachedModel && !silentProgress) {
                 setLlmProgress(`${stageLabel}命中本地缓存(${strategy.label})，正在恢复...`);
@@ -545,6 +625,7 @@ const DeepMode = (): JSX.Element => {
                         result: {
                             engine,
                             strategy,
+                            sourceStrategyId: currentSourceStrategyId,
                         },
                         lastErrorText,
                     };
@@ -565,7 +646,7 @@ const DeepMode = (): JSX.Element => {
         }
 
         return { result: null, lastErrorText };
-    }, [getStrategyOrder]);
+    }, [getStrategyOrder, sourceStrategyId]);
 
     const ensureModelCatalog = React.useCallback(async (): Promise<Set<string>> => {
         if (availableModelSetRef.current.size > 0) {
@@ -603,7 +684,7 @@ const DeepMode = (): JSX.Element => {
             const modelId = modelIds[i];
             let hasCache = false;
             for (let j = 0; j < strategyOrder.length; j++) {
-                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategyOrder[j]);
+                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategyOrder[j], sourceStrategyId);
                 hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
                 if (hasCache) {
                     break;
@@ -614,7 +695,7 @@ const DeepMode = (): JSX.Element => {
             }
         }
         setCachedModelIds(cached);
-    }, [ensureModelCatalog, getStrategyOrder, getWebLLMModule]);
+    }, [ensureModelCatalog, getStrategyOrder, getWebLLMModule, sourceStrategyId]);
 
     const detectRecommendedModel = React.useCallback(async (): Promise<string> => {
         const modelSet = await ensureModelCatalog();
@@ -783,7 +864,7 @@ const DeepMode = (): JSX.Element => {
 
                 const webllm = await getWebLLMModule();
                 const modelRecord = modelRecordMapRef.current.get(targetModel);
-                const resolvedModelHubUrl = rewriteModelHubUrl(modelRecord?.model || '');
+                const resolvedModelHubUrl = rewriteModelHubUrl(modelRecord?.model || '', sourceStrategyId);
                 if (resolvedModelHubUrl) {
                     setActiveModelSource(resolvedModelHubUrl);
                 } else if (modelRecord?.model) {
@@ -887,6 +968,7 @@ const DeepMode = (): JSX.Element => {
         pushMessage,
         recommendedModelId,
         resolveTargetModel,
+        sourceStrategyId,
     ]);
 
     const requestPersonaJson = React.useCallback(async (
@@ -1623,6 +1705,25 @@ const DeepMode = (): JSX.Element => {
                         {allModelIds.map((modelId) => (
                             <option key={modelId} value={modelId}>
                                 {`${modelId}${cachedModelIdSet.has(modelId) ? ' [已缓存]' : ''}`}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className='kaguya-deep-model-all'>
+                    <span className='kaguya-deep-model-all-label'>模型源</span>
+                    <select
+                        className='kaguya-deep-model-all-select'
+                        value={sourceStrategyId}
+                        onChange={(e) => {
+                            const newStrategy = e.target.value as LLMSourceStrategyId;
+                            setSourceStrategyId(newStrategy);
+                            setStoredSourceStrategyId(newStrategy);
+                            pushMessage('system', `模型源已切换为：${getSourceStrategyLabel(newStrategy)}`);
+                        }}
+                    >
+                        {LLM_SOURCE_STRATEGIES.map((strategyId) => (
+                            <option key={strategyId} value={strategyId}>
+                                {getSourceStrategyLabel(strategyId)}
                             </option>
                         ))}
                     </select>
