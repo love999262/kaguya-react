@@ -99,7 +99,7 @@ type LLMLoadStrategy = {
     useIndexedDBCache: boolean;
 };
 
-type LLMSourceStrategyId = 'hf-mirror' | 'huggingface' | 'cors-proxy';
+type LLMSourceStrategyId = 'original' | 'hf-mirror' | 'huggingface' | 'cors-proxy';
 
 type LLMLoadResult = {
     engine: MLCEngineInterface;
@@ -112,8 +112,8 @@ const LLM_LOAD_STRATEGIES: LLMLoadStrategy[] = [
     { id: 'cache-api', label: 'CacheAPI', useIndexedDBCache: false },
 ];
 const PREFERRED_CACHE_STRATEGY_ID: LLMLoadStrategy['id'] = 'indexeddb';
-const LLM_SOURCE_STRATEGIES: LLMSourceStrategyId[] = ['hf-mirror', 'huggingface', 'cors-proxy'];
-const DEFAULT_SOURCE_STRATEGY_ID: LLMSourceStrategyId = 'cors-proxy';
+const LLM_SOURCE_STRATEGIES: LLMSourceStrategyId[] = ['original', 'hf-mirror', 'huggingface', 'cors-proxy'];
+const DEFAULT_SOURCE_STRATEGY_ID: LLMSourceStrategyId = 'original';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -159,7 +159,7 @@ const setStoredStrategyId = (id: LLMLoadStrategy['id']): void => {
 const getStoredSourceStrategyId = (): LLMSourceStrategyId | null => {
     try {
         const value = window.localStorage.getItem(LLM_SOURCE_STORAGE_KEY);
-        if (value === 'hf-mirror' || value === 'huggingface' || value === 'cors-proxy') {
+        if (value === 'original' || value === 'hf-mirror' || value === 'huggingface' || value === 'cors-proxy') {
             return value;
         }
     } catch {
@@ -177,6 +177,7 @@ const setStoredSourceStrategyId = (id: LLMSourceStrategyId): void => {
 };
 
 const getSourceStrategyLabel = (id: LLMSourceStrategyId): string => {
+    if (id === 'original') return '原始';
     if (id === 'hf-mirror') return 'HF-Mirror';
     if (id === 'cors-proxy') return 'CORS代理';
     return 'HuggingFace';
@@ -279,6 +280,10 @@ const rewriteModelHubUrl = (url: string, sourceStrategyId: LLMSourceStrategyId):
     if (!url) {
         return url;
     }
+    // 原始模式：不做任何修改，使用 WebLLM 预配置的原始 URL
+    if (sourceStrategyId === 'original') {
+        return url;
+    }
     // CORS 代理模式：通过代理访问 HuggingFace
     if (sourceStrategyId === 'cors-proxy') {
         // 如果已经是代理 URL，直接返回
@@ -303,6 +308,10 @@ const rewriteModelHubUrl = (url: string, sourceStrategyId: LLMSourceStrategyId):
 
 const rewriteModelLibUrl = (url: string, sourceStrategyId: LLMSourceStrategyId): string => {
     if (!url) {
+        return url;
+    }
+    // 原始模式：不做任何修改
+    if (sourceStrategyId === 'original') {
         return url;
     }
     // CORS 代理模式：通过代理访问
