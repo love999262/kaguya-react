@@ -245,6 +245,19 @@ const getCorsProxyUrl = (url: string, proxyIndex: number = 0): string => {
     return `${CORS_PROXIES[proxyIndex]}${encodeURIComponent(url)}`;
 };
 
+// 全局拦截 fetch 请求，自动添加 CORS 代理
+const originalFetch = window.fetch;
+window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    let url = typeof input === 'string' ? input : input.toString();
+    // 如果是 HuggingFace 或 hf-mirror 的请求，添加 CORS 代理
+    if ((url.includes('huggingface.co') || url.includes('hf-mirror.com')) && !url.includes('api.allorigins.win')) {
+        const proxiedUrl = getCorsProxyUrl(url);
+        console.log('[CORS Proxy] Redirecting:', url, '->', proxiedUrl);
+        return originalFetch(proxiedUrl, init);
+    }
+    return originalFetch(input, init);
+};
+
 const getWebLLMFailureHint = (message: string): string => {
     const lower = message.toLowerCase();
     if (lower.includes('cors') || lower.includes('access-control-allow-origin')) {
@@ -502,17 +515,6 @@ const DeepMode = (): React.JSX.Element => {
                 model_lib: getCorsProxyUrl(item.model_lib || ''),
             }));
         }
-        // 拦截 fetch 请求，自动添加 CORS 代理
-        const originalFetch = window.fetch;
-        window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-            let url = typeof input === 'string' ? input : input.toString();
-            // 如果是 HuggingFace 或 hf-mirror 的请求，添加 CORS 代理
-            if (url.includes('huggingface.co') || url.includes('hf-mirror.com')) {
-                url = getCorsProxyUrl(url);
-                console.log('[CORS Proxy] Redirecting to:', url);
-            }
-            return originalFetch(url, init);
-        };
         webllmModuleRef.current = webllm;
         return webllm;
     }, []);
