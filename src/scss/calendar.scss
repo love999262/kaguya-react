@@ -51,15 +51,14 @@
         margin: 0 0 8px;
         min-height: 46px;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
-        gap: 4px;
-        padding: 5px 6px;
+        grid-template-columns: repeat(7, 1fr); // 固定7列，避免换行
+        gap: 3px; // 减少间距
+        padding: 4px 5px;
         border-radius: 10px !important;
         border: 1px solid rgba(176, 208, 239, 0.26);
         background: rgba(92, 136, 183, 0.17);
-        max-height: 108px;
-        overflow-y: auto;
-        overflow-x: hidden;
+        max-height: none; // 移除最大高度限制
+        overflow: visible; // 移除滚动条
     }
 
     &-calendar-weather-loading {

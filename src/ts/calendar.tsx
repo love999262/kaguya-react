@@ -191,7 +191,7 @@ const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db
 const WEEK_TEXT_FULL = ['\u5468\u65e5', '\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d'];
 const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'];
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const WEATHER_FORECAST_TARGET_DAYS = 14;
+const WEATHER_FORECAST_TARGET_DAYS = 7; // 减少展示天数以避免滚动条
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
