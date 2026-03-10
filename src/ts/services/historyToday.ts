@@ -12,9 +12,9 @@ export interface TodayInHistory {
     events: HistoryEvent[];
 }
 
-// 本地缓存
+// 本地缓存 - 缓存一个月（30天）
 const CACHE_KEY = 'kaguya:history:today';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24小时
+const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30天
 
 interface CacheData {
     date: string;
@@ -177,10 +177,25 @@ function categorizeEvent(text: string): HistoryEvent['type'] {
 }
 
 // 获取历史上的今天
-export async function getTodayInHistory(): Promise<TodayInHistory | null> {
+// silentMode: 如果为true，则优先使用缓存，只在后台静默更新
+export async function getTodayInHistory(silentMode = false): Promise<TodayInHistory | null> {
     // 先检查缓存
     const cache = getCache();
     if (cache) {
+        // 静默模式下，先返回缓存数据，后台静默更新
+        if (silentMode) {
+            // 后台静默刷新数据
+            setTimeout(() => {
+                fetchFromWikipedia().then((data) => {
+                    if (data) {
+                        console.log('[History] 后台静默更新成功');
+                    }
+                }).catch(() => {
+                    // 忽略后台更新错误
+                });
+            }, 100);
+            return cache.data;
+        }
         return cache.data;
     }
 

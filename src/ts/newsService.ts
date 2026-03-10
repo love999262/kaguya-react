@@ -41,8 +41,7 @@ type GithubTrendingResponse = {
     }>;
 };
 
-const NEWS_CACHE_KEY = 'kaguya:news:cache';
-const NEWS_CACHE_DURATION = 30 * 60 * 1000;
+// 新闻接口不做本地缓存，每次实时获取
 
 const RSS2JSON_ENDPOINT = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
@@ -187,35 +186,8 @@ async function fetchFromAPI(source: NewsAPISource): Promise<NewsItem[]> {
     }
 }
 
-function getCachedNews(): NewsResponse | null {
-    try {
-        const cached = localStorage.getItem(NEWS_CACHE_KEY);
-        if (!cached) {
-            return null;
-        }
-        const parsed = JSON.parse(cached) as NewsResponse;
-        if (!parsed?.timestamp || !Array.isArray(parsed?.items)) {
-            return null;
-        }
-        if (Date.now() - parsed.timestamp > NEWS_CACHE_DURATION) {
-            return null;
-        }
-        return parsed;
-    } catch {
-        return null;
-    }
-}
-
-function setCachedNews(items: NewsItem[]): void {
-    try {
-        localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({
-            items,
-            timestamp: Date.now(),
-        }));
-    } catch {
-        // ignore storage quota issues
-    }
-}
+// 新闻接口不做本地缓存，每次实时获取
+// 移除 getCachedNews 和 setCachedNews 函数
 
 function dedupeNews(items: NewsItem[]): NewsItem[] {
     const seen = new Set<string>();
@@ -229,14 +201,8 @@ function dedupeNews(items: NewsItem[]): NewsItem[] {
     });
 }
 
-export async function fetchHotNews(forceRefresh = false): Promise<NewsItem[]> {
-    if (!forceRefresh) {
-        const cached = getCachedNews();
-        if (cached && cached.items.length > 0) {
-            return cached.items;
-        }
-    }
-
+export async function fetchHotNews(): Promise<NewsItem[]> {
+    // 新闻接口不做本地缓存，每次实时获取
     const shuffled = shuffleArray(NEWS_API_SOURCES);
     const selected = shuffled.slice(0, 5);
     const results = await Promise.allSettled(selected.map((source) => fetchFromAPI(source)));
@@ -250,13 +216,7 @@ export async function fetchHotNews(forceRefresh = false): Promise<NewsItem[]> {
 
     const deduped = dedupeNews(merged).slice(0, 24);
     if (deduped.length > 0) {
-        setCachedNews(deduped);
         return deduped;
-    }
-
-    const cached = getCachedNews();
-    if (cached && cached.items.length > 0) {
-        return cached.items;
     }
 
     return LOCAL_NEWS_FALLBACK;
