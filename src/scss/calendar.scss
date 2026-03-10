@@ -502,3 +502,61 @@
         display: none;
     }
 }
+
+// 响应式天气适配 - 根据日历宽度调整天气展示
+@media screen and (max-width: 1560px) {
+    // 宽度较小时，天气每行5个，共10天
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 2px;
+        padding: 4px 5px;
+    }
+    
+    .#{$kaguya}-calendar-weather-item {
+        min-height: 38px;
+        padding: 2px 1px;
+    }
+    
+    .#{$kaguya}-calendar-weather-headline {
+        font-size: 0.65rem;
+    }
+    
+    .#{$kaguya}-calendar-weather-temp {
+        font-size: 0.6rem;
+    }
+}
+
+@media screen and (max-width: 1320px) {
+    // 更窄时，天气每行4个，共8天
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2px;
+        padding: 3px 4px;
+    }
+    
+    .#{$kaguya}-calendar-weather-item {
+        min-height: 34px;
+        padding: 2px 1px;
+    }
+    
+    .#{$kaguya}-calendar-weather-headline {
+        font-size: 0.6rem;
+    }
+    
+    .#{$kaguya}-calendar-weather-temp {
+        font-size: 0.55rem;
+    }
+    
+    .#{$kaguya}-calendar-weather-icon {
+        font-size: 0.9rem;
+    }
+}
+
+@media screen and (min-width: 1561px) {
+    // 宽屏时，天气每行7个，共14天（默认）
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+        padding: 5px 6px;
+    }
+}

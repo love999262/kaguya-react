@@ -211,6 +211,8 @@ class Calendar extends React.Component<Props, StateInterface> {
 
     private lastExtremeAlertSignature: string;
 
+    private calendarRef: React.RefObject<HTMLDivElement>;
+
     constructor(props: Props, context: any) {
         super(props, context);
         const today = this.stripTime(new Date());
@@ -218,6 +220,7 @@ class Calendar extends React.Component<Props, StateInterface> {
         this.weatherTimer = null;
         this.resolvedWeatherLocation = null;
         this.lastExtremeAlertSignature = '';
+        this.calendarRef = React.createRef<HTMLDivElement>();
         this.state = {
             displayMonth: new Date(today.getFullYear(), today.getMonth(), 1),
             selectedDate: today,
@@ -255,6 +258,9 @@ class Calendar extends React.Component<Props, StateInterface> {
         this.weatherTimer = window.setInterval(() => {
             void this.fetchWeeklyWeather();
         }, WEATHER_REFRESH_INTERVAL_MS);
+
+        // 监听窗口大小变化，动态调整天气展示
+        window.addEventListener('resize', this.handleResize);
     }
 
     componentWillUnmount() {
@@ -266,6 +272,23 @@ class Calendar extends React.Component<Props, StateInterface> {
             window.clearInterval(this.weatherTimer);
             this.weatherTimer = null;
         }
+        window.removeEventListener('resize', this.handleResize);
+    }
+
+    private handleResize = (): void => {
+        // 窗口大小变化时，强制重新渲染以应用响应式样式
+        this.forceUpdate();
+    };
+
+    // 根据容器宽度获取天气展示天数
+    private getWeatherDisplayDays(): number {
+        const containerWidth = this.calendarRef?.current?.offsetWidth || 312;
+        if (containerWidth <= 236) {
+            return 8; // 最窄时展示8天（每行4个）
+        } else if (containerWidth <= 286) {
+            return 10; // 较窄时展示10天（每行5个）
+        }
+        return 14; // 默认展示14天（每行7个）
     }
 
     componentDidUpdate(prevProps: Props, prevState: StateInterface) {
@@ -1202,10 +1225,12 @@ class Calendar extends React.Component<Props, StateInterface> {
             weatherByDate[item.dateKey] = item;
         });
         const weatherProviderCompact = this.compactWeatherProviderText(this.state.weatherProviderText);
-        const weatherMetaText = `定位 ${this.state.weatherLocationLabel} · 源 ${weatherProviderCompact} · ${this.state.weatherForecastDays}天`;
+        const weatherDisplayDays = this.getWeatherDisplayDays();
+        const displayedWeather = this.state.weeklyWeather.slice(0, weatherDisplayDays);
+        const weatherMetaText = `定位 ${this.state.weatherLocationLabel} · 源 ${weatherProviderCompact} · ${displayedWeather.length}天`;
 
         return (
-            <div className={`${this.props.prefix}-calendar`}>
+            <div className={`${this.props.prefix}-calendar`} ref={this.calendarRef}>
                 <div className={`${this.props.prefix}-calendar-live-time`}>{liveTimeText}</div>
 
                 <div className={`${this.props.prefix}-calendar-weather`}>
@@ -1214,7 +1239,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                             {'\u5929\u6c14\u52a0\u8f7d\u4e2d...'}
                         </div>
                     ) : (
-                        this.state.weeklyWeather.map((item) => (
+                        displayedWeather.map((item) => (
                             <div className={`${this.props.prefix}-calendar-weather-item`} key={item.dateKey} title={`${item.dateKey} ${item.weatherText} ${item.min}\u00b0~${item.max}\u00b0`}>
                                 <div className={`${this.props.prefix}-calendar-weather-headline`}>
                                     <span className={`${this.props.prefix}-calendar-weather-date`}>{this.formatShortDate(item.dateKey)}</span>
