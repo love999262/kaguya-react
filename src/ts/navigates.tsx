@@ -30,6 +30,12 @@ interface StateInterface {
     isAdultMode: boolean;
 }
 
+// 成人模式触发计数器
+let backslashCount = 0;
+let lastBackslashTime = 0;
+const BACKSLASH_TIMEOUT = 1000; // 1秒内连续按键有效
+const BACKSLASH_TRIGGER_COUNT = 3; // 连续3次触发
+
 class Navigates extends React.Component<Props, StateInterface> {
     constructor(props: Props, context: any) {
         super(props, context);
@@ -76,17 +82,30 @@ class Navigates extends React.Component<Props, StateInterface> {
         if (isTypingElement) {
             return;
         }
-        // 成人模式快捷键：Shift + \ (反斜杠)
-        // 使用 key 属性检测，反斜杠在 Shift 按下时是 "|"
-        if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && (event.key === '|' || event.key === '\\')) {
-            event.preventDefault();
-            this.setState((previousState) => {
-                const nextAdultMode = !previousState.isAdultMode;
-                return {
-                    isAdultMode: nextAdultMode,
-                    websites: nextAdultMode ? previousState.adultWebsites : previousState.defaultWebsites,
-                };
-            });
+        // 成人模式快捷键：连续按3次 \ (反斜杠)
+        if (!event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && (event.key === '\\' || event.code === 'Backslash')) {
+            const now = Date.now();
+            
+            // 如果超过1秒，重置计数
+            if (now - lastBackslashTime > BACKSLASH_TIMEOUT) {
+                backslashCount = 0;
+            }
+            
+            backslashCount++;
+            lastBackslashTime = now;
+            
+            // 连续3次触发成人模式
+            if (backslashCount >= BACKSLASH_TRIGGER_COUNT) {
+                event.preventDefault();
+                backslashCount = 0; // 重置计数
+                this.setState((previousState) => {
+                    const nextAdultMode = !previousState.isAdultMode;
+                    return {
+                        isAdultMode: nextAdultMode,
+                        websites: nextAdultMode ? previousState.adultWebsites : previousState.defaultWebsites,
+                    };
+                });
+            }
         }
     }
 
@@ -143,7 +162,7 @@ class Navigates extends React.Component<Props, StateInterface> {
                     className={`${this.props.prefix}-panel-mode`}
                     style={{ display: this.state.isAdultMode ? 'block' : 'none' }}
                 >
-                    ADULT MODE (Press "Shift+\" to exit)
+                    ADULT MODE (Press "\\" x3 to exit)
                 </div>
                 <div className={`${this.props.prefix}-panel`}>
                     {this.renderWebSites()}
