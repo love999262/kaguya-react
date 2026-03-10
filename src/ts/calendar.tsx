@@ -191,7 +191,7 @@ const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db
 const WEEK_TEXT_FULL = ['\u5468\u65e5', '\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d'];
 const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'];
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const WEATHER_FORECAST_TARGET_DAYS = 14; // 最大展示14天
+const WEATHER_FORECAST_TARGET_DAYS = 10; // 固定展示10天
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
@@ -1003,10 +1003,8 @@ class Calendar extends React.Component<Props, StateInterface> {
                 }
             }
 
-            // 根据容器宽度决定展示天数
-            const containerWidth = this.calendarRef?.current?.offsetWidth || 360;
-            const displayDays = containerWidth <= 360 ? 10 : targetDays; // 宽度小展示10天，否则14天
-            selectedResult.weatherRows = selectedResult.weatherRows.slice(0, displayDays);
+            // 固定展示10天
+            selectedResult.weatherRows = selectedResult.weatherRows.slice(0, targetDays);
 
             if (!selectedResult.weatherRows.length) {
                 throw new Error('weather rows empty');

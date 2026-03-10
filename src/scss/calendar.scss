@@ -59,19 +59,14 @@
         margin: 0 0 8px;
         min-height: 46px;
         display: grid;
-        grid-template-columns: repeat(7, 1fr); // 默认每行7个（14天两行）
-        gap: 3px;
-        padding: 4px 5px;
-        border-radius: 10px !important;
-        border: 1px solid rgba(176, 208, 239, 0.26);
-        background: rgba(92, 136, 183, 0.17);
+        grid-template-columns: repeat(5, 1fr); // 固定每行5个（10天两行）
+        gap: 4px; // 增加间距
+        padding: 6px 8px; // 增加内边距
+        border-radius: 12px !important;
+        border: 1px solid rgba(176, 208, 239, 0.3);
+        background: rgba(92, 136, 183, 0.2);
         max-height: none;
         overflow: visible;
-        
-        // 宽度较小时每行5个（10天两行）
-        @media (max-width: 360px) {
-            grid-template-columns: repeat(5, 1fr);
-        }
     }
 
     &-calendar-weather-loading {
