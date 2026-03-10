@@ -191,7 +191,7 @@ const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db
 const WEEK_TEXT_FULL = ['\u5468\u65e5', '\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d'];
 const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'];
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const WEATHER_FORECAST_TARGET_DAYS = 10; // 固定展示10天
+const WEATHER_FORECAST_TARGET_DAYS = 14; // 展示14天
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
@@ -950,43 +950,31 @@ class Calendar extends React.Component<Props, StateInterface> {
             const location = await this.resolveWeatherLocation();
             const targetDays = WEATHER_FORECAST_TARGET_DAYS;
 
-            // 竞速模式：同时发送多个请求，哪个先回来就用哪个
-            const providers = [
-                { name: 'nmc', fn: () => this.loadFromNmc(location, targetDays) },
-                { name: 'openMeteo', fn: () => this.loadFromOpenMeteo(location, targetDays) },
-                { name: 'cache', fn: () => this.loadWeatherCache() },
+            // 降级兜底方案：串行请求，先尝试 NMC，失败再尝试 OpenMeteo，最后使用缓存
+            const providerChain: Array<() => Promise<WeatherLoadResult | null>> = [
+                async () => this.loadFromNmc(location, targetDays),
+                async () => this.loadFromOpenMeteo(location, targetDays),
+                async () => this.loadWeatherCache(),
             ];
 
-            // 使用 Promise.race 和 Promise.allSettled 实现竞速
             let selectedResult: WeatherLoadResult | null = null;
-            let settledCount = 0;
-
-            const racePromise = new Promise<WeatherLoadResult | null>((resolve) => {
-                providers.forEach(async (provider) => {
-                    try {
-                        const result = await provider.fn();
-                        if (result && result.weatherRows.length > 0 && !selectedResult) {
-                            selectedResult = result;
-                            resolve(result);
-                        }
-                    } catch {
-                        // 忽略错误，继续等待其他请求
-                    } finally {
-                        settledCount++;
-                        if (settledCount === providers.length && !selectedResult) {
-                            resolve(null);
-                        }
+            for (let index = 0; index < providerChain.length; index++) {
+                try {
+                    const current = await providerChain[index]();
+                    if (current && current.weatherRows.length) {
+                        selectedResult = current;
+                        break;
                     }
-                });
-            });
-
-            selectedResult = await racePromise;
+                } catch {
+                    continue;
+                }
+            }
 
             if (!selectedResult) {
                 throw new Error('no weather source available');
             }
 
-            // 如果 NMC 数据不足，尝试补充
+            // 如果 NMC 数据不足，尝试用 OpenMeteo 补充
             if (selectedResult.source === 'nmc' && selectedResult.weatherRows.length < targetDays) {
                 try {
                     const supplement = await this.loadFromOpenMeteo(location, targetDays);
@@ -1003,7 +991,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                 }
             }
 
-            // 固定展示10天
+            // 展示14天
             selectedResult.weatherRows = selectedResult.weatherRows.slice(0, targetDays);
 
             if (!selectedResult.weatherRows.length) {
