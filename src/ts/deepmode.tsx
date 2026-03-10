@@ -2006,55 +2006,87 @@ const DeepMode = (): React.JSX.Element => {
         
         let clearedModels = 0;
         let clearedOthers = 0;
+        const failedModels: string[] = [];
         
         try {
             // 清理选中的模型缓存
             if (selectedModelCaches.size > 0) {
                 const webllm = await getWebLLMModule();
+                
+                // 如果要清理的模型包含当前加载的模型，先完全卸载引擎
+                const currentModel = loadingModelIdRef.current;
+                if (currentModel && selectedModelCaches.has(currentModel)) {
+                    pushMessage('system', `正在卸载当前模型 ${currentModel}...`);
+                    try {
+                        if (activeEngineRef.current) {
+                            await activeEngineRef.current.unload();
+                        }
+                    } catch (e) {
+                        console.warn('[CacheManager] 卸载引擎失败:', e);
+                    }
+                    activeEngineRef.current = null;
+                    loadingModelIdRef.current = null;
+                    setLlmState('idle');
+                    setActiveModelId('未加载');
+                    // 等待一段时间确保卸载完成
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
                 for (const modelId of selectedModelCaches) {
                     try {
-                        // 先尝试卸载当前引擎（如果加载的是要删除的模型）
-                        if (activeEngineRef.current && loadingModelIdRef.current === modelId) {
-                            await activeEngineRef.current.unload();
-                            activeEngineRef.current = null;
-                            loadingModelIdRef.current = null;
-                            setLlmState('idle');
-                            setActiveModelId('未加载');
-                        }
+                        pushMessage('system', `正在清理模型: ${modelId}...`);
+                        let deleteSuccess = false;
                         
-                        // 尝试所有策略清理缓存
-                        for (const strategy of STRATEGIES) {
-                            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                            // 等待删除完成并检查结果
-                            try {
-                                await webllm.deleteModelAllInfoInCache(modelId, appConfig);
-                                console.log(`[CacheManager] 已删除模型缓存: ${modelId} (${strategy.id})`);
-                            } catch (e) {
-                                console.warn(`[CacheManager] 删除模型缓存失败: ${modelId} (${strategy.id})`, e);
+                        // 尝试所有策略清理缓存，多次重试
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            for (const strategy of STRATEGIES) {
+                                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                                try {
+                                    await webllm.deleteModelAllInfoInCache(modelId, appConfig);
+                                    console.log(`[CacheManager] 已删除模型缓存: ${modelId} (${strategy.id})`);
+                                } catch (e) {
+                                    // 忽略单个策略的失败
+                                }
                             }
-                        }
-                        
-                        // 验证是否真正删除
-                        let stillInCache = false;
-                        for (const strategy of STRATEGIES) {
-                            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                            const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
-                            if (hasCache) {
-                                stillInCache = true;
+                            
+                            // 等待缓存清理完成
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            
+                            // 验证是否真正删除
+                            let stillInCache = false;
+                            for (const strategy of STRATEGIES) {
+                                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                                const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
+                                if (hasCache) {
+                                    stillInCache = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!stillInCache) {
+                                deleteSuccess = true;
                                 break;
                             }
+                            
+                            // 等待后重试
+                            if (attempt < 2) {
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
                         }
                         
-                        if (!stillInCache) {
+                        if (deleteSuccess) {
                             clearedModels++;
                             console.log(`[CacheManager] 模型缓存清理成功: ${modelId}`);
                         } else {
-                            console.warn(`[CacheManager] 模型缓存可能未完全清理: ${modelId}`);
+                            failedModels.push(modelId);
+                            console.warn(`[CacheManager] 模型缓存清理失败: ${modelId}`);
                         }
                     } catch (err) {
+                        failedModels.push(modelId);
                         console.error(`[CacheManager] 清理模型缓存异常: ${modelId}`, err);
                     }
                 }
+                
                 // 刷新缓存列表
                 await refreshCachedModelIds();
             }
@@ -2071,7 +2103,7 @@ const DeepMode = (): React.JSX.Element => {
                     } else if (cacheKey === 'jokes') {
                         const { clearJokesCache } = await import('./services/jokeService');
                         await clearJokesCache();
-                        console.log('[CacheManager] 已删除笑话缓存');
+                        console.log('[CacheManager] 已删除小剧场缓存');
                     }
                     clearedOthers++;
                 } catch (e) {
@@ -2079,12 +2111,19 @@ const DeepMode = (): React.JSX.Element => {
                 }
             }
             
-            const messages = [];
+            // 构建结果消息
+            const messages: string[] = [];
             if (clearedModels > 0) messages.push(`${clearedModels} 个模型`);
             if (clearedOthers > 0) messages.push(`${clearedOthers} 项其他缓存`);
             
             if (clearedModels > 0 || clearedOthers > 0) {
-                pushMessage('system', `✅ 已清理: ${messages.join('、')}。`);
+                let resultMsg = `✅ 已清理: ${messages.join('、')}。`;
+                if (failedModels.length > 0) {
+                    resultMsg += `\n⚠️ 以下模型清理失败: ${failedModels.join(', ')}`;
+                }
+                pushMessage('system', resultMsg);
+            } else if (failedModels.length > 0) {
+                pushMessage('system', `❌ 清理失败: ${failedModels.join(', ')}`);
             } else {
                 pushMessage('system', '⚠️ 未成功清理任何缓存，请重试。');
             }
@@ -2092,6 +2131,7 @@ const DeepMode = (): React.JSX.Element => {
             pushMessage('system', `❌ 清理缓存失败: ${error instanceof Error ? error.message : '未知错误'}`);
         } finally {
             setIsClearingCache(false);
+            // 只关闭缓存管理弹窗，不关闭AI面板
             setShowCacheManager(false);
             // 重置选择状态
             setSelectedModelCaches(new Set());
