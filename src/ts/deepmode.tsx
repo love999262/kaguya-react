@@ -387,9 +387,14 @@ const DeepMode = (): React.JSX.Element => {
     const [pureMode, setPureMode] = React.useState<boolean>(false);
     // 抽屉动画状态
     const [drawerVisible, setDrawerVisible] = React.useState<boolean>(false);
-    // 清理缓存确认弹窗状态
-    const [showClearCacheConfirm, setShowClearCacheConfirm] = React.useState<boolean>(false);
+    // 缓存管理面板状态
+    const [showCacheManager, setShowCacheManager] = React.useState<boolean>(false);
     const [isClearingCache, setIsClearingCache] = React.useState<boolean>(false);
+    // 缓存选择状态
+    const [selectedModelCaches, setSelectedModelCaches] = React.useState<Set<string>>(new Set());
+    const [selectedOtherCaches, setSelectedOtherCaches] = React.useState<Set<string>>(new Set());
+    const [selectAllModels, setSelectAllModels] = React.useState<boolean>(false);
+    const [selectAllOthers, setSelectAllOthers] = React.useState<boolean>(false);
 
     const panelRef = React.useRef<HTMLDivElement | null>(null);
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -1680,39 +1685,141 @@ const DeepMode = (): React.JSX.Element => {
         pushMessage('system', 'WebLLM 进程恢复中...');
     }, [allModelIds, ensureLLMEngine, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
-    // 清理所有模型缓存
-    const handleClearAllModelCache = React.useCallback(async (): Promise<void> => {
-        setIsClearingCache(true);
-        pushMessage('system', '正在清理所有模型缓存...');
+    // 获取其他缓存信息
+    const getOtherCachesInfo = React.useCallback(async () => {
+        const caches = [];
+        
+        // 历史上的今天缓存
         try {
-            const webllm = await getWebLLMModule();
-            const modelSet = await ensureModelCatalog();
-            const modelIds = Array.from(modelSet);
-            let clearedCount = 0;
-
-            for (const modelId of modelIds) {
-                try {
-                    // 尝试所有策略清理缓存
-                    for (const strategy of STRATEGIES) {
-                        const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                        await webllm.deleteModelAllInfoInCache(modelId, appConfig).catch((): void => {});
-                    }
-                    clearedCount++;
-                } catch {
-                    // 忽略单个模型清理错误
-                }
+            const historyEntry = await indexedDBCache.get('kaguya:history:today');
+            if (historyEntry) {
+                caches.push({
+                    key: 'history',
+                    name: '历史上的今天',
+                    description: '历史事件数据缓存（30天）',
+                    size: '约 5-10 KB',
+                    consequence: '下次查看时需要重新获取',
+                    hasCache: true,
+                });
             }
+        } catch {}
+        
+        // 新闻缓存
+        try {
+            const newsEntry = await indexedDBCache.get('kaguya:news:cache');
+            if (newsEntry) {
+                caches.push({
+                    key: 'news',
+                    name: '热点新闻',
+                    description: '新闻数据缓存（3小时）',
+                    size: '约 10-50 KB',
+                    consequence: '下次查看时需要重新获取',
+                    hasCache: true,
+                });
+            }
+        } catch {}
+        
+        return caches;
+    }, []);
 
-            // 刷新缓存状态
-            await refreshCachedModelIds();
-            pushMessage('system', `已清理 ${clearedCount} 个模型的缓存。下次使用需要重新下载。`);
+    // 清理选中的缓存
+    const handleClearSelectedCaches = React.useCallback(async (): Promise<void> => {
+        setIsClearingCache(true);
+        pushMessage('system', '正在清理选中的缓存...');
+        
+        let clearedModels = 0;
+        let clearedOthers = 0;
+        
+        try {
+            // 清理选中的模型缓存
+            if (selectedModelCaches.size > 0) {
+                const webllm = await getWebLLMModule();
+                for (const modelId of selectedModelCaches) {
+                    try {
+                        for (const strategy of STRATEGIES) {
+                            const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                            await webllm.deleteModelAllInfoInCache(modelId, appConfig).catch((): void => {});
+                        }
+                        clearedModels++;
+                    } catch {}
+                }
+                await refreshCachedModelIds();
+            }
+            
+            // 清理选中的其他缓存
+            for (const cacheKey of selectedOtherCaches) {
+                try {
+                    if (cacheKey === 'history') {
+                        await indexedDBCache.remove('kaguya:history:today');
+                    } else if (cacheKey === 'news') {
+                        await indexedDBCache.remove('kaguya:news:cache');
+                    }
+                    clearedOthers++;
+                } catch {}
+            }
+            
+            const messages = [];
+            if (clearedModels > 0) messages.push(`${clearedModels} 个模型`);
+            if (clearedOthers > 0) messages.push(`${clearedOthers} 项其他缓存`);
+            
+            pushMessage('system', `已清理: ${messages.join('、') || '无'}。`);
         } catch (error) {
             pushMessage('system', `清理缓存失败: ${error instanceof Error ? error.message : '未知错误'}`);
         } finally {
             setIsClearingCache(false);
-            setShowClearCacheConfirm(false);
+            setShowCacheManager(false);
+            // 重置选择状态
+            setSelectedModelCaches(new Set());
+            setSelectedOtherCaches(new Set());
+            setSelectAllModels(false);
+            setSelectAllOthers(false);
         }
-    }, [ensureModelCatalog, getWebLLMModule, pushMessage, refreshCachedModelIds]);
+    }, [selectedModelCaches, selectedOtherCaches, getWebLLMModule, refreshCachedModelIds, pushMessage]);
+
+    // 切换模型缓存选择
+    const toggleModelCache = React.useCallback((modelId: string) => {
+        setSelectedModelCaches(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(modelId)) {
+                newSet.delete(modelId);
+            } else {
+                newSet.add(modelId);
+            }
+            return newSet;
+        });
+    }, []);
+
+    // 切换其他缓存选择
+    const toggleOtherCache = React.useCallback((key: string) => {
+        setSelectedOtherCaches(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            return newSet;
+        });
+    }, []);
+
+    // 全选/取消全选模型缓存
+    const toggleSelectAllModels = React.useCallback(() => {
+        if (selectAllModels) {
+            setSelectedModelCaches(new Set());
+        } else {
+            setSelectedModelCaches(new Set(cachedModelIds));
+        }
+        setSelectAllModels(!selectAllModels);
+    }, [selectAllModels, cachedModelIds]);
+
+    // 打开缓存管理面板时初始化
+    const openCacheManager = React.useCallback(async () => {
+        setShowCacheManager(true);
+        setSelectedModelCaches(new Set());
+        setSelectedOtherCaches(new Set());
+        setSelectAllModels(false);
+        setSelectAllOthers(false);
+    }, []);
 
     React.useEffect(() => {
         return () => {
@@ -1773,13 +1880,13 @@ const DeepMode = (): React.JSX.Element => {
                 <div className={`kaguya-deep-drawer ${drawerVisible ? 'kaguya-deep-drawer-visible' : ''}`} ref={panelRef}>
                     {/* 角落按钮 - 绝对定位 */}
                     <div className='kaguya-deep-corner-actions'>
-                        {/* 清理模型缓存按钮 */}
+                        {/* 缓存管理按钮 */}
                         <button
                             type='button'
                             className='kaguya-deep-corner-btn kaguya-deep-corner-btn-clear-cache'
-                            onClick={() => setShowClearCacheConfirm(true)}
+                            onClick={openCacheManager}
                             disabled={isClearingCache}
-                            title='清理全部模型缓存'
+                            title='缓存管理'
                         >
                             🗑️
                         </button>
@@ -1821,38 +1928,20 @@ const DeepMode = (): React.JSX.Element => {
                         </button>
                     </div>
 
-                    {/* 清理缓存确认弹窗 */}
-                    {showClearCacheConfirm && (
-                        <div className='kaguya-deep-confirm-overlay'>
-                            <div className='kaguya-deep-confirm-dialog'>
-                                <div className='kaguya-deep-confirm-title'>⚠️ 警告</div>
-                                <div className='kaguya-deep-confirm-content'>
-                                    <p>确定要清理全部模型缓存吗？</p>
-                                    <p className='kaguya-deep-confirm-hint'>
-                                        此操作将删除所有已下载的模型文件（{cachedModelCount} 个），
-                                        下次使用需要重新下载，可能需要较长时间。
-                                    </p>
-                                </div>
-                                <div className='kaguya-deep-confirm-actions'>
-                                    <button
-                                        type='button'
-                                        className='kaguya-deep-confirm-btn kaguya-deep-confirm-btn-cancel'
-                                        onClick={() => setShowClearCacheConfirm(false)}
-                                        disabled={isClearingCache}
-                                    >
-                                        取消
-                                    </button>
-                                    <button
-                                        type='button'
-                                        className='kaguya-deep-confirm-btn kaguya-deep-confirm-btn-confirm'
-                                        onClick={handleClearAllModelCache}
-                                        disabled={isClearingCache}
-                                    >
-                                        {isClearingCache ? '清理中...' : '确认清理'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    {/* 缓存管理面板 */}
+                    {showCacheManager && (
+                        <CacheManagerPanel
+                            cachedModelIds={cachedModelIds}
+                            selectedModelCaches={selectedModelCaches}
+                            selectedOtherCaches={selectedOtherCaches}
+                            selectAllModels={selectAllModels}
+                            onToggleModelCache={toggleModelCache}
+                            onToggleOtherCache={toggleOtherCache}
+                            onToggleSelectAllModels={toggleSelectAllModels}
+                            onClose={() => setShowCacheManager(false)}
+                            onConfirm={handleClearSelectedCaches}
+                            isClearing={isClearingCache}
+                        />
                     )}
 
                     {/* 内容区域 - 可滚动 */}
@@ -1965,6 +2054,179 @@ const DeepMode = (): React.JSX.Element => {
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+// 缓存管理面板组件
+type CacheManagerPanelProps = {
+    cachedModelIds: string[];
+    selectedModelCaches: Set<string>;
+    selectedOtherCaches: Set<string>;
+    selectAllModels: boolean;
+    onToggleModelCache: (modelId: string) => void;
+    onToggleOtherCache: (key: string) => void;
+    onToggleSelectAllModels: () => void;
+    onClose: () => void;
+    onConfirm: () => void;
+    isClearing: boolean;
+};
+
+const OTHER_CACHES = [
+    {
+        key: 'history',
+        name: '历史上的今天',
+        description: '历史事件数据缓存',
+        duration: '30天',
+        size: '约 5-10 KB',
+        consequence: '下次查看时需要重新从维基百科获取',
+    },
+    {
+        key: 'news',
+        name: '热点新闻',
+        description: '新闻数据缓存',
+        duration: '3小时',
+        size: '约 10-50 KB',
+        consequence: '下次查看时需要重新从 RSS 源获取',
+    },
+];
+
+const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
+    cachedModelIds,
+    selectedModelCaches,
+    selectedOtherCaches,
+    selectAllModels,
+    onToggleModelCache,
+    onToggleOtherCache,
+    onToggleSelectAllModels,
+    onClose,
+    onConfirm,
+    isClearing,
+}) => {
+    const totalSelected = selectedModelCaches.size + selectedOtherCaches.size;
+    const hasModelCaches = cachedModelIds.length > 0;
+
+    return (
+        <div className='kaguya-cache-manager-overlay'>
+            <div className='kaguya-cache-manager-panel'>
+                <div className='kaguya-cache-manager-header'>
+                    <h3>🗑️ 缓存管理</h3>
+                    <button
+                        type='button'
+                        className='kaguya-cache-manager-close'
+                        onClick={onClose}
+                        disabled={isClearing}
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div className='kaguya-cache-manager-content'>
+                    {/* 模型缓存区域 */}
+                    <div className='kaguya-cache-section'>
+                        <div className='kaguya-cache-section-header'>
+                            <h4>🤖 模型缓存</h4>
+                            {hasModelCaches && (
+                                <label className='kaguya-cache-checkbox-all'>
+                                    <input
+                                        type='checkbox'
+                                        checked={selectAllModels}
+                                        onChange={onToggleSelectAllModels}
+                                        disabled={isClearing}
+                                    />
+                                    <span>全选</span>
+                                </label>
+                            )}
+                        </div>
+                        
+                        {hasModelCaches ? (
+                            <div className='kaguya-cache-list'>
+                                {cachedModelIds.map((modelId) => (
+                                    <label
+                                        key={modelId}
+                                        className={`kaguya-cache-item ${selectedModelCaches.has(modelId) ? 'kaguya-cache-item-selected' : ''}`}
+                                    >
+                                        <input
+                                            type='checkbox'
+                                            checked={selectedModelCaches.has(modelId)}
+                                            onChange={() => onToggleModelCache(modelId)}
+                                            disabled={isClearing}
+                                        />
+                                        <div className='kaguya-cache-item-info'>
+                                            <span className='kaguya-cache-item-name'>{modelId}</span>
+                                            <span className='kaguya-cache-item-meta'>大小: 约 500MB - 4GB</span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className='kaguya-cache-empty'>暂无模型缓存</div>
+                        )}
+                        
+                        <div className='kaguya-cache-consequence'>
+                            <strong>⚠️ 清理后果:</strong> 选中的模型将被删除，下次使用需要重新下载，可能需要较长时间。
+                        </div>
+                    </div>
+
+                    {/* 其他缓存区域 */}
+                    <div className='kaguya-cache-section'>
+                        <div className='kaguya-cache-section-header'>
+                            <h4>📦 其他缓存</h4>
+                        </div>
+                        
+                        <div className='kaguya-cache-list'>
+                            {OTHER_CACHES.map((cache) => (
+                                <label
+                                    key={cache.key}
+                                    className={`kaguya-cache-item ${selectedOtherCaches.has(cache.key) ? 'kaguya-cache-item-selected' : ''}`}
+                                >
+                                    <input
+                                        type='checkbox'
+                                        checked={selectedOtherCaches.has(cache.key)}
+                                        onChange={() => onToggleOtherCache(cache.key)}
+                                        disabled={isClearing}
+                                    />
+                                    <div className='kaguya-cache-item-info'>
+                                        <span className='kaguya-cache-item-name'>{cache.name}</span>
+                                        <span className='kaguya-cache-item-desc'>{cache.description}</span>
+                                        <span className='kaguya-cache-item-meta'>
+                                            有效期: {cache.duration} | 大小: {cache.size}
+                                        </span>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        
+                        <div className='kaguya-cache-consequence kaguya-cache-consequence-light'>
+                            <strong>💡 清理后果:</strong> 选中的缓存将被删除，下次使用时会自动重新获取。
+                        </div>
+                    </div>
+                </div>
+
+                <div className='kaguya-cache-manager-footer'>
+                    <div className='kaguya-cache-summary'>
+                        已选择: <strong>{totalSelected}</strong> 项
+                    </div>
+                    <div className='kaguya-cache-actions'>
+                        <button
+                            type='button'
+                            className='kaguya-cache-btn kaguya-cache-btn-cancel'
+                            onClick={onClose}
+                            disabled={isClearing}
+                        >
+                            取消
+                        </button>
+                        <button
+                            type='button'
+                            className='kaguya-cache-btn kaguya-cache-btn-confirm'
+                            onClick={onConfirm}
+                            disabled={isClearing || totalSelected === 0}
+                        >
+                            {isClearing ? '清理中...' : `确认清理 (${totalSelected})`}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
