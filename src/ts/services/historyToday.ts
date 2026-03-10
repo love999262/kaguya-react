@@ -1,5 +1,7 @@
 // 历史上的今天服务
 
+import { indexedDBCache } from '../utils/indexedDB';
+
 export interface HistoryEvent {
     year: string;
     title: string;
@@ -12,32 +14,11 @@ export interface TodayInHistory {
     events: HistoryEvent[];
 }
 
-// 本地缓存 - 缓存一个月（30天）
+// IndexDB 缓存配置
 const CACHE_KEY = 'kaguya:history:today';
 const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30天
-
-interface CacheData {
-    date: string;
-    data: TodayInHistory;
-    timestamp: number;
-}
-
-// 获取缓存
-function getCache(): CacheData | null {
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            const data: CacheData = JSON.parse(cached);
-            // 检查是否过期
-            if (Date.now() - data.timestamp < CACHE_DURATION) {
-                return data;
-            }
-        }
-    } catch {
-        // 忽略解析错误
-    }
-    return null;
-}
+const MAX_SILENT_FAIL_COUNT = 3; // 静默调用最大失败次数
+const FAIL_COUNT_KEY = 'kaguya:history:failCount';
 
 // 从国内 API 获取历史上的今天（无需翻墙）
 async function fetchFromChinaAPI(): Promise<TodayInHistory | null> {
@@ -85,7 +66,7 @@ async function fetchFromChinaAPI(): Promise<TodayInHistory | null> {
             events,
         };
 
-        setCache(result);
+        await setCache(result);
         return result;
     } catch (error) {
         console.warn('Failed to fetch from China API:', error);
@@ -93,17 +74,47 @@ async function fetchFromChinaAPI(): Promise<TodayInHistory | null> {
     }
 }
 
-// 设置缓存
-function setCache(data: TodayInHistory): void {
+// 设置缓存到 IndexDB
+async function setCache(data: TodayInHistory): Promise<void> {
     try {
-        const cacheData: CacheData = {
-            date: data.date,
-            data,
-            timestamp: Date.now(),
-        };
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        await indexedDBCache.set(CACHE_KEY, data, 0); // 重置失败次数
     } catch {
         // 忽略存储错误
+    }
+}
+
+// 从 IndexDB 获取缓存
+async function getCache(): Promise<{ data: TodayInHistory; timestamp: number; failCount: number } | null> {
+    try {
+        const entry = await indexedDBCache.get<TodayInHistory>(CACHE_KEY);
+        if (!entry) return null;
+
+        // 检查是否过期
+        if (Date.now() - entry.timestamp > CACHE_DURATION) {
+            return null;
+        }
+
+        return {
+            data: entry.data,
+            timestamp: entry.timestamp,
+            failCount: entry.failCount || 0,
+        };
+    } catch {
+        return null;
+    }
+}
+
+// 记录静默调用失败次数
+async function recordSilentFail(): Promise<number> {
+    try {
+        const entry = await indexedDBCache.get<TodayInHistory>(CACHE_KEY);
+        const newFailCount = (entry?.failCount || 0) + 1;
+        if (entry) {
+            await indexedDBCache.set(CACHE_KEY, entry.data, newFailCount);
+        }
+        return newFailCount;
+    } catch {
+        return 0;
     }
 }
 
@@ -148,7 +159,7 @@ async function fetchFromWikipedia(): Promise<TodayInHistory | null> {
             events,
         };
 
-        setCache(result);
+        await setCache(result);
         return result;
     } catch (error) {
         console.warn('Failed to fetch from Wikipedia:', error);
@@ -180,19 +191,34 @@ function categorizeEvent(text: string): HistoryEvent['type'] {
 // silentMode: 如果为true，则优先使用缓存，只在后台静默更新
 export async function getTodayInHistory(silentMode = false): Promise<TodayInHistory | null> {
     // 先检查缓存
-    const cache = getCache();
+    const cache = await getCache();
     if (cache) {
         // 静默模式下，先返回缓存数据，后台静默更新
         if (silentMode) {
+            // 检查失败次数，超过3次不再调用
+            if (cache.failCount >= MAX_SILENT_FAIL_COUNT) {
+                console.log('[History] 静默调用失败次数已达上限，不再后台更新');
+                return cache.data;
+            }
+
             // 后台静默刷新数据
-            setTimeout(() => {
-                fetchFromWikipedia().then((data) => {
+            setTimeout(async () => {
+                try {
+                    const data = await fetchFromWikipedia();
                     if (data) {
                         console.log('[History] 后台静默更新成功');
+                        // 重置失败次数
+                        await indexedDBCache.set(CACHE_KEY, data, 0);
+                    } else {
+                        // 记录失败
+                        const failCount = await recordSilentFail();
+                        console.log(`[History] 后台静默更新失败，当前失败次数: ${failCount}`);
                     }
-                }).catch(() => {
-                    // 忽略后台更新错误
-                });
+                } catch {
+                    // 记录失败
+                    const failCount = await recordSilentFail();
+                    console.log(`[History] 后台静默更新异常，当前失败次数: ${failCount}`);
+                }
             }, 100);
             return cache.data;
         }
@@ -260,15 +286,17 @@ function getDefaultHistoryData(): TodayInHistory {
 }
 
 // 预加载（在后台获取数据）
-export function preloadHistoryData(): void {
+export async function preloadHistoryData(): Promise<void> {
     // 如果已有有效缓存，不重新获取
-    const cache = getCache();
+    const cache = await getCache();
     if (cache) {
         return;
     }
 
     // 后台获取
-    fetchFromWikipedia().catch(() => {
+    try {
+        await fetchFromWikipedia();
+    } catch {
         // 忽略错误
-    });
+    }
 }

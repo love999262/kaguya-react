@@ -1,3 +1,5 @@
+import { indexedDBCache } from './utils/indexedDB';
+
 type NewsItem = {
     title: string;
     url: string;
@@ -41,7 +43,9 @@ type GithubTrendingResponse = {
     }>;
 };
 
-// 新闻接口不做本地缓存，每次实时获取
+// 新闻缓存配置 - 3小时
+const NEWS_CACHE_KEY = 'kaguya:news:cache';
+const NEWS_CACHE_DURATION = 3 * 60 * 60 * 1000; // 3小时
 
 const RSS2JSON_ENDPOINT = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
@@ -186,8 +190,34 @@ async function fetchFromAPI(source: NewsAPISource): Promise<NewsItem[]> {
     }
 }
 
-// 新闻接口不做本地缓存，每次实时获取
-// 移除 getCachedNews 和 setCachedNews 函数
+// 从 IndexDB 获取缓存
+async function getCachedNews(): Promise<NewsResponse | null> {
+    try {
+        const entry = await indexedDBCache.get<NewsItem[]>(NEWS_CACHE_KEY);
+        if (!entry) return null;
+
+        // 检查是否过期
+        if (Date.now() - entry.timestamp > NEWS_CACHE_DURATION) {
+            return null;
+        }
+
+        return {
+            items: entry.data,
+            timestamp: entry.timestamp,
+        };
+    } catch {
+        return null;
+    }
+}
+
+// 设置缓存到 IndexDB
+async function setCachedNews(items: NewsItem[]): Promise<void> {
+    try {
+        await indexedDBCache.set(NEWS_CACHE_KEY, items);
+    } catch {
+        // ignore storage quota issues
+    }
+}
 
 function dedupeNews(items: NewsItem[]): NewsItem[] {
     const seen = new Set<string>();
@@ -201,8 +231,15 @@ function dedupeNews(items: NewsItem[]): NewsItem[] {
     });
 }
 
-export async function fetchHotNews(): Promise<NewsItem[]> {
-    // 新闻接口不做本地缓存，每次实时获取
+export async function fetchHotNews(forceRefresh = false): Promise<NewsItem[]> {
+    // 如果不是强制刷新，先检查缓存
+    if (!forceRefresh) {
+        const cached = await getCachedNews();
+        if (cached && cached.items.length > 0) {
+            return cached.items;
+        }
+    }
+
     const shuffled = shuffleArray(NEWS_API_SOURCES);
     const selected = shuffled.slice(0, 5);
     const results = await Promise.allSettled(selected.map((source) => fetchFromAPI(source)));
@@ -216,7 +253,14 @@ export async function fetchHotNews(): Promise<NewsItem[]> {
 
     const deduped = dedupeNews(merged).slice(0, 24);
     if (deduped.length > 0) {
+        await setCachedNews(deduped);
         return deduped;
+    }
+
+    // 如果获取失败，返回缓存数据（即使已过期）
+    const cached = await getCachedNews();
+    if (cached && cached.items.length > 0) {
+        return cached.items;
     }
 
     return LOCAL_NEWS_FALLBACK;
