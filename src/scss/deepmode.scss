@@ -1037,6 +1037,41 @@
     border: 1px dashed rgba(100, 140, 180, 0.2);
 }
 
+// 缓存加载状态
+.kaguya-cache-loading {
+    padding: 40px 20px;
+    text-align: center;
+    color: rgba(150, 175, 200, 0.8);
+    font-size: 0.95rem;
+}
+
+// 空缓存状态
+.kaguya-cache-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.kaguya-cache-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.kaguya-cache-empty-text {
+    font-size: 1.1rem;
+    color: rgba(180, 200, 230, 0.9);
+    margin-bottom: 8px;
+}
+
+.kaguya-cache-empty-hint {
+    font-size: 0.85rem;
+    color: rgba(150, 175, 200, 0.6);
+}
+
 .kaguya-cache-consequence {
     margin-top: 12px;
     padding: 12px 14px;

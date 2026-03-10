@@ -1791,6 +1791,10 @@ const DeepMode = (): React.JSX.Element => {
                     } else if (cacheKey === 'news') {
                         await indexedDBCache.remove('kaguya:news:cache');
                         console.log('[CacheManager] 已删除新闻缓存');
+                    } else if (cacheKey === 'jokes') {
+                        const { clearJokesCache } = await import('./services/jokeService');
+                        await clearJokesCache();
+                        console.log('[CacheManager] 已删除笑话缓存');
                     }
                     clearedOthers++;
                 } catch (e) {
@@ -2118,24 +2122,14 @@ type CacheManagerPanelProps = {
     isClearing: boolean;
 };
 
-const OTHER_CACHES = [
-    {
-        key: 'history',
-        name: '历史上的今天',
-        description: '历史事件数据缓存',
-        duration: '30天',
-        size: '约 5-10 KB',
-        consequence: '下次查看时需要重新从维基百科获取',
-    },
-    {
-        key: 'news',
-        name: '热点新闻',
-        description: '新闻数据缓存',
-        duration: '3小时',
-        size: '约 10-50 KB',
-        consequence: '下次查看时需要重新从 RSS 源获取',
-    },
-];
+interface OtherCacheInfo {
+    key: string;
+    name: string;
+    description: string;
+    duration: string;
+    size: string;
+    consequence: string;
+}
 
 const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
     cachedModelIds,
@@ -2149,8 +2143,74 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
     onConfirm,
     isClearing,
 }) => {
+    const [availableOtherCaches, setAvailableOtherCaches] = React.useState<OtherCacheInfo[]>([]);
+    const [jokesCacheInfo, setJokesCacheInfo] = React.useState<{ count: number; consumed: number } | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    // 动态检查可用的缓存
+    React.useEffect(() => {
+        const checkAvailableCaches = async () => {
+            setIsLoading(true);
+            const caches: OtherCacheInfo[] = [];
+
+            // 检查历史上的今天缓存
+            try {
+                const historyEntry = await indexedDBCache.get('kaguya:history:today');
+                if (historyEntry) {
+                    caches.push({
+                        key: 'history',
+                        name: '历史上的今天',
+                        description: '历史事件数据缓存',
+                        duration: '30天',
+                        size: '约 5-10 KB',
+                        consequence: '下次查看时需要重新从维基百科获取',
+                    });
+                }
+            } catch {}
+
+            // 检查新闻缓存
+            try {
+                const newsEntry = await indexedDBCache.get('kaguya:news:cache');
+                if (newsEntry) {
+                    caches.push({
+                        key: 'news',
+                        name: '热点新闻',
+                        description: '新闻数据缓存',
+                        duration: '3小时',
+                        size: '约 10-50 KB',
+                        consequence: '下次查看时需要重新从 RSS 源获取',
+                    });
+                }
+            } catch {}
+
+            // 检查笑话缓存
+            try {
+                const { getJokesCacheInfo } = await import('./services/jokeService');
+                const jokesInfo = await getJokesCacheInfo();
+                if (jokesInfo && jokesInfo.count > 0) {
+                    setJokesCacheInfo(jokesInfo);
+                    caches.push({
+                        key: 'jokes',
+                        name: '笑话缓存',
+                        description: `批量笑话缓存（${jokesInfo.consumed}/${jokesInfo.count} 已消费）`,
+                        duration: '长期',
+                        size: `约 ${(jokesInfo.count * 0.5).toFixed(0)} KB`,
+                        consequence: '小剧场讲笑话时需要重新获取',
+                    });
+                }
+            } catch {}
+
+            setAvailableOtherCaches(caches);
+            setIsLoading(false);
+        };
+
+        void checkAvailableCaches();
+    }, []);
+
     const totalSelected = selectedModelCaches.size + selectedOtherCaches.size;
     const hasModelCaches = cachedModelIds.length > 0;
+    const hasOtherCaches = availableOtherCaches.length > 0;
+    const hasAnyCache = hasModelCaches || hasOtherCaches;
 
     return (
         <div className='kaguya-cache-manager-overlay'>
@@ -2168,90 +2228,104 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
                 </div>
 
                 <div className='kaguya-cache-manager-content'>
-                    {/* 模型缓存区域 */}
-                    <div className='kaguya-cache-section'>
-                        <div className='kaguya-cache-section-header'>
-                            <h4>🤖 模型缓存</h4>
+                    {isLoading ? (
+                        <div className='kaguya-cache-loading'>正在检查缓存...</div>
+                    ) : !hasAnyCache ? (
+                        <div className='kaguya-cache-empty-state'>
+                            <div className='kaguya-cache-empty-icon'>📭</div>
+                            <div className='kaguya-cache-empty-text'>暂无缓存数据</div>
+                            <div className='kaguya-cache-empty-hint'>使用各项功能后会自动产生缓存</div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* 模型缓存区域 */}
                             {hasModelCaches && (
-                                <label className='kaguya-cache-checkbox-all'>
-                                    <input
-                                        type='checkbox'
-                                        checked={selectAllModels}
-                                        onChange={onToggleSelectAllModels}
-                                        disabled={isClearing}
-                                    />
-                                    <span>全选</span>
-                                </label>
-                            )}
-                        </div>
-                        
-                        {hasModelCaches ? (
-                            <div className='kaguya-cache-list'>
-                                {cachedModelIds.map((modelId) => (
-                                    <label
-                                        key={modelId}
-                                        className={`kaguya-cache-item ${selectedModelCaches.has(modelId) ? 'kaguya-cache-item-selected' : ''}`}
-                                    >
-                                        <input
-                                            type='checkbox'
-                                            checked={selectedModelCaches.has(modelId)}
-                                            onChange={() => onToggleModelCache(modelId)}
-                                            disabled={isClearing}
-                                        />
-                                        <div className='kaguya-cache-item-info'>
-                                            <span className='kaguya-cache-item-name'>{modelId}</span>
-                                            <span className='kaguya-cache-item-meta'>大小: 约 500MB - 4GB</span>
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className='kaguya-cache-empty'>暂无模型缓存</div>
-                        )}
-                        
-                        <div className='kaguya-cache-consequence'>
-                            <strong>⚠️ 清理后果:</strong> 选中的模型将被删除，下次使用需要重新下载，可能需要较长时间。
-                        </div>
-                    </div>
-
-                    {/* 其他缓存区域 */}
-                    <div className='kaguya-cache-section'>
-                        <div className='kaguya-cache-section-header'>
-                            <h4>📦 其他缓存</h4>
-                        </div>
-                        
-                        <div className='kaguya-cache-list'>
-                            {OTHER_CACHES.map((cache) => (
-                                <label
-                                    key={cache.key}
-                                    className={`kaguya-cache-item ${selectedOtherCaches.has(cache.key) ? 'kaguya-cache-item-selected' : ''}`}
-                                >
-                                    <input
-                                        type='checkbox'
-                                        checked={selectedOtherCaches.has(cache.key)}
-                                        onChange={() => onToggleOtherCache(cache.key)}
-                                        disabled={isClearing}
-                                    />
-                                    <div className='kaguya-cache-item-info'>
-                                        <span className='kaguya-cache-item-name'>{cache.name}</span>
-                                        <span className='kaguya-cache-item-desc'>{cache.description}</span>
-                                        <span className='kaguya-cache-item-meta'>
-                                            有效期: {cache.duration} | 大小: {cache.size}
-                                        </span>
+                                <div className='kaguya-cache-section'>
+                                    <div className='kaguya-cache-section-header'>
+                                        <h4>🤖 模型缓存</h4>
+                                        <label className='kaguya-cache-checkbox-all'>
+                                            <input
+                                                type='checkbox'
+                                                checked={selectAllModels}
+                                                onChange={onToggleSelectAllModels}
+                                                disabled={isClearing}
+                                            />
+                                            <span>全选</span>
+                                        </label>
                                     </div>
-                                </label>
-                            ))}
-                        </div>
-                        
-                        <div className='kaguya-cache-consequence kaguya-cache-consequence-light'>
-                            <strong>💡 清理后果:</strong> 选中的缓存将被删除，下次使用时会自动重新获取。
-                        </div>
-                    </div>
+
+                                    <div className='kaguya-cache-list'>
+                                        {cachedModelIds.map((modelId) => (
+                                            <label
+                                                key={modelId}
+                                                className={`kaguya-cache-item ${selectedModelCaches.has(modelId) ? 'kaguya-cache-item-selected' : ''}`}
+                                            >
+                                                <input
+                                                    type='checkbox'
+                                                    checked={selectedModelCaches.has(modelId)}
+                                                    onChange={() => onToggleModelCache(modelId)}
+                                                    disabled={isClearing}
+                                                />
+                                                <div className='kaguya-cache-item-info'>
+                                                    <span className='kaguya-cache-item-name'>{modelId}</span>
+                                                    <span className='kaguya-cache-item-meta'>大小: 约 500MB - 4GB</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    <div className='kaguya-cache-consequence'>
+                                        <strong>⚠️ 清理后果:</strong> 选中的模型将被删除，下次使用需要重新下载，可能需要较长时间。
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 其他缓存区域 */}
+                            {hasOtherCaches && (
+                                <div className='kaguya-cache-section'>
+                                    <div className='kaguya-cache-section-header'>
+                                        <h4>📦 其他缓存</h4>
+                                    </div>
+
+                                    <div className='kaguya-cache-list'>
+                                        {availableOtherCaches.map((cache) => (
+                                            <label
+                                                key={cache.key}
+                                                className={`kaguya-cache-item ${selectedOtherCaches.has(cache.key) ? 'kaguya-cache-item-selected' : ''}`}
+                                            >
+                                                <input
+                                                    type='checkbox'
+                                                    checked={selectedOtherCaches.has(cache.key)}
+                                                    onChange={() => onToggleOtherCache(cache.key)}
+                                                    disabled={isClearing}
+                                                />
+                                                <div className='kaguya-cache-item-info'>
+                                                    <span className='kaguya-cache-item-name'>{cache.name}</span>
+                                                    <span className='kaguya-cache-item-desc'>{cache.description}</span>
+                                                    <span className='kaguya-cache-item-meta'>
+                                                        有效期: {cache.duration} | 大小: {cache.size}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    <div className='kaguya-cache-consequence kaguya-cache-consequence-light'>
+                                        <strong>💡 清理后果:</strong> 选中的缓存将被删除，下次使用时会自动重新获取。
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 <div className='kaguya-cache-manager-footer'>
                     <div className='kaguya-cache-summary'>
-                        已选择: <strong>{totalSelected}</strong> 项
+                        {hasAnyCache ? (
+                            <>已选择: <strong>{totalSelected}</strong> 项</>
+                        ) : (
+                            <span style={{ color: 'rgba(150, 175, 200, 0.6)' }}>无缓存可清理</span>
+                        )}
                     </div>
                     <div className='kaguya-cache-actions'>
                         <button
@@ -2260,16 +2334,18 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
                             onClick={onClose}
                             disabled={isClearing}
                         >
-                            取消
+                            关闭
                         </button>
-                        <button
-                            type='button'
-                            className='kaguya-cache-btn kaguya-cache-btn-confirm'
-                            onClick={onConfirm}
-                            disabled={isClearing || totalSelected === 0}
-                        >
-                            {isClearing ? '清理中...' : `确认清理 (${totalSelected})`}
-                        </button>
+                        {hasAnyCache && (
+                            <button
+                                type='button'
+                                className='kaguya-cache-btn kaguya-cache-btn-confirm'
+                                onClick={onConfirm}
+                                disabled={isClearing || totalSelected === 0}
+                            >
+                                {isClearing ? '清理中...' : `确认清理 (${totalSelected})`}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
