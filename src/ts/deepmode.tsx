@@ -398,6 +398,9 @@ const DeepMode = (): React.JSX.Element => {
     const [selectedOtherCaches, setSelectedOtherCaches] = React.useState<Set<string>>(new Set());
     const [selectAllModels, setSelectAllModels] = React.useState<boolean>(false);
     const [selectAllOthers, setSelectAllOthers] = React.useState<boolean>(false);
+    // 引擎恢复状态
+    const [isResumingEngine, setIsResumingEngine] = React.useState<boolean>(false);
+    const [resumeProgress, setResumeProgress] = React.useState<number>(0);
 
     const panelRef = React.useRef<HTMLDivElement | null>(null);
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -1952,14 +1955,44 @@ const DeepMode = (): React.JSX.Element => {
         pushMessage('system', 'WebLLM 进程已暂停。');
     }, [pushMessage]);
 
-    const handleResumeEngine = React.useCallback((): void => {
+    const handleResumeEngine = React.useCallback(async (): Promise<void> => {
+        setIsResumingEngine(true);
+        setResumeProgress(0);
         setEnginePaused(false);
         setLlmProgress('正在恢复进程...');
+        pushMessage('system', 'WebLLM 进程恢复中...');
+
         if (panelOpen && storageCheckedRef.current) {
             const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
-            void ensureLLMEngine(nextTargetModel);
+            
+            // 模拟进度条
+            const progressInterval = setInterval(() => {
+                setResumeProgress(prev => {
+                    if (prev >= 90) return prev;
+                    return prev + Math.random() * 15;
+                });
+            }, 500);
+
+            try {
+                await ensureLLMEngine(nextTargetModel);
+                clearInterval(progressInterval);
+                setResumeProgress(100);
+                
+                // 等待一小段时间让用户看到100%
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                pushMessage('system', 'WebLLM 进程已恢复！');
+            } catch (error) {
+                clearInterval(progressInterval);
+                pushMessage('system', `恢复失败: ${error instanceof Error ? error.message : '未知错误'}`);
+            } finally {
+                setIsResumingEngine(false);
+                setResumeProgress(0);
+            }
+        } else {
+            setIsResumingEngine(false);
+            pushMessage('system', 'WebLLM 进程已恢复！');
         }
-        pushMessage('system', 'WebLLM 进程恢复中...');
     }, [allModelIds, ensureLLMEngine, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
     // 获取其他缓存信息
@@ -2338,19 +2371,39 @@ const DeepMode = (): React.JSX.Element => {
                     )}
 
                     {/* 引擎暂停蒙层 - 覆盖整个内容区域 */}
-                    {enginePaused && (
+                    {(enginePaused || isResumingEngine) && (
                         <div className='kaguya-deep-paused-overlay'>
                             <div className='kaguya-deep-paused-content'>
-                                <div className='kaguya-deep-paused-icon-large'>⏸️</div>
-                                <div className='kaguya-deep-paused-title'>引擎已暂停</div>
-                                <div className='kaguya-deep-paused-desc'>点击恢复按钮以继续操作</div>
-                                <button
-                                    type='button'
-                                    className='kaguya-deep-paused-resume-large-btn'
-                                    onClick={handleResumeEngine}
-                                >
-                                    ▶️ 恢复引擎
-                                </button>
+                                {isResumingEngine ? (
+                                    <>
+                                        <div className='kaguya-deep-paused-icon-large'>▶️</div>
+                                        <div className='kaguya-deep-paused-title'>正在恢复引擎...</div>
+                                        <div className='kaguya-deep-progress-container'>
+                                            <div className='kaguya-deep-progress-bar'>
+                                                <div
+                                                    className='kaguya-deep-progress-fill'
+                                                    style={{ width: `${Math.min(100, resumeProgress)}%` }}
+                                                />
+                                            </div>
+                                            <div className='kaguya-deep-progress-text'>{Math.min(100, Math.round(resumeProgress))}%</div>
+                                        </div>
+                                        <div className='kaguya-deep-paused-desc'>正在加载模型，请稍候...</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className='kaguya-deep-paused-icon-large'>⏸️</div>
+                                        <div className='kaguya-deep-paused-title'>引擎已暂停</div>
+                                        <div className='kaguya-deep-paused-desc'>点击恢复按钮以继续操作</div>
+                                        <button
+                                            type='button'
+                                            className='kaguya-deep-paused-resume-large-btn'
+                                            onClick={handleResumeEngine}
+                                            disabled={isResumingEngine}
+                                        >
+                                            ▶️ 恢复引擎
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
