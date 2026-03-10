@@ -387,6 +387,9 @@ const DeepMode = (): React.JSX.Element => {
     const [pureMode, setPureMode] = React.useState<boolean>(false);
     // 抽屉动画状态
     const [drawerVisible, setDrawerVisible] = React.useState<boolean>(false);
+    // 清理缓存确认弹窗状态
+    const [showClearCacheConfirm, setShowClearCacheConfirm] = React.useState<boolean>(false);
+    const [isClearingCache, setIsClearingCache] = React.useState<boolean>(false);
 
     const panelRef = React.useRef<HTMLDivElement | null>(null);
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -1677,6 +1680,40 @@ const DeepMode = (): React.JSX.Element => {
         pushMessage('system', 'WebLLM 进程恢复中...');
     }, [allModelIds, ensureLLMEngine, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
+    // 清理所有模型缓存
+    const handleClearAllModelCache = React.useCallback(async (): Promise<void> => {
+        setIsClearingCache(true);
+        pushMessage('system', '正在清理所有模型缓存...');
+        try {
+            const webllm = await getWebLLMModule();
+            const modelSet = await ensureModelCatalog();
+            const modelIds = Array.from(modelSet);
+            let clearedCount = 0;
+
+            for (const modelId of modelIds) {
+                try {
+                    // 尝试所有策略清理缓存
+                    for (const strategy of STRATEGIES) {
+                        const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                        await webllm.deleteModelAllInfoInCache(modelId, appConfig).catch((): void => {});
+                    }
+                    clearedCount++;
+                } catch {
+                    // 忽略单个模型清理错误
+                }
+            }
+
+            // 刷新缓存状态
+            await refreshCachedModelIds();
+            pushMessage('system', `已清理 ${clearedCount} 个模型的缓存。下次使用需要重新下载。`);
+        } catch (error) {
+            pushMessage('system', `清理缓存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        } finally {
+            setIsClearingCache(false);
+            setShowClearCacheConfirm(false);
+        }
+    }, [ensureModelCatalog, getWebLLMModule, pushMessage, refreshCachedModelIds]);
+
     React.useEffect(() => {
         return () => {
             if (searchDebounceRef.current !== null) {
@@ -1736,6 +1773,16 @@ const DeepMode = (): React.JSX.Element => {
                 <div className={`kaguya-deep-drawer ${drawerVisible ? 'kaguya-deep-drawer-visible' : ''}`} ref={panelRef}>
                     {/* 角落按钮 - 绝对定位 */}
                     <div className='kaguya-deep-corner-actions'>
+                        {/* 清理模型缓存按钮 */}
+                        <button
+                            type='button'
+                            className='kaguya-deep-corner-btn kaguya-deep-corner-btn-clear-cache'
+                            onClick={() => setShowClearCacheConfirm(true)}
+                            disabled={isClearingCache}
+                            title='清理全部模型缓存'
+                        >
+                            🗑️
+                        </button>
                         {/* 停止进程按钮 */}
                         {llmState === 'ready' && (
                             enginePaused ? (
@@ -1773,6 +1820,40 @@ const DeepMode = (): React.JSX.Element => {
                             ×
                         </button>
                     </div>
+
+                    {/* 清理缓存确认弹窗 */}
+                    {showClearCacheConfirm && (
+                        <div className='kaguya-deep-confirm-overlay'>
+                            <div className='kaguya-deep-confirm-dialog'>
+                                <div className='kaguya-deep-confirm-title'>⚠️ 警告</div>
+                                <div className='kaguya-deep-confirm-content'>
+                                    <p>确定要清理全部模型缓存吗？</p>
+                                    <p className='kaguya-deep-confirm-hint'>
+                                        此操作将删除所有已下载的模型文件（{cachedModelCount} 个），
+                                        下次使用需要重新下载，可能需要较长时间。
+                                    </p>
+                                </div>
+                                <div className='kaguya-deep-confirm-actions'>
+                                    <button
+                                        type='button'
+                                        className='kaguya-deep-confirm-btn kaguya-deep-confirm-btn-cancel'
+                                        onClick={() => setShowClearCacheConfirm(false)}
+                                        disabled={isClearingCache}
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        type='button'
+                                        className='kaguya-deep-confirm-btn kaguya-deep-confirm-btn-confirm'
+                                        onClick={handleClearAllModelCache}
+                                        disabled={isClearingCache}
+                                    >
+                                        {isClearingCache ? '清理中...' : '确认清理'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 内容区域 - 可滚动 */}
                     <div className='kaguya-drawer-content'>

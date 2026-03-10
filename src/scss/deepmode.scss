@@ -214,6 +214,18 @@
             border-color: rgba(126, 232, 148, 0.6);
         }
     }
+
+    // 清理缓存按钮 - 警示性红色
+    &.kaguya-deep-corner-btn-clear-cache {
+        background: rgba(220, 80, 80, 0.25);
+        border-color: rgba(255, 120, 120, 0.45);
+
+        &:hover:not(:disabled) {
+            background: rgba(220, 80, 80, 0.45);
+            border-color: rgba(255, 120, 120, 0.7);
+            box-shadow: 0 0 12px rgba(220, 80, 80, 0.4);
+        }
+    }
 }
 
 // 纯净模式按钮
@@ -706,6 +718,128 @@
     .kaguya-deep-model-row {
         margin-top: 6px;
         margin-bottom: 6px;
+    }
+}
+
+// 清理缓存确认弹窗
+.kaguya-deep-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 200ms ease;
+}
+
+.kaguya-deep-confirm-dialog {
+    background: linear-gradient(160deg, rgba(20, 45, 75, 0.98), rgba(12, 30, 55, 0.96));
+    border: 1px solid rgba(255, 120, 120, 0.4);
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(220, 80, 80, 0.2);
+    animation: slideUp 250ms ease;
+}
+
+.kaguya-deep-confirm-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ff6b6b;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.kaguya-deep-confirm-content {
+    color: rgba(230, 240, 255, 0.9);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    text-align: center;
+
+    p {
+        margin: 0 0 12px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+.kaguya-deep-confirm-hint {
+    color: rgba(200, 210, 230, 0.7);
+    font-size: 0.9rem;
+    padding: 12px;
+    background: rgba(220, 80, 80, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid rgba(255, 120, 120, 0.5);
+}
+
+.kaguya-deep-confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.kaguya-deep-confirm-btn {
+    padding: 12px 24px;
+    border-radius: 10px !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+    border: 1px solid transparent;
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+.kaguya-deep-confirm-btn-cancel {
+    background: rgba(120, 140, 170, 0.2);
+    border-color: rgba(150, 170, 200, 0.35);
+    color: rgba(220, 230, 255, 0.9);
+
+    &:hover:not(:disabled) {
+        background: rgba(140, 160, 190, 0.3);
+        border-color: rgba(170, 190, 220, 0.5);
+    }
+}
+
+.kaguya-deep-confirm-btn-confirm {
+    background: linear-gradient(135deg, rgba(220, 80, 80, 0.8), rgba(200, 60, 60, 0.9));
+    border-color: rgba(255, 120, 120, 0.6);
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 80, 80, 0.3);
+
+    &:hover:not(:disabled) {
+        background: linear-gradient(135deg, rgba(240, 100, 100, 0.9), rgba(220, 80, 80, 1));
+        box-shadow: 0 6px 20px rgba(220, 80, 80, 0.4);
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
