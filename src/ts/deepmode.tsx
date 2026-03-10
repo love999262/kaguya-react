@@ -1999,6 +1999,70 @@ const DeepMode = (): React.JSX.Element => {
         return caches;
     }, []);
 
+    // 使用底层浏览器 API 强制清理模型缓存
+    const forceClearModelCache = async (modelId: string): Promise<boolean> => {
+        try {
+            // 1. 尝试使用 WebLLM 的删除方法
+            const webllm = await getWebLLMModule();
+            for (const strategy of STRATEGIES) {
+                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                try {
+                    await webllm.deleteModelAllInfoInCache(modelId, appConfig);
+                } catch {}
+            }
+            
+            // 2. 直接清理 Cache API 中的缓存
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await window.caches.keys();
+                    for (const cacheName of cacheNames) {
+                        if (cacheName.includes('mlc') || cacheName.includes('webllm') || cacheName.includes(modelId)) {
+                            const cache = await window.caches.open(cacheName);
+                            const keys = await cache.keys();
+                            for (const request of keys) {
+                                if (request.url.includes(modelId)) {
+                                    await cache.delete(request);
+                                    console.log(`[CacheManager] 从 Cache API 删除: ${request.url}`);
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[CacheManager] Cache API 清理失败:', e);
+                }
+            }
+            
+            // 3. 清理 IndexedDB 中的模型数据
+            try {
+                const databases = await (window.indexedDB as any).databases?.() || [];
+                for (const db of databases) {
+                    if (db.name && (db.name.includes('mlc') || db.name.includes('webllm') || db.name.includes(modelId))) {
+                        window.indexedDB.deleteDatabase(db.name);
+                        console.log(`[CacheManager] 删除 IndexedDB: ${db.name}`);
+                    }
+                }
+            } catch (e) {
+                console.warn('[CacheManager] IndexedDB 清理失败:', e);
+            }
+            
+            // 4. 等待并验证
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            for (const strategy of STRATEGIES) {
+                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
+                const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
+                if (hasCache) {
+                    return false;
+                }
+            }
+            
+            return true;
+        } catch (err) {
+            console.error('[CacheManager] 强制清理失败:', err);
+            return false;
+        }
+    };
+
     // 清理选中的缓存
     const handleClearSelectedCaches = React.useCallback(async (): Promise<void> => {
         setIsClearingCache(true);
@@ -2011,8 +2075,6 @@ const DeepMode = (): React.JSX.Element => {
         try {
             // 清理选中的模型缓存
             if (selectedModelCaches.size > 0) {
-                const webllm = await getWebLLMModule();
-                
                 // 如果要清理的模型包含当前加载的模型，先完全卸载引擎
                 const currentModel = loadingModelIdRef.current;
                 if (currentModel && selectedModelCaches.has(currentModel)) {
@@ -2028,53 +2090,17 @@ const DeepMode = (): React.JSX.Element => {
                     loadingModelIdRef.current = null;
                     setLlmState('idle');
                     setActiveModelId('未加载');
-                    // 等待一段时间确保卸载完成
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                 }
                 
                 for (const modelId of selectedModelCaches) {
                     try {
                         pushMessage('system', `正在清理模型: ${modelId}...`);
-                        let deleteSuccess = false;
                         
-                        // 尝试所有策略清理缓存，多次重试
-                        for (let attempt = 0; attempt < 3; attempt++) {
-                            for (const strategy of STRATEGIES) {
-                                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                                try {
-                                    await webllm.deleteModelAllInfoInCache(modelId, appConfig);
-                                    console.log(`[CacheManager] 已删除模型缓存: ${modelId} (${strategy.id})`);
-                                } catch (e) {
-                                    // 忽略单个策略的失败
-                                }
-                            }
-                            
-                            // 等待缓存清理完成
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                            
-                            // 验证是否真正删除
-                            let stillInCache = false;
-                            for (const strategy of STRATEGIES) {
-                                const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
-                                const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
-                                if (hasCache) {
-                                    stillInCache = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (!stillInCache) {
-                                deleteSuccess = true;
-                                break;
-                            }
-                            
-                            // 等待后重试
-                            if (attempt < 2) {
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-                            }
-                        }
+                        // 使用强制清理方法
+                        const success = await forceClearModelCache(modelId);
                         
-                        if (deleteSuccess) {
+                        if (success) {
                             clearedModels++;
                             console.log(`[CacheManager] 模型缓存清理成功: ${modelId}`);
                         } else {
