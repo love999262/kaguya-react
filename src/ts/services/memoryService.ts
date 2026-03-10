@@ -148,21 +148,80 @@ export async function getRelevantMemories(
 // 格式化记忆为角色提示
 export async function formatMemoriesForPrompt(character: '22' | '33'): Promise<string> {
     const memory = await getCharacterMemory();
-    
+
     if (memory.memories.length === 0) {
         return '';
     }
-    
+
+    // 获取最近的记忆
     const recentMemories = memory.memories
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 10);
-    
+
+    // 提取用户画像信息
+    const preferences: string[] = [];
+    const habits: string[] = [];
+    const personalityTraits: string[] = [];
+    const favoriteCategories: string[] = [];
+
+    for (const mem of memory.memories) {
+        // 提取偏好
+        if (mem.category === 'preference') {
+            const match = mem.content.match(/对(.+?)感兴趣|搜索(.+?)相关内容|访问(.+?)类网站/);
+            if (match) {
+                const item = match[1] || match[2] || match[3];
+                if (item && !preferences.includes(item)) {
+                    preferences.push(item);
+                }
+            }
+        }
+
+        // 提取习惯
+        if (mem.category === 'habit') {
+            const match = mem.content.match(/经常(.+?)|使用(.+?)|访问(.+?)/);
+            if (match) {
+                const item = match[1] || match[2] || match[3];
+                if (item && !habits.includes(item)) {
+                    habits.push(item);
+                }
+            }
+        }
+
+        // 提取性格特征
+        if (mem.source.includes('性格') || mem.content.includes('性格特征')) {
+            const match = mem.content.match(/性格特征：(.+?)[\s-]/);
+            if (match && !personalityTraits.includes(match[1])) {
+                personalityTraits.push(match[1]);
+            }
+        }
+
+        // 提取喜欢的分类
+        if (mem.content.includes('类网站') || mem.content.includes('感兴趣')) {
+            const match = mem.content.match(/"([^"]+)"类|对(.+?)感兴趣/);
+            if (match) {
+                const cat = match[1] || match[2];
+                if (cat && !favoriteCategories.includes(cat)) {
+                    favoriteCategories.push(cat);
+                }
+            }
+        }
+    }
+
+    // 构建用户画像摘要
+    let profileSummary = '';
+    if (personalityTraits.length > 0) {
+        profileSummary += `\n用户性格：${personalityTraits.slice(0, 3).join('、')}。`;
+    }
+    if (favoriteCategories.length > 0) {
+        profileSummary += `\n偏好类别：${favoriteCategories.slice(0, 3).join('、')}。`;
+    }
+
     const memText = recentMemories.map(m => `- ${m.content}`).join('\n');
-    
+
     if (character === '22') {
-        return `\n\n你记得这些关于用户的事情：\n${memText}\n\n在回复时可以自然地提及这些记忆，让用户感到被关心。`;
+        return `\n\n【用户画像】${profileSummary}\n\n你记得这些关于用户的事情：\n${memText}\n\n在回复时：\n1) 结合用户性格特征，用适合的方式互动\n2) 自然地提及相关记忆，让用户感到被关心和了解\n3) 如果用户是技术型，可以多用技术比喻；如果是文艺型，可以更有情感`;
     } else {
-        return `\n\n你记录的这些信息可能有用：\n${memText}\n\n在合适的时机可以引用这些信息，展现你的观察力。`;
+        return `\n\n【用户画像】${profileSummary}\n\n你记录的这些信息可能有用：\n${memText}\n\n在回复时：\n1) 结合用户性格特征，给出合适的回应\n2) 引用相关记忆展现你的观察力和分析能力\n3) 根据用户类型调整建议的风格和深度`;
     }
 }
 

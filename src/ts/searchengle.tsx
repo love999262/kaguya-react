@@ -2,6 +2,7 @@ import * as React from 'react';
 import { StateInterface as Props } from './navigator';
 import utils from './utils';
 import searchEngineData from '../../searchengine-list.json';
+import { analyzeSearchContent } from './services/searchAnalysisService';
 
 interface SearchEngleInterface {
     name: string;
@@ -393,6 +394,19 @@ class SearchEngle extends React.Component <Props, StateInterface> {
 
         const encodedKeyword = encodeURIComponent(keyword);
         utils.openExternalUrl(`${this.state.search.searchInterface}${encodedKeyword}`);
+
+        // AI分析搜索内容，学习用户偏好
+        analyzeSearchContent(keyword, this.state.search.searchBtnName).catch(() => {
+            // 静默处理分析错误，不影响搜索功能
+        });
+
+        // 触发搜索提交事件，通知AI角色
+        window.dispatchEvent(new CustomEvent('kaguya:search-submit', {
+            detail: {
+                keyword: keyword,
+                searchEngine: this.state.search.searchBtnName,
+            },
+        }));
 
         const searchHistory = this.loadSearchHistory().filter((item) => item !== keyword);
         searchHistory.unshift(keyword);

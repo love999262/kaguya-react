@@ -381,7 +381,7 @@ const DeepMode = (): React.JSX.Element => {
     const [deviceHint, setDeviceHint] = React.useState<string>('待检测');
     const [isResponding, setIsResponding] = React.useState<boolean>(false);
     // 当前活跃的模式（防止模式间互相插入）
-    const [activeMode, setActiveMode] = React.useState<'none' | 'skit' | 'history' | 'news' | 'chat'>('none');
+    const [activeMode, setActiveMode] = React.useState<'none' | 'skit' | 'history' | 'news' | 'chat' | 'weather'>('none');
     const [storagePersistence, setStoragePersistence] = React.useState<StoragePersistenceState>('unknown');
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         { id: 1, role: 'system', text: '深度交互已就绪：纯文字对话 + 22/33分角色回复。' },
@@ -425,6 +425,12 @@ const DeepMode = (): React.JSX.Element => {
     const lastNewsFetchRef = React.useRef<number>(0);
     const newsCommentRunningRef = React.useRef<boolean>(false);
     const skitEngineRef = React.useRef<SkitEngine | null>(null);
+    const activeModeRef = React.useRef<'none' | 'skit' | 'history' | 'news' | 'chat' | 'weather'>('none');
+
+    // 同步activeMode到ref，供定时器使用
+    React.useEffect(() => {
+        activeModeRef.current = activeMode;
+    }, [activeMode]);
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
@@ -547,6 +553,7 @@ const DeepMode = (): React.JSX.Element => {
         modelId: string,
         stageLabel: string,
         silentProgress: boolean = false,
+        externalProgressCallback?: (progress: number, text: string) => void,
     ): Promise<{ result: LLMLoadResult | null; lastErrorText: string; }> => {
         const strategyOrder = getStrategyOrder();
         let lastErrorText = '';
@@ -569,6 +576,10 @@ const DeepMode = (): React.JSX.Element => {
                             }
                             const percent = Math.max(0, Math.min(100, Math.round(report.progress * 100)));
                             setLlmProgress(`${stageLabel}${percent}% ${report.text}`);
+                            // 调用外部进度回调（如果有）
+                            if (externalProgressCallback) {
+                                externalProgressCallback(percent, report.text);
+                            }
                         },
                     });
                     setStoredStrategyId(strategy.id);
@@ -772,7 +783,10 @@ const DeepMode = (): React.JSX.Element => {
         return null;
     }, []);
 
-    const ensureLLMEngine = React.useCallback(async (requestedModel?: string): Promise<MLCEngineInterface | null> => {
+    const ensureLLMEngine = React.useCallback(async (
+        requestedModel?: string,
+        progressCallback?: (progress: number, text: string) => void
+    ): Promise<MLCEngineInterface | null> => {
         if (!('gpu' in navigator)) {
             setLlmState('unsupported');
             setLlmProgress('浏览器不支持 WebGPU');
@@ -817,7 +831,7 @@ const DeepMode = (): React.JSX.Element => {
                         setStoredModelPreference('auto');
                         pushMessage('system', `手动模型 ${targetModel} 不可用，已自动切回推荐模型 ${autoModel}。`);
                         loadingModelIdRef.current = autoModel;
-                        const retry = await loadModelWithStrategies(webllm, autoModel, `${getModelDisplayName(autoModel)} 加载：`);
+                        const retry = await loadModelWithStrategies(webllm, autoModel, `${getModelDisplayName(autoModel)} 加载：`, false, progressCallback);
                         if (retry.result) {
                             activeEngineRef.current = retry.result.engine;
                             setActiveModelId(autoModel);
@@ -843,12 +857,12 @@ const DeepMode = (): React.JSX.Element => {
                 }
 
                 let finalModelId = targetModel;
-                let loadResult = await loadModelWithStrategies(webllm, targetModel, `${getModelDisplayName(targetModel)} 加载：`);
+                let loadResult = await loadModelWithStrategies(webllm, targetModel, `${getModelDisplayName(targetModel)} 加载：`, false, progressCallback);
                 if (!loadResult.result) {
                     const downgraded = getDowngradedModel(targetModel, availableModelSet);
                     if (downgraded) {
                         setLlmProgress(`${getModelDisplayName(targetModel)} 加载失败，降级到 ${getModelDisplayName(downgraded)}...`);
-                        const downgradeResult = await loadModelWithStrategies(webllm, downgraded, `${getModelDisplayName(downgraded)} 加载：`);
+                        const downgradeResult = await loadModelWithStrategies(webllm, downgraded, `${getModelDisplayName(downgraded)} 加载：`, false, progressCallback);
                         if (downgradeResult.result) {
                             finalModelId = downgraded;
                             loadResult = downgradeResult;
@@ -1023,6 +1037,11 @@ const DeepMode = (): React.JSX.Element => {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            return;
+        }
+
         markInteraction();
 
         const [reply22, reply33] = await Promise.all([
@@ -1046,7 +1065,62 @@ const DeepMode = (): React.JSX.Element => {
         emitAction('33', reply33.action);
         emitBubble('22', reply22.text);
         emitBubble('33', reply33.text);
-    }, [emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
+    }, [activeMode, emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
+
+    // 处理搜索提交后的AI评论（结合搜索记忆）
+    const handleSearchSubmit = React.useCallback(async (keyword: string, searchEngine: string) => {
+        if (!keyword || keyword.length < 2) {
+            return;
+        }
+
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            return;
+        }
+
+        markInteraction();
+
+        // 获取相关记忆
+        const { getRelevantMemories } = await import('./services/memoryService');
+        const relevantMemories = await getRelevantMemories(keyword, 3);
+        const memoryContext = relevantMemories.length > 0
+            ? `根据我对用户的了解：${relevantMemories.map(m => m.content).join('；')}`
+            : '';
+
+        const [reply22, reply33] = await Promise.all([
+            requestPersonaJson(
+                '22',
+                `用户刚刚在${searchEngine}搜索了"${keyword}"。${memoryContext}
+
+请用22娘活泼关心的语气评论一下用户的这次搜索：
+1) 如果记忆中有相关信息，可以自然地提及，让用户感到被关心
+2) 给一些温暖的鼓励或实用的小建议
+3) 控制在1-2句话
+4) 输出JSON格式：{"comment":"内容","action":"happy|curious|thinking|calm|surprised"}`,
+                `搜索"${keyword}"啦！需要我帮忙整理信息吗？`,
+                'curious',
+            ),
+            requestPersonaJson(
+                '33',
+                `用户刚刚在${searchEngine}搜索了"${keyword}"。${memoryContext}
+
+请用33娘冷静客观的语气评论一下用户的这次搜索：
+1) 如果记忆中有相关信息，可以引用展现观察力
+2) 给出实用的建议或提醒
+3) 控制在1-2句话
+4) 输出JSON格式：{"comment":"内容","action":"happy|curious|thinking|calm|surprised"}`,
+                `正在搜索"${keyword}"，需要我帮你筛选信息来源吗？`,
+                'thinking',
+            ),
+        ]);
+
+        pushMessage('assistant22', `22（搜索）：${reply22.text}`);
+        pushMessage('assistant33', `33（搜索）：${reply33.text}`);
+        emitAction('22', reply22.action);
+        emitAction('33', reply33.action);
+        emitBubble('22', reply22.text);
+        emitBubble('33', reply33.text);
+    }, [activeMode, emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
 
     const handleWeatherAdvisory = React.useCallback(async (detail: WeatherAdvisoryEventDetail) => {
         if (!detail || !Array.isArray(detail.badDays) || detail.badDays.length === 0) {
@@ -1896,6 +1970,99 @@ const DeepMode = (): React.JSX.Element => {
         };
     }, [handleSearchFeedback]);
 
+    // 监听搜索提交事件
+    React.useEffect(() => {
+        const onSearchSubmit = (event: Event): void => {
+            const detail = (event as CustomEvent<{ keyword: string; searchEngine: string }>).detail;
+            if (detail?.keyword) {
+                void handleSearchSubmit(detail.keyword, detail.searchEngine || '搜索引擎');
+            }
+        };
+
+        window.addEventListener('kaguya:search-submit', onSearchSubmit as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:search-submit', onSearchSubmit as EventListener);
+        };
+    }, [handleSearchSubmit]);
+
+    // 监听导航点击事件
+    React.useEffect(() => {
+        const onNavClick = (event: Event): void => {
+            const detail = (event as CustomEvent<{ websiteName: string; websiteUrl: string; categoryTitle: string }>).detail;
+            if (detail?.websiteName) {
+                void handleNavClickFeedback(detail.websiteName, detail.categoryTitle);
+            }
+        };
+
+        window.addEventListener('kaguya:nav-click', onNavClick as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:nav-click', onNavClick as EventListener);
+        };
+    }, []);
+
+    // 处理导航点击后的AI反馈（结合用户画像）
+    const handleNavClickFeedback = React.useCallback(async (websiteName: string, categoryTitle: string) => {
+        if (!websiteName) {
+            return;
+        }
+
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            return;
+        }
+
+        markInteraction();
+
+        // 获取导航用户画像
+        const { getNavigationUserProfile } = await import('./services/navigationAnalysisService');
+        const navProfile = await getNavigationUserProfile();
+
+        // 构建用户画像上下文
+        let profileContext = '';
+        if (navProfile.personalityTraits.length > 0) {
+            profileContext += `用户性格特征：${navProfile.personalityTraits.join('、')}。`;
+        }
+        if (navProfile.topCategories.length > 0) {
+            profileContext += `用户偏好类别：${navProfile.topCategories.join('、')}。`;
+        }
+
+        const [reply22, reply33] = await Promise.all([
+            requestPersonaJson(
+                '22',
+                `用户刚刚点击了导航链接"${websiteName}"(${categoryTitle})。${profileContext}
+
+请用22娘活泼关心的语气评论一下：
+1) 结合用户性格特征，用适合的方式互动
+2) 如果这是用户喜欢的类型，可以表现出开心
+3) 给一些温暖的鼓励或相关的小建议
+4) 控制在1-2句话
+5) 输出JSON格式：{"comment":"内容","action":"happy|curious|thinking|calm|surprised"}`,
+                `访问${websiteName}啦！这个网站很有意思呢~`,
+                'happy',
+            ),
+            requestPersonaJson(
+                '33',
+                `用户刚刚点击了导航链接"${websiteName}"(${categoryTitle})。${profileContext}
+
+请用33娘冷静客观的语气评论一下：
+1) 结合用户性格特征，给出合适的回应
+2) 可以提及这个网站的特点或用途
+3) 给出实用的建议
+4) 控制在1-2句话
+5) 输出JSON格式：{"comment":"内容","action":"happy|curious|thinking|calm|surprised"}`,
+                `正在访问${websiteName}，需要我记录这个网站的信息吗？`,
+                'thinking',
+            ),
+        ]);
+
+        pushMessage('assistant22', `22（导航）：${reply22.text}`);
+        pushMessage('assistant33', `33（导航）：${reply33.text}`);
+        emitAction('22', reply22.action);
+        emitAction('33', reply33.action);
+        emitBubble('22', reply22.text);
+        emitBubble('33', reply33.text);
+    }, [activeMode, emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
+
     React.useEffect(() => {
         const onWeatherAdvisory = (event: Event): void => {
             const detail = (event as CustomEvent<WeatherAdvisoryEventDetail>).detail;
@@ -1925,6 +2092,12 @@ const DeepMode = (): React.JSX.Element => {
             const now = Date.now();
             const idleTooLong = now - lastInteractionAtRef.current >= IDLE_THRESHOLD_MS;
             if (idleTooLong) {
+                // 使用ref获取最新的activeMode，避免闭包问题
+                const currentMode = activeModeRef.current;
+                if (currentMode !== 'none' && currentMode !== 'chat') {
+                    // 如果有模式正在进行，不触发idle交互
+                    return;
+                }
                 const random = Math.random();
                 if (random < 0.3) {
                     void triggerNewsComment();
@@ -1964,26 +2137,27 @@ const DeepMode = (): React.JSX.Element => {
 
         if (panelOpen && storageCheckedRef.current) {
             const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
-            
-            // 模拟进度条
-            const progressInterval = setInterval(() => {
-                setResumeProgress(prev => {
-                    if (prev >= 90) return prev;
-                    return prev + Math.random() * 15;
-                });
-            }, 500);
 
             try {
-                await ensureLLMEngine(nextTargetModel);
-                clearInterval(progressInterval);
+                // 使用真实的进度回调
+                const progressCallback = (progress: number, text: string) => {
+                    setResumeProgress(progress);
+                    // 更新进度文本，显示当前加载阶段
+                    if (text) {
+                        setLlmProgress(`恢复中: ${text}`);
+                    }
+                };
+
+                await ensureLLMEngine(nextTargetModel, progressCallback);
+
+                // 确保显示100%
                 setResumeProgress(100);
-                
+
                 // 等待一小段时间让用户看到100%
                 await new Promise(resolve => setTimeout(resolve, 500));
-                
+
                 pushMessage('system', 'WebLLM 进程已恢复！');
             } catch (error) {
-                clearInterval(progressInterval);
                 pushMessage('system', `恢复失败: ${error instanceof Error ? error.message : '未知错误'}`);
             } finally {
                 setIsResumingEngine(false);

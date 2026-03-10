@@ -3,6 +3,7 @@ import { StateInterface as Props } from './navigator';
 import utils from './utils';
 import websitesData from '../../websites.json';
 import adultWebsitesData from '../../adult-websites.json';
+import { analyzeNavigationClick } from './services/navigationAnalysisService';
 
 interface WebsiteLink {
     name: string;
@@ -109,8 +110,22 @@ class Navigates extends React.Component<Props, StateInterface> {
         }
     }
 
-    private handleNavClick(href: string) {
+    private handleNavClick(href: string, websiteName: string, categoryTitle: string) {
         utils.openExternalUrl(href);
+
+        // AI分析导航点击行为，学习用户偏好
+        analyzeNavigationClick(websiteName, href, categoryTitle).catch(() => {
+            // 静默处理分析错误，不影响导航功能
+        });
+
+        // 触发导航点击事件，通知AI角色
+        window.dispatchEvent(new CustomEvent('kaguya:nav-click', {
+            detail: {
+                websiteName: websiteName,
+                websiteUrl: href,
+                categoryTitle: categoryTitle,
+            },
+        }));
     }
 
     private getCategoryTitleStyle(sectionIndex: number): React.CSSProperties {
@@ -142,7 +157,7 @@ class Navigates extends React.Component<Props, StateInterface> {
                         <li
                             key={`${entry.name}-${entryIndex}`}
                             className={`${this.props.prefix}-panel-nav-list`}
-                            onClick={() => { this.handleNavClick(entry.url); }}
+                            onClick={() => { this.handleNavClick(entry.url, entry.name, item.title); }}
                         >
                             {entry.name}
                         </li>
