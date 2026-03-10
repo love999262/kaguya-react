@@ -76,7 +76,8 @@ class Navigates extends React.Component<Props, StateInterface> {
         if (isTypingElement) {
             return;
         }
-        if (event.key === '\\' || event.code === 'Backslash' || event.keyCode === 220) {
+        // 成人模式快捷键：Shift + \ (反斜杠)
+        if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && event.keyCode === 220) {
             event.preventDefault();
             this.setState((previousState) => {
                 const nextAdultMode = !previousState.isAdultMode;
@@ -141,7 +142,7 @@ class Navigates extends React.Component<Props, StateInterface> {
                     className={`${this.props.prefix}-panel-mode`}
                     style={{ display: this.state.isAdultMode ? 'block' : 'none' }}
                 >
-                    ADULT MODE (Press "\" to exit)
+                    ADULT MODE (Press "Shift+\" to exit)
                 </div>
                 <div className={`${this.props.prefix}-panel`}>
                     {this.renderWebSites()}
