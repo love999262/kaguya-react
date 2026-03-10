@@ -4,6 +4,7 @@ import { fetchHotNews, filterEntertainmentNews, filterTechNews, type NewsItem } 
 import { fetchJokeFromAPI } from './jsonpService';
 import { SkitEngine } from './skit/engine';
 import { getRandomHistoryEvent, formatHistoryForCharacter } from './services/historyToday';
+import { formatMemoriesForPrompt } from './services/memoryService';
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
@@ -1103,6 +1104,11 @@ const DeepMode = (): React.JSX.Element => {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            return;
+        }
+
         const signature = `${detail.today.dateKey}:${detail.today.weatherCode}:${detail.location}`;
         if (signature === lastTodayWeatherSignatureRef.current) {
             return;
@@ -1117,73 +1123,224 @@ const DeepMode = (): React.JSX.Element => {
             // ignore session storage failures
         }
 
+        setActiveMode('weather');
         lastTodayWeatherSignatureRef.current = signature;
         const summary = `${detail.today.dateKey} ${detail.today.weatherText} ${detail.today.min}~${detail.today.max}°`;
-        const fallback22 = `今天${detail.location}${detail.today.weatherText}，但节奏别乱，你状态在线。建议按${detail.today.min}到${detail.today.max}度调整穿搭再出门。`;
-        const fallback33 = `客观结论：今天${summary}。建议按温差准备衣物，并预留通勤缓冲时间。`;
-
-        const [reply22, reply33] = await Promise.all([
-            requestPersonaJson(
-                '22',
-                `请基于今天的天气输出1到2句：先给情绪鼓励，再给可执行建议。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                fallback22,
-                'happy',
-            ),
-            requestPersonaJson(
-                '33',
-                `请基于今天的天气输出1到2句：先给客观判断，再给可执行策略。地点：${detail.location}；天气：${summary}；数据源：${detail.provider}。输出 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                fallback33,
-                'thinking',
-            ),
-        ]);
-
-        pushMessage('assistant22', `22（今天天气）：${reply22.text}`);
-        pushMessage('assistant33', `33（今天天气）：${reply33.text}`);
-        emitAction('22', reply22.action);
-        emitAction('33', reply33.action);
-        emitBubble('22', reply22.text);
-        emitBubble('33', reply33.text);
+        
+        // 获取角色记忆
+        const memory22 = await formatMemoriesForPrompt('22');
+        const memory33 = await formatMemoriesForPrompt('33');
 
         try {
-            window.sessionStorage.setItem(TODAY_WEATHER_COMMENT_STORAGE_KEY, detail.today.dateKey);
-        } catch {
-            // ignore session storage failures
+            const dialogueHistory: string[] = [];
+
+            // 第1轮：22 开场，活泼地介绍天气
+            const round1_22 = await requestPersonaJson(
+                '22',
+                `今天${detail.location}的天气是${detail.today.weatherText}，温度${detail.today.min}~${detail.today.max}度。${memory22}
+
+请用22娘活泼可爱的语气开场介绍天气，给用户情绪鼓励。要求：1)热情打招呼；2)介绍天气情况；3)给出穿衣建议；4)控制在2-3句话；5)输出JSON格式：{"comment":"内容","action":"happy"}`,
+                `早上好呀！今天${detail.location}${detail.today.weatherText}，温度${detail.today.min}到${detail.today.max}度，记得穿合适的衣服出门哦！`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round1_22.text}`);
+            emitAction('22', round1_22.action);
+            emitBubble('22', round1_22.text);
+            pushMessage('assistant22', `22（天气）：${round1_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第2轮：33 补充，客观分析
+            const round2_33 = await requestPersonaJson(
+                '33',
+                `对话历史：${dialogueHistory.join('\n')}\n\n今天${detail.location}天气${detail.today.weatherText}，温度${detail.today.min}~${detail.today.max}度。${memory33}
+
+请用33娘冷静客观的方式补充天气分析。要求：1)给出客观判断；2)补充实用建议（如是否需要带伞、防晒等）；3)控制在1-2句话；4)输出JSON格式：{"comment":"分析","action":"thinking"}`,
+                `客观来看，今天${detail.today.weatherText}，建议根据${detail.today.min}到${detail.today.max}度的温差调整衣物，必要时带伞。`,
+                'thinking',
+            );
+            dialogueHistory.push(`33: ${round2_33.text}`);
+            emitAction('33', round2_33.action);
+            emitBubble('33', round2_33.text);
+            pushMessage('assistant33', `33（天气）：${round2_33.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第3轮：22 关心用户，询问计划
+            const round3_22 = await requestPersonaJson(
+                '22',
+                `对话历史：${dialogueHistory.join('\n')}\n\n${memory22}
+
+22想关心用户今天的计划。要求：1)用关心的语气询问用户今天有什么安排；2)根据天气给出贴心建议；3)控制在1-2句话；4)输出JSON格式：{"comment":"关心","action":"curious"}`,
+                `你今天有什么计划呀？这样的天气很适合出去走走呢，但要注意保暖哦！`,
+                'curious',
+            );
+            dialogueHistory.push(`22: ${round3_22.text}`);
+            emitAction('22', round3_22.action);
+            emitBubble('22', round3_22.text);
+            pushMessage('assistant22', `22（天气）：${round3_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第4轮：33 给出具体建议
+            const round4_33 = await requestPersonaJson(
+                '33',
+                `对话历史：${dialogueHistory.join('\n')}\n\n今天${detail.today.weatherText}，温度${detail.today.min}~${detail.today.max}度。${memory33}
+
+33要给出更具体的建议。要求：1)基于天气给出可执行的行动建议；2)可以提及交通、健康等方面；3)控制在1-2句话；4)输出JSON格式：{"comment":"建议","action":"calm"}`,
+                `建议预留更多通勤时间，注意根据温差增减衣物，避免感冒。`,
+                'calm',
+            );
+            dialogueHistory.push(`33: ${round4_33.text}`);
+            emitAction('33', round4_33.action);
+            emitBubble('33', round4_33.text);
+            pushMessage('assistant33', `33（天气）：${round4_33.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第5轮：22 鼓励用户，正能量
+            const round5_22 = await requestPersonaJson(
+                '22',
+                `对话历史：${dialogueHistory.join('\n')}\n\n${memory22}
+
+22要给用户正能量鼓励。要求：1)活泼鼓励的语气；2)让用户对今天充满信心；3)控制在1-2句话；4)输出JSON格式：{"comment":"鼓励","action":"happy"}`,
+                `不管天气怎样，相信你今天一定会很顺利的！加油加油！`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round5_22.text}`);
+            emitAction('22', round5_22.action);
+            emitBubble('22', round5_22.text);
+            pushMessage('assistant22', `22（天气）：${round5_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第6轮：33 收尾，简洁总结
+            const round6_33 = await requestPersonaJson(
+                '33',
+                `对话历史：${dialogueHistory.join('\n')}\n\n${memory33}
+
+33要做简洁的收尾总结。要求：1)简短总结天气要点；2)祝用户有高效的一天；3)控制在1句话；4)输出JSON格式：{"comment":"收尾","action":"thinking"}`,
+                `总结：注意温差，合理安排。祝高效。`,
+                'thinking',
+            );
+            dialogueHistory.push(`33: ${round6_33.text}`);
+            emitAction('33', round6_33.action);
+            emitBubble('33', round6_33.text);
+            pushMessage('assistant33', `33（天气）：${round6_33.text}`);
+
+            // 学习对话中的记忆
+            const { learnFromDialogue } = await import('./services/memoryService');
+            await learnFromDialogue(dialogueHistory.join('\n'), '天气对话');
+
+            try {
+                window.sessionStorage.setItem(TODAY_WEATHER_COMMENT_STORAGE_KEY, detail.today.dateKey);
+            } catch {
+                // ignore session storage failures
+            }
+        } catch (error) {
+            console.error('Weather dialogue error:', error);
+        } finally {
+            setActiveMode('none');
         }
-    }, [emitAction, emitBubble, pushMessage, requestPersonaJson]);
+    }, [emitAction, emitBubble, pushMessage, requestPersonaJson, activeMode]);
+
+    // 获取当前时间和季节信息
+    const getTimeContext = React.useCallback(() => {
+        const now = new Date();
+        const hour = now.getHours();
+        const month = now.getMonth() + 1; // 1-12
+
+        // 时间段
+        let timeOfDay: string;
+        if (hour >= 5 && hour < 9) timeOfDay = '早晨';
+        else if (hour >= 9 && hour < 12) timeOfDay = '上午';
+        else if (hour >= 12 && hour < 14) timeOfDay = '中午';
+        else if (hour >= 14 && hour < 18) timeOfDay = '下午';
+        else if (hour >= 18 && hour < 22) timeOfDay = '晚上';
+        else timeOfDay = '深夜';
+
+        // 季节
+        let season: string;
+        if (month >= 3 && month <= 5) season = '春季';
+        else if (month >= 6 && month <= 8) season = '夏季';
+        else if (month >= 9 && month <= 11) season = '秋季';
+        else season = '冬季';
+
+        // 特殊时间节点
+        const isMealTime = (hour >= 7 && hour <= 9) || (hour >= 11 && hour <= 13) || (hour >= 17 && hour <= 19);
+        const isLateNight = hour >= 23 || hour < 5;
+        const isWorkStart = hour >= 8 && hour <= 10;
+        const isWorkEnd = hour >= 17 && hour <= 19;
+
+        return {
+            hour,
+            month,
+            timeOfDay,
+            season,
+            isMealTime,
+            isLateNight,
+            isWorkStart,
+            isWorkEnd,
+            timeString: now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        };
+    }, []);
 
     const triggerIdleInteraction = React.useCallback(async () => {
         if (idleRunningRef.current || llmState !== 'ready') {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            return;
+        }
+
         idleRunningRef.current = true;
         try {
-            const [idle22, idle33] = await Promise.all([
-                requestPersonaJson(
-                    '22',
-                    '当前是待机状态，请给1到2句短句：先给情绪价值，再给一个可执行小建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
-                    '我在这儿陪你，状态拉满。想推进事情时，先做一个最小动作就好。',
-                    'happy',
-                ),
-                requestPersonaJson(
-                    '33',
-                    '当前是待机状态，请给1到2句短句：先给客观判断，再给一个可执行小建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}',
-                    '当前无异常，节奏可控。建议先确定下一件最高优先级任务。',
-                    'thinking',
-                ),
-            ]);
+            const timeContext = getTimeContext();
+            const memory22 = await formatMemoriesForPrompt('22');
+            const memory33 = await formatMemoriesForPrompt('33');
 
-            pushMessage('assistant22', `22（待机）：${idle22.text}`);
-            pushMessage('assistant33', `33（待机）：${idle33.text}`);
+            // 22的智能提醒 - 根据时间和季节生成
+            const idle22 = await requestPersonaJson(
+                '22',
+                `当前时间是${timeContext.timeString}，${timeContext.season}${timeContext.timeOfDay}。${memory22}
+
+请根据当前时间和季节，用22娘活泼可爱的语气给用户一个贴心的提醒或建议。可以是：
+- 如果是早晨/上午：提醒吃早餐、元气满满的一天
+- 如果是中午：提醒吃午饭、适当休息
+- 如果是下午：提醒喝水、活动一下
+- 如果是晚上：提醒吃晚饭、放松休息
+- 如果是深夜：提醒该睡觉了、不要熬夜
+- 结合季节特点给出相应建议
+
+要求：1)自然不生硬；2)体现22娘的性格；3)控制在1-2句话；4)输出JSON格式：{"comment":"内容","action":"happy|curious|thinking|calm|surprised"}`,
+                `${timeContext.timeOfDay}好呀！记得照顾好自己哦~`,
+                'happy',
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 800));
+
+            // 33的补充建议 - 更理性实用
+            const idle33 = await requestPersonaJson(
+                '33',
+                `当前时间是${timeContext.timeString}，${timeContext.season}${timeContext.timeOfDay}。22刚才说："${idle22.text}"${memory33}
+
+请用33娘冷静客观的方式补充一个实用建议，与22的提醒形成互补。要求：1)理性分析当前时间该做什么；2)给出可执行的具体建议；3)控制在1句话；4)输出JSON格式：{"comment":"建议","action":"thinking|calm"}`,
+                `从时间管理角度，建议合理安排接下来的任务。`,
+                'thinking',
+            );
+
+            pushMessage('assistant22', `22（${timeContext.timeOfDay}问候）：${idle22.text}`);
+            pushMessage('assistant33', `33（补充）：${idle33.text}`);
             emitAction('22', idle22.action);
             emitAction('33', idle33.action);
             emitBubble('22', idle22.text);
             emitBubble('33', idle33.text);
             markInteraction();
+
+            // 学习待机对话中的记忆
+            const { learnFromDialogue } = await import('./services/memoryService');
+            await learnFromDialogue(`22: ${idle22.text}\n33: ${idle33.text}`, '待机问候');
         } finally {
             idleRunningRef.current = false;
         }
-    }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
+    }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson, getTimeContext, activeMode]);
 
     const triggerNewsComment = React.useCallback(async () => {
         if (newsCommentRunningRef.current || llmState !== 'ready') {
@@ -1208,6 +1365,7 @@ const DeepMode = (): React.JSX.Element => {
 
             const allNews = newsCacheRef.current;
             if (allNews.length === 0) {
+                pushMessage('system', '暂无新闻可评论。');
                 return;
             }
 
@@ -1221,37 +1379,118 @@ const DeepMode = (): React.JSX.Element => {
                 ? techNews[Math.floor(Math.random() * techNews.length)]
                 : null;
 
+            if (!randomEntertainment && !randomTech) {
+                pushMessage('system', '没有找到合适的新闻。');
+                return;
+            }
+
+            // 获取角色记忆
+            const memory22 = await formatMemoriesForPrompt('22');
+            const memory33 = await formatMemoriesForPrompt('33');
+
+            const dialogueHistory: string[] = [];
+
+            // 第1轮：22 开场，介绍今天的新闻话题
+            const round1_22 = await requestPersonaJson(
+                '22',
+                `${NEWS_COMMENT_PROMPT_22}${memory22}
+
+请用22娘活泼可爱的语气开场，介绍今天要讨论的新闻话题。要求：1)热情打招呼；2)简单介绍新闻背景；3)控制在2-3句话；4)输出JSON格式：{"comment":"内容","action":"happy"}`,
+                `嗨！今天有好多有趣的新闻呢，让我来给你讲讲~`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round1_22.text}`);
+            emitAction('22', round1_22.action);
+            emitBubble('22', round1_22.text);
+            pushMessage('assistant22', `22（新闻）：${round1_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第2轮：22 评论娱乐新闻
             if (randomEntertainment) {
-                const comment22 = await requestPersonaJson(
+                const round2_22 = await requestPersonaJson(
                     '22',
-                    `${NEWS_COMMENT_PROMPT_22}\n\n新闻标题：${randomEntertainment.title}`,
-                    `这条新闻有点意思，我先记下重点：${randomEntertainment.title}`,
+                    `${NEWS_COMMENT_PROMPT_22}\n\n新闻标题：${randomEntertainment.title}\n\n对话历史：${dialogueHistory.join('\n')}${memory22}
+
+请评论这条娱乐新闻。要求：1)表达你的看法；2)可以有点情绪化；3)控制在1-2句话；4)输出JSON格式：{"comment":"评论","action":"curious"}`,
+                    `这条新闻${randomEntertainment.title}，我觉得挺有意思的！`,
                     'curious',
                 );
-                if (comment22) {
-                    emitAction('22', comment22.action);
-                    emitBubble('22', comment22.text);
-                    pushMessage('assistant22', `22 评论【${randomEntertainment.title}】：${comment22.text}`);
-                }
+                dialogueHistory.push(`22: ${round2_22.text}`);
+                emitAction('22', round2_22.action);
+                emitBubble('22', round2_22.text);
+                pushMessage('assistant22', `22 评论【${randomEntertainment.title}】：${round2_22.text}`);
+                await new Promise((resolve) => setTimeout(resolve, 1500));
             }
 
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
+            // 第3轮：33 补充科技新闻
             if (randomTech) {
-                const comment33 = await requestPersonaJson(
+                const round3_33 = await requestPersonaJson(
                     '33',
-                    `${NEWS_COMMENT_PROMPT_33}\n\n新闻标题：${randomTech.title}`,
-                    `这条信息的核心在于可验证性与影响范围：${randomTech.title}`,
+                    `${NEWS_COMMENT_PROMPT_33}\n\n新闻标题：${randomTech.title}\n\n对话历史：${dialogueHistory.join('\n')}${memory33}
+
+请用冷静客观的方式评论这条科技新闻。要求：1)给出理性分析；2)指出关键信息；3)控制在1-2句话；4)输出JSON格式：{"comment":"分析","action":"thinking"}`,
+                    `关于${randomTech.title}，从技术角度看有几个值得关注的点。`,
                     'thinking',
                 );
-                if (comment33) {
-                    emitAction('33', comment33.action);
-                    emitBubble('33', comment33.text);
-                    pushMessage('assistant33', `33 评论【${randomTech.title}】：${comment33.text}`);
-                }
+                dialogueHistory.push(`33: ${round3_33.text}`);
+                emitAction('33', round3_33.action);
+                emitBubble('33', round3_33.text);
+                pushMessage('assistant33', `33 评论【${randomTech.title}】：${round3_33.text}`);
+                await new Promise((resolve) => setTimeout(resolve, 1500));
             }
 
+            // 第4轮：22 和 33 互动讨论
+            const round4_22 = await requestPersonaJson(
+                '22',
+                `${NEWS_COMMENT_PROMPT_22}\n\n对话历史：${dialogueHistory.join('\n')}${memory22}
+
+22想对33的观点发表看法，或者提出自己的疑问。要求：1)活泼互动的语气；2)可以赞同或提出不同看法；3)控制在1-2句话；4)输出JSON格式：{"comment":"互动","action":"happy"}`,
+                `33说的有道理，不过我觉得...`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round4_22.text}`);
+            emitAction('22', round4_22.action);
+            emitBubble('22', round4_22.text);
+            pushMessage('assistant22', `22（新闻）：${round4_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第5轮：33 回应
+            const round5_33 = await requestPersonaJson(
+                '33',
+                `${NEWS_COMMENT_PROMPT_33}\n\n对话历史：${dialogueHistory.join('\n')}${memory33}
+
+33回应22的观点。要求：1)保持冷静但有互动感；2)可以补充或修正；3)控制在1-2句话；4)输出JSON格式：{"comment":"回应","action":"calm"}`,
+                `从数据角度看，你的观点有一定道理，但还需要更多信息验证。`,
+                'calm',
+            );
+            dialogueHistory.push(`33: ${round5_33.text}`);
+            emitAction('33', round5_33.action);
+            emitBubble('33', round5_33.text);
+            pushMessage('assistant33', `33（新闻）：${round5_33.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第6轮：22 总结并邀请用户参与
+            const round6_22 = await requestPersonaJson(
+                '22',
+                `${NEWS_COMMENT_PROMPT_22}\n\n对话历史：${dialogueHistory.join('\n')}${memory22}
+
+22做总结，并邀请用户也说说自己的看法。要求：1)活泼友好的语气；2)总结今天讨论的新闻；3)邀请用户参与；4)控制在1-2句话；5)输出JSON格式：{"comment":"总结","action":"happy"}`,
+                `今天的新闻就聊到这里啦！你对这些新闻有什么看法呢？`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round6_22.text}`);
+            emitAction('22', round6_22.action);
+            emitBubble('22', round6_22.text);
+            pushMessage('assistant22', `22（新闻）：${round6_22.text}`);
+
+            // 学习对话中的记忆
+            const { learnFromDialogue } = await import('./services/memoryService');
+            await learnFromDialogue(dialogueHistory.join('\n'), '新闻对话');
+
             markInteraction();
+        } catch (error) {
+            console.error('News dialogue error:', error);
+            pushMessage('system', '新闻评论发生错误。');
         } finally {
             newsCommentRunningRef.current = false;
             setActiveMode('none');
@@ -2242,11 +2481,11 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
                     setJokesCacheInfo(jokesInfo);
                     caches.push({
                         key: 'jokes',
-                        name: '笑话缓存',
-                        description: `批量笑话缓存（${jokesInfo.consumed}/${jokesInfo.count} 已消费）`,
+                        name: '小剧场缓存',
+                        description: `小剧场对话缓存（${jokesInfo.consumed}/${jokesInfo.count} 已消费）`,
                         duration: '长期',
                         size: `约 ${(jokesInfo.count * 0.5).toFixed(0)} KB`,
-                        consequence: '小剧场讲笑话时需要重新获取',
+                        consequence: '小剧场功能需要重新获取笑话内容',
                     });
                 }
             } catch {}
