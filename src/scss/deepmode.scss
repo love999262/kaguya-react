@@ -145,6 +145,50 @@
     }
 }
 
+// 引擎暂停状态提示
+.kaguya-deep-paused-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(245, 166, 35, 0.2), rgba(255, 193, 94, 0.15));
+    border: 1px solid rgba(255, 193, 94, 0.4);
+    border-radius: 10px;
+    color: rgba(255, 220, 150, 0.95);
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.kaguya-deep-paused-icon {
+    font-size: 1.1rem;
+}
+
+.kaguya-deep-paused-resume-btn {
+    padding: 6px 12px;
+    border-radius: 6px !important;
+    border: 1px solid rgba(76, 217, 100, 0.5);
+    background: rgba(76, 217, 100, 0.25);
+    color: rgba(200, 255, 200, 0.95);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+
+    &:hover {
+        background: rgba(76, 217, 100, 0.4);
+        border-color: rgba(76, 217, 100, 0.7);
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
 // 扩展模式（覆盖搜索栏区域）
 .kaguya-deep-panel-expanded {
     width: 680px;

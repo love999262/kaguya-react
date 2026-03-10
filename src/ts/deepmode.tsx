@@ -379,6 +379,8 @@ const DeepMode = (): React.JSX.Element => {
     const [cachedModelIds, setCachedModelIds] = React.useState<string[]>([]);
     const [deviceHint, setDeviceHint] = React.useState<string>('待检测');
     const [isResponding, setIsResponding] = React.useState<boolean>(false);
+    // 当前活跃的模式（防止模式间互相插入）
+    const [activeMode, setActiveMode] = React.useState<'none' | 'skit' | 'history' | 'news' | 'chat'>('none');
     const [storagePersistence, setStoragePersistence] = React.useState<StoragePersistenceState>('unknown');
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         { id: 1, role: 'system', text: '深度交互已就绪：纯文字对话 + 22/33分角色回复。' },
@@ -1188,6 +1190,13 @@ const DeepMode = (): React.JSX.Element => {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            pushMessage('system', `当前正在进行${getModeDisplayName(activeMode)}，请等待结束后再试。`);
+            return;
+        }
+
+        setActiveMode('news');
         newsCommentRunningRef.current = true;
         try {
             const now = Date.now();
@@ -1245,8 +1254,21 @@ const DeepMode = (): React.JSX.Element => {
             markInteraction();
         } finally {
             newsCommentRunningRef.current = false;
+            setActiveMode('none');
         }
     }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
+
+    // 获取模式显示名称
+    const getModeDisplayName = (mode: string): string => {
+        const names: Record<string, string> = {
+            'skit': '小剧场',
+            'history': '历史上的今天',
+            'news': '新闻评价',
+            'chat': '对话',
+            'none': '无',
+        };
+        return names[mode] || mode;
+    };
 
     // 历史上的今天按钮功能 - 优先使用 API，失败时使用 LLM
     const triggerHistoryToday = React.useCallback(async () => {
@@ -1255,6 +1277,13 @@ const DeepMode = (): React.JSX.Element => {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            pushMessage('system', `当前正在进行${getModeDisplayName(activeMode)}，请等待结束后再试。`);
+            return;
+        }
+
+        setActiveMode('history');
         setIsResponding(true);
         pushMessage('system', '正在获取历史上的今天...');
 
@@ -1323,6 +1352,7 @@ const DeepMode = (): React.JSX.Element => {
             pushMessage('system', '获取历史内容失败，请稍后重试。');
         } finally {
             setIsResponding(false);
+            setActiveMode('none');
         }
     }, [emitAction, emitBubble, isResponding, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
@@ -1333,6 +1363,13 @@ const DeepMode = (): React.JSX.Element => {
             return;
         }
 
+        // 检查是否有其他模式在进行中
+        if (activeMode !== 'none' && activeMode !== 'chat') {
+            pushMessage('system', `当前正在进行${getModeDisplayName(activeMode)}，请等待结束后再试。`);
+            return;
+        }
+
+        setActiveMode('skit');
         setIsResponding(true);
         pushMessage('system', '🎭 小剧场开始！');
 
@@ -1427,6 +1464,7 @@ const DeepMode = (): React.JSX.Element => {
             pushMessage('system', '小剧场发生错误。');
         } finally {
             setIsResponding(false);
+            setActiveMode('none');
         }
     }, [emitAction, emitBubble, isResponding, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
@@ -1996,6 +2034,19 @@ const DeepMode = (): React.JSX.Element => {
 
                     {/* 内容区域 - 可滚动 */}
                     <div className='kaguya-drawer-content'>
+                        {enginePaused && (
+                            <div className='kaguya-deep-paused-banner'>
+                                <span className='kaguya-deep-paused-icon'>⏸️</span>
+                                <span>引擎已暂停</span>
+                                <button
+                                    type='button'
+                                    className='kaguya-deep-paused-resume-btn'
+                                    onClick={handleResumeEngine}
+                                >
+                                    点击恢复
+                                </button>
+                            </div>
+                        )}
                         <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
                         <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
                         <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
