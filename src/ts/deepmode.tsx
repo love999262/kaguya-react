@@ -1240,54 +1240,60 @@ const DeepMode = (): React.JSX.Element => {
         }
     }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
-    // 历史上的今天按钮功能
+    // 历史上的今天按钮功能 - 使用 LLM 生成
     const triggerHistoryToday = React.useCallback(async () => {
-        if (isResponding) {
+        if (isResponding || llmState !== 'ready') {
+            pushMessage('system', llmState !== 'ready' ? '模型未就绪，请稍后再试。' : '正在处理中...');
             return;
         }
 
         setIsResponding(true);
-        pushMessage('system', '正在获取历史上的今天...');
+        pushMessage('system', '正在生成历史上的今天...');
 
         try {
-            // 获取两个不同的历史事件
-            const event22 = await getRandomHistoryEvent();
-            const event33 = await getRandomHistoryEvent();
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
 
-            if (event22) {
-                const text22 = formatHistoryForCharacter(event22, '22');
-                emitAction('22', 'curious');
-                emitBubble('22', text22);
-                pushMessage('assistant22', `22（历史上的今天）：${text22}`);
-            }
+            // 22 用活泼的方式讲述历史
+            const reply22 = await requestPersonaJson(
+                '22',
+                `今天是${month}月${day}日。请讲述一个历史上今天发生的有趣事件。要求：1)选择轻松有趣或励志的历史事件；2)用22娘活泼可爱的语气讲述；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"happy|curious|thinking"}`,
+                `今天是${month}月${day}日，历史上有很多有趣的事情发生呢！让我给你讲一个好玩的故事吧~`,
+                'curious',
+            );
+
+            emitAction('22', reply22.action);
+            emitBubble('22', reply22.text);
+            pushMessage('assistant22', `22（历史上的今天）：${reply22.text}`);
 
             // 延迟一下让对话更自然
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
-            if (event33) {
-                const text33 = formatHistoryForCharacter(event33, '33');
-                emitAction('33', 'thinking');
-                emitBubble('33', text33);
-                pushMessage('assistant33', `33（历史上的今天）：${text33}`);
-            }
+            // 33 用冷静的方式补充或评论
+            const reply33 = await requestPersonaJson(
+                '33',
+                `今天是${month}月${day}日。请从另一个角度讲述一个历史上今天发生的事件，或者对22刚才讲的内容进行冷静客观的补充/分析。要求：1)选择科技、政治或经济相关的历史事件；2)用33娘冷静理性的语气；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"thinking|calm"}`,
+                `客观来说，${month}月${day}日在历史上确实有一些值得关注的事件。建议从多个维度了解历史。`,
+                'thinking',
+            );
+
+            emitAction('33', reply33.action);
+            emitBubble('33', reply33.text);
+            pushMessage('assistant33', `33（历史上的今天）：${reply33.text}`);
 
             markInteraction();
         } catch (error) {
-            pushMessage('system', '获取历史数据失败，请稍后重试。');
+            pushMessage('system', '生成历史内容失败，请稍后重试。');
         } finally {
             setIsResponding(false);
         }
-    }, [emitAction, emitBubble, isResponding, markInteraction, pushMessage]);
+    }, [emitAction, emitBubble, isResponding, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
-    // 小剧场按钮功能
+    // 小剧场按钮功能 - 使用笑话接口 + LLM 生成对话
     const triggerSkit = React.useCallback(async () => {
-        if (!skitEngineRef.current || isResponding) {
-            return;
-        }
-
-        const state = skitEngineRef.current.getState();
-        if (state.isRunning) {
-            pushMessage('system', '小剧场正在进行中...');
+        if (isResponding || llmState !== 'ready') {
+            pushMessage('system', llmState !== 'ready' ? '模型未就绪，请稍后再试。' : '正在处理中...');
             return;
         }
 
@@ -1295,18 +1301,44 @@ const DeepMode = (): React.JSX.Element => {
         pushMessage('system', '小剧场即将开始...');
 
         try {
-            const success = await skitEngineRef.current.start();
-            if (success) {
-                pushMessage('system', '小剧场开始！');
-            } else {
-                pushMessage('system', '小剧场启动失败。');
-            }
+            // 获取一个笑话
+            const joke = await fetchJokeFromAPI();
+            const jokeContent = joke?.content || '为什么程序员总是分不清圣诞节和万圣节？因为 31 OCT = 25 DEC。';
+
+            // 22 用活泼的方式讲笑话
+            const reply22 = await requestPersonaJson(
+                '22',
+                `请讲一个笑话：${jokeContent}。要求：1)用22娘活泼可爱的语气讲述；2)可以适当发挥，让笑话更有趣；3)控制在2-3句话；4)输出JSON格式：{"comment":"笑话内容","action":"happy|curious"}`,
+                `哈哈，我给你讲个好玩的！${jokeContent}`,
+                'happy',
+            );
+
+            emitAction('22', reply22.action);
+            emitBubble('22', reply22.text);
+            pushMessage('assistant22', `22（小剧场）：${reply22.text}`);
+
+            // 延迟一下让吐槽更自然
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // 33 用冷静的方式吐槽
+            const reply33 = await requestPersonaJson(
+                '33',
+                `22刚才讲了这个笑话："${reply22.text}"。请用33娘冷静理性带点腹黑的方式吐槽。要求：1)吐槽要犀利但幽默；2)可以指出笑点或者逻辑漏洞；3)控制在1-2句话；4)输出JSON格式：{"comment":"吐槽内容","action":"thinking|calm"}`,
+                `...这个笑话的逻辑有待商榷。不过，你开心就好。`,
+                'thinking',
+            );
+
+            emitAction('33', reply33.action);
+            emitBubble('33', reply33.text);
+            pushMessage('assistant33', `33（小剧场）：${reply33.text}`);
+
+            markInteraction();
         } catch (error) {
             pushMessage('system', '小剧场发生错误。');
         } finally {
             setIsResponding(false);
         }
-    }, [isResponding, pushMessage]);
+    }, [emitAction, emitBubble, isResponding, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
     const handleAssistantReply = React.useCallback(async (userText: string) => {
         const text = userText.trim();
@@ -1389,6 +1421,22 @@ const DeepMode = (): React.JSX.Element => {
             openPanel();
         }
     }, [openPanel]);
+
+    // 键盘快捷键监听 - Shift+\ 切换纯净模式
+    React.useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent): void => {
+            // Shift + \ (反斜杠) 触发纯净模式
+            if (event.shiftKey && event.key === '\\') {
+                event.preventDefault();
+                togglePureMode();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [togglePureMode]);
 
     // 切换纯净模式
     const togglePureMode = React.useCallback(() => {
