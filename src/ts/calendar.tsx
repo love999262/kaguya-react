@@ -949,42 +949,65 @@ class Calendar extends React.Component<Props, StateInterface> {
         try {
             const location = await this.resolveWeatherLocation();
             const targetDays = WEATHER_FORECAST_TARGET_DAYS;
-            const providerChain: Array<() => Promise<WeatherLoadResult | null>> = [
-                async () => this.loadFromNmc(location, targetDays),
-                async () => this.loadFromOpenMeteo(location, targetDays),
-                async () => this.loadWeatherCache(),
+
+            // 竞速模式：同时发送多个请求，哪个先回来就用哪个
+            const providers = [
+                { name: 'nmc', fn: () => this.loadFromNmc(location, targetDays) },
+                { name: 'openMeteo', fn: () => this.loadFromOpenMeteo(location, targetDays) },
+                { name: 'cache', fn: () => this.loadWeatherCache() },
             ];
 
+            // 使用 Promise.race 和 Promise.allSettled 实现竞速
             let selectedResult: WeatherLoadResult | null = null;
-            for (let index = 0; index < providerChain.length; index++) {
-                try {
-                    const current = await providerChain[index]();
-                    if (current && current.weatherRows.length) {
-                        selectedResult = current;
-                        break;
+            let settledCount = 0;
+
+            const racePromise = new Promise<WeatherLoadResult | null>((resolve) => {
+                providers.forEach(async (provider) => {
+                    try {
+                        const result = await provider.fn();
+                        if (result && result.weatherRows.length > 0 && !selectedResult) {
+                            selectedResult = result;
+                            resolve(result);
+                        }
+                    } catch {
+                        // 忽略错误，继续等待其他请求
+                    } finally {
+                        settledCount++;
+                        if (settledCount === providers.length && !selectedResult) {
+                            resolve(null);
+                        }
                     }
-                } catch {
-                    continue;
-                }
-            }
+                });
+            });
+
+            selectedResult = await racePromise;
 
             if (!selectedResult) {
                 throw new Error('no weather source available');
             }
 
+            // 如果 NMC 数据不足，尝试补充
             if (selectedResult.source === 'nmc' && selectedResult.weatherRows.length < targetDays) {
-                const supplement = await this.loadFromOpenMeteo(location, targetDays);
-                if (supplement?.weatherRows?.length) {
-                    selectedResult = {
-                        source: 'nmc',
-                        providerLabel: 'NMC + OpenMeteo',
-                        locationLabel: selectedResult.locationLabel || supplement.locationLabel,
-                        weatherRows: this.mergeForecastRows(selectedResult.weatherRows, supplement.weatherRows, targetDays),
-                    };
+                try {
+                    const supplement = await this.loadFromOpenMeteo(location, targetDays);
+                    if (supplement?.weatherRows?.length) {
+                        selectedResult = {
+                            source: 'nmc',
+                            providerLabel: 'NMC + OpenMeteo',
+                            locationLabel: selectedResult.locationLabel || supplement.locationLabel,
+                            weatherRows: this.mergeForecastRows(selectedResult.weatherRows, supplement.weatherRows, targetDays),
+                        };
+                    }
+                } catch {
+                    // 补充失败，使用已有数据
                 }
             }
 
-            selectedResult.weatherRows = selectedResult.weatherRows.slice(0, targetDays);
+            // 根据容器宽度决定展示天数
+            const containerWidth = this.calendarRef?.current?.offsetWidth || 360;
+            const displayDays = containerWidth <= 360 ? 10 : targetDays; // 宽度小展示10天，否则14天
+            selectedResult.weatherRows = selectedResult.weatherRows.slice(0, displayDays);
+
             if (!selectedResult.weatherRows.length) {
                 throw new Error('weather rows empty');
             }
@@ -1335,21 +1358,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                     })}
                 </ul>
 
-                <div className={`${this.props.prefix}-calendar-footer`}>
-                    <div className={`${this.props.prefix}-calendar-info`}>
-                        <span>{selectedKey}</span>
-                        <span>{selectedWeekText}</span>
-                        <span>{infoText}</span>
-                    </div>
-                    <button
-                        className={`${this.props.prefix}-calendar-today`}
-                        onClick={() => { this.jumpToToday(); }}
-                    >
-                        {'\u4eca\u5929'}
-                    </button>
-                </div>
-
-                {/* 月份导航 - 移到下方 */}
+                {/* 月份导航 - 移到今天按钮上方 */}
                 <div className={`${this.props.prefix}-calendar-header ${this.props.prefix}-calendar-header-bottom`}>
                     <button
                         className={`${this.props.prefix}-calendar-btn`}
@@ -1365,6 +1374,20 @@ class Calendar extends React.Component<Props, StateInterface> {
                         onClick={() => { this.shiftMonth(1); }}
                     >
                         {'▶'}
+                    </button>
+                </div>
+
+                <div className={`${this.props.prefix}-calendar-footer`}>
+                    <div className={`${this.props.prefix}-calendar-info`}>
+                        <span>{selectedKey}</span>
+                        <span>{selectedWeekText}</span>
+                        <span>{infoText}</span>
+                    </div>
+                    <button
+                        className={`${this.props.prefix}-calendar-today`}
+                        onClick={() => { this.jumpToToday(); }}
+                    >
+                        {'\u4eca\u5929'}
                     </button>
                 </div>
 
