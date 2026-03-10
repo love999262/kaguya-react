@@ -1747,7 +1747,7 @@ const DeepMode = (): React.JSX.Element => {
                                 type='button'
                                 className='kaguya-deep-action-btn'
                                 onClick={() => void triggerSkit()}
-                                disabled={isResponding}
+                                disabled={llmState !== 'ready' || isResponding}
                             >
                                 🎭 小剧场
                             </button>
@@ -1756,7 +1756,7 @@ const DeepMode = (): React.JSX.Element => {
                                 type='button'
                                 className='kaguya-deep-action-btn'
                                 onClick={() => void triggerHistoryToday()}
-                                disabled={isResponding}
+                                disabled={llmState !== 'ready' || isResponding}
                             >
                                 📜 历史上的今天
                             </button>
