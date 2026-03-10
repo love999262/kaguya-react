@@ -191,7 +191,7 @@ const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db
 const WEEK_TEXT_FULL = ['\u5468\u65e5', '\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d'];
 const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'];
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const WEATHER_FORECAST_TARGET_DAYS = 7; // 减少展示天数以避免滚动条
+const WEATHER_FORECAST_TARGET_DAYS = 14; // 最大展示14天
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
@@ -1197,24 +1197,6 @@ class Calendar extends React.Component<Props, StateInterface> {
 
         return (
             <div className={`${this.props.prefix}-calendar`}>
-                <div className={`${this.props.prefix}-calendar-header`}>
-                    <button
-                        className={`${this.props.prefix}-calendar-btn`}
-                        aria-label='Previous month'
-                        onClick={() => { this.shiftMonth(-1); }}
-                    >
-                        {'<'}
-                    </button>
-                    <span className={`${this.props.prefix}-calendar-title`}>{monthText}</span>
-                    <button
-                        className={`${this.props.prefix}-calendar-btn`}
-                        aria-label='Next month'
-                        onClick={() => { this.shiftMonth(1); }}
-                    >
-                        {'>'}
-                    </button>
-                </div>
-
                 <div className={`${this.props.prefix}-calendar-live-time`}>{liveTimeText}</div>
 
                 <div className={`${this.props.prefix}-calendar-weather`}>
@@ -1364,6 +1346,25 @@ class Calendar extends React.Component<Props, StateInterface> {
                         onClick={() => { this.jumpToToday(); }}
                     >
                         {'\u4eca\u5929'}
+                    </button>
+                </div>
+
+                {/* 月份导航 - 移到下方 */}
+                <div className={`${this.props.prefix}-calendar-header ${this.props.prefix}-calendar-header-bottom`}>
+                    <button
+                        className={`${this.props.prefix}-calendar-btn`}
+                        aria-label='Previous month'
+                        onClick={() => { this.shiftMonth(-1); }}
+                    >
+                        {'◀'}
+                    </button>
+                    <span className={`${this.props.prefix}-calendar-title`}>{monthText}</span>
+                    <button
+                        className={`${this.props.prefix}-calendar-btn`}
+                        aria-label='Next month'
+                        onClick={() => { this.shiftMonth(1); }}
+                    >
+                        {'▶'}
                     </button>
                 </div>
 

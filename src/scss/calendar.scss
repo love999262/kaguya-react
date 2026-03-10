@@ -24,6 +24,14 @@
         align-items: center;
         justify-content: space-between;
         margin-bottom: 8px;
+        
+        // 底部导航样式
+        &-bottom {
+            margin-top: 10px;
+            margin-bottom: 0;
+            padding-top: 8px;
+            border-top: 1px solid rgba(140, 180, 220, 0.15);
+        }
     }
 
     &-calendar-title {
@@ -51,14 +59,24 @@
         margin: 0 0 8px;
         min-height: 46px;
         display: grid;
-        grid-template-columns: repeat(7, 1fr); // 固定7列，避免换行
-        gap: 3px; // 减少间距
+        grid-template-columns: repeat(auto-fit, minmax(45px, 1fr)); // 自动适配列数
+        gap: 3px;
         padding: 4px 5px;
         border-radius: 10px !important;
         border: 1px solid rgba(176, 208, 239, 0.26);
         background: rgba(92, 136, 183, 0.17);
-        max-height: none; // 移除最大高度限制
-        overflow: visible; // 移除滚动条
+        max-height: none;
+        overflow: visible;
+        
+        // 宽度较小时每行5个（约225px+）
+        @media (max-width: 320px) {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        
+        // 宽度足够时每行7个（约315px+）
+        @media (min-width: 321px) {
+            grid-template-columns: repeat(7, 1fr);
+        }
     }
 
     &-calendar-weather-loading {
@@ -129,17 +147,20 @@
     }
 
     &-calendar-btn {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border-radius: 8px !important;
         color: #eaf4ff !important;
-        font-size: 1.05rem;
-        line-height: 28px;
+        font-size: 0.85rem; // 图标大小
+        line-height: 32px;
         text-align: center;
         background: rgba(133, 171, 213, 0.2);
         border: 1px solid rgba(170, 202, 236, 0.28);
         cursor: pointer;
         transition: background-color 140ms ease, border-color 140ms ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         &:hover {
             background: rgba(153, 190, 230, 0.32);
             border-color: rgba(190, 218, 245, 0.5);

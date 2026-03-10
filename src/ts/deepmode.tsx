@@ -1422,6 +1422,17 @@ const DeepMode = (): React.JSX.Element => {
         }
     }, [openPanel]);
 
+    // 切换纯净模式
+    const togglePureMode = React.useCallback(() => {
+        const newPureMode = !pureMode;
+        setPureMode(newPureMode);
+        // 触发事件通知其他组件
+        window.dispatchEvent(new CustomEvent('kaguya:pure-mode', {
+            detail: { enabled: newPureMode },
+        }));
+        pushMessage('system', newPureMode ? '已开启纯净模式' : '已退出纯净模式');
+    }, [pureMode, pushMessage]);
+
     // 键盘快捷键监听 - Shift+\ 切换纯净模式
     React.useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent): void => {
@@ -1437,17 +1448,6 @@ const DeepMode = (): React.JSX.Element => {
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [togglePureMode]);
-
-    // 切换纯净模式
-    const togglePureMode = React.useCallback(() => {
-        const newPureMode = !pureMode;
-        setPureMode(newPureMode);
-        // 触发事件通知其他组件
-        window.dispatchEvent(new CustomEvent('kaguya:pure-mode', {
-            detail: { enabled: newPureMode },
-        }));
-        pushMessage('system', newPureMode ? '已开启纯净模式' : '已退出纯净模式');
-    }, [pureMode, pushMessage]);
 
     const handleModelPreferenceChange = React.useCallback((nextPref: ModelPreference): void => {
         setModelPreference(nextPref);
