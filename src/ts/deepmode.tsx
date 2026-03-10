@@ -1318,7 +1318,7 @@ const DeepMode = (): React.JSX.Element => {
         }
     }, [emitAction, emitBubble, isResponding, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
-    // 小剧场按钮功能 - 使用笑话接口 + LLM 生成对话
+    // 小剧场按钮功能 - 多轮对话，22和33互动
     const triggerSkit = React.useCallback(async () => {
         if (isResponding || llmState !== 'ready') {
             pushMessage('system', llmState !== 'ready' ? '模型未就绪，请稍后再试。' : '正在处理中...');
@@ -1326,40 +1326,94 @@ const DeepMode = (): React.JSX.Element => {
         }
 
         setIsResponding(true);
-        pushMessage('system', '小剧场即将开始...');
+        pushMessage('system', '🎭 小剧场开始！');
 
         try {
-            // 获取一个笑话
+            // 获取一个笑话作为开场
             const joke = await fetchJokeFromAPI();
             const jokeContent = joke?.content || '为什么程序员总是分不清圣诞节和万圣节？因为 31 OCT = 25 DEC。';
 
-            // 22 用活泼的方式讲笑话
-            const reply22 = await requestPersonaJson(
+            // 对话历史记录
+            const dialogueHistory: string[] = [];
+
+            // 第1轮：22 开场讲笑话
+            const round1_22 = await requestPersonaJson(
                 '22',
-                `请讲一个笑话：${jokeContent}。要求：1)用22娘活泼可爱的语气讲述；2)可以适当发挥，让笑话更有趣；3)控制在2-3句话；4)输出JSON格式：{"comment":"笑话内容","action":"happy|curious"}`,
-                `哈哈，我给你讲个好玩的！${jokeContent}`,
+                `请讲一个笑话：${jokeContent}。要求：1)用22娘活泼可爱的语气开场；2)说"33，我给你讲个好玩的！"；3)然后讲笑话；4)控制在2-3句话；5)输出JSON格式：{"comment":"内容","action":"happy"}`,
+                `33，我给你讲个好玩的！${jokeContent}`,
                 'happy',
             );
+            dialogueHistory.push(`22: ${round1_22.text}`);
+            emitAction('22', round1_22.action);
+            emitBubble('22', round1_22.text);
+            pushMessage('assistant22', `22（小剧场）：${round1_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            emitAction('22', reply22.action);
-            emitBubble('22', reply22.text);
-            pushMessage('assistant22', `22（小剧场）：${reply22.text}`);
-
-            // 延迟一下让吐槽更自然
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
-            // 33 用冷静的方式吐槽
-            const reply33 = await requestPersonaJson(
+            // 第2轮：33 吐槽
+            const round2_33 = await requestPersonaJson(
                 '33',
-                `22刚才讲了这个笑话："${reply22.text}"。请用33娘冷静理性带点腹黑的方式吐槽。要求：1)吐槽要犀利但幽默；2)可以指出笑点或者逻辑漏洞；3)控制在1-2句话；4)输出JSON格式：{"comment":"吐槽内容","action":"thinking|calm"}`,
-                `...这个笑话的逻辑有待商榷。不过，你开心就好。`,
+                `对话历史：${dialogueHistory.join('\n')}\n\n请用33娘冷静腹黑的方式吐槽22的笑话。要求：1)吐槽要犀利但有趣；2)可以说"你这笑话..."开头；3)控制在1-2句话；4)输出JSON格式：{"comment":"吐槽","action":"thinking"}`,
+                `你这笑话...我该怎么评价呢。`,
                 'thinking',
             );
+            dialogueHistory.push(`33: ${round2_33.text}`);
+            emitAction('33', round2_33.action);
+            emitBubble('33', round2_33.text);
+            pushMessage('assistant33', `33（小剧场）：${round2_33.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            emitAction('33', reply33.action);
-            emitBubble('33', reply33.text);
-            pushMessage('assistant33', `33（小剧场）：${reply33.text}`);
+            // 第3轮：22 回应并坚持笑话好笑
+            const round3_22 = await requestPersonaJson(
+                '22',
+                `对话历史：${dialogueHistory.join('\n')}\n\n22被33吐槽了，请用活泼可爱的语气回应，坚持这个笑话是好笑的，并试图解释笑点。要求：1)带点撒娇的语气；2)说"你不觉得很好笑吗？"类似的话；3)控制在1-2句话；4)输出JSON格式：{"comment":"回应","action":"curious"}`,
+                `你不觉得很好笑吗？我觉得超有趣的！`,
+                'curious',
+            );
+            dialogueHistory.push(`22: ${round3_22.text}`);
+            emitAction('22', round3_22.action);
+            emitBubble('22', round3_22.text);
+            pushMessage('assistant22', `22（小剧场）：${round3_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
 
+            // 第4轮：33 继续吐槽并反击
+            const round4_33 = await requestPersonaJson(
+                '33',
+                `对话历史：${dialogueHistory.join('\n')}\n\n33要继续吐槽并反击22的坚持。要求：1)更犀利但依然幽默；2)可以调侃22的品味；3)控制在1-2句话；4)输出JSON格式：{"comment":"反击","action":"calm"}`,
+                `你的笑点...真的很独特。建议重新审视一下。`,
+                'calm',
+            );
+            dialogueHistory.push(`33: ${round4_33.text}`);
+            emitAction('33', round4_33.action);
+            emitBubble('33', round4_33.text);
+            pushMessage('assistant33', `33（小剧场）：${round4_33.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第5轮：22 委屈但坚持
+            const round5_22 = await requestPersonaJson(
+                '22',
+                `对话历史：${dialogueHistory.join('\n')}\n\n22被连续吐槽后有点委屈，但依然坚持。要求：1)委屈但可爱的语气；2)说"好吧好吧，那我下次讲个更好笑的！"类似的话；3)控制在1-2句话；4)输出JSON格式：{"comment":"委屈","action":"happy"}`,
+                `好吧好吧，那我下次讲个更好笑的！你一定会笑的！`,
+                'happy',
+            );
+            dialogueHistory.push(`22: ${round5_22.text}`);
+            emitAction('22', round5_22.action);
+            emitBubble('22', round5_22.text);
+            pushMessage('assistant22', `22（小剧场）：${round5_22.text}`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            // 第6轮：33 收尾，给点鼓励
+            const round6_33 = await requestPersonaJson(
+                '33',
+                `对话历史：${dialogueHistory.join('\n')}\n\n33看到22委屈了，稍微软化态度，给点鼓励但保持腹黑风格。要求：1)稍微温柔但依然冷静；2)说"我拭目以待"类似的话；3)控制在1句话；4)输出JSON格式：{"comment":"收尾","action":"thinking"}`,
+                `...我拭目以待。希望下次你的品味能有所提升。`,
+                'thinking',
+            );
+            dialogueHistory.push(`33: ${round6_33.text}`);
+            emitAction('33', round6_33.action);
+            emitBubble('33', round6_33.text);
+            pushMessage('assistant33', `33（小剧场）：${round6_33.text}`);
+
+            pushMessage('system', '🎭 小剧场结束！');
             markInteraction();
         } catch (error) {
             pushMessage('system', '小剧场发生错误。');
