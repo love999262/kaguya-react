@@ -2116,9 +2116,13 @@ const DeepMode = (): React.JSX.Element => {
 
     const [enginePaused, setEnginePaused] = React.useState<boolean>(false);
 
-    const handlePauseEngine = React.useCallback((): void => {
+    const handlePauseEngine = React.useCallback(async (): Promise<void> => {
         if (activeEngineRef.current) {
-            void activeEngineRef.current.unload();
+            try {
+                await activeEngineRef.current.unload();
+            } catch (error) {
+                console.warn('[PauseEngine] 卸载引擎时出错:', error);
+            }
         }
         activeEngineRef.current = null;
         setEnginePaused(true);
@@ -2505,7 +2509,7 @@ const DeepMode = (): React.JSX.Element => {
                                 <button
                                     type='button'
                                     className='kaguya-deep-corner-btn kaguya-deep-corner-btn-pause'
-                                    onClick={handlePauseEngine}
+                                    onClick={() => void handlePauseEngine()}
                                     disabled={isResponding}
                                     title='停止进程'
                                 >
