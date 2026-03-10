@@ -77,7 +77,8 @@ class Navigates extends React.Component<Props, StateInterface> {
             return;
         }
         // 成人模式快捷键：Shift + \ (反斜杠)
-        if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && event.keyCode === 220) {
+        // 使用 key 属性检测，反斜杠在 Shift 按下时是 "|"
+        if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && (event.key === '|' || event.key === '\\')) {
             event.preventDefault();
             this.setState((previousState) => {
                 const nextAdultMode = !previousState.isAdultMode;
