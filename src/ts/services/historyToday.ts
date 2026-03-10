@@ -184,16 +184,16 @@ export async function getTodayInHistory(): Promise<TodayInHistory | null> {
         return cache.data;
     }
 
-    // 优先从国内 API 获取（无需翻墙）
-    const chinaData = await fetchFromChinaAPI();
-    if (chinaData) {
-        return chinaData;
-    }
-
-    // 国内 API 失败，尝试 Wikipedia
+    // 优先从 Wikipedia 获取
     const wikiData = await fetchFromWikipedia();
     if (wikiData) {
         return wikiData;
+    }
+
+    // Wikipedia 失败，尝试国内 API
+    const chinaData = await fetchFromChinaAPI();
+    if (chinaData) {
+        return chinaData;
     }
 
     // 返回本地默认数据
