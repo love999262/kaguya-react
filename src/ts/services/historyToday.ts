@@ -39,6 +39,60 @@ function getCache(): CacheData | null {
     return null;
 }
 
+// 从国内 API 获取历史上的今天（无需翻墙）
+async function fetchFromChinaAPI(): Promise<TodayInHistory | null> {
+    try {
+        // 使用国内可访问的 API
+        const url = 'https://zj.v.api.aa1.cn/api/baike/?num=10&type=json';
+
+        const response = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.content || !Array.isArray(data.content)) {
+            return null;
+        }
+
+        // 转换为本地格式
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const day = today.getDate();
+
+        const events: HistoryEvent[] = data.content
+            .slice(0, 10)
+            .map((eventText: string) => {
+                // 解析事件文本，尝试提取年份
+                const yearMatch = eventText.match(/(\d{4})年/);
+                const year = yearMatch ? yearMatch[1] : '未知';
+                return {
+                    year: year,
+                    title: eventText,
+                    description: eventText,
+                    type: categorizeEvent(eventText),
+                };
+            });
+
+        const result: TodayInHistory = {
+            date: `${month}月${day}日`,
+            events,
+        };
+
+        setCache(result);
+        return result;
+    } catch (error) {
+        console.warn('Failed to fetch from China API:', error);
+        return null;
+    }
+}
+
 // 设置缓存
 function setCache(data: TodayInHistory): void {
     try {
@@ -130,10 +184,16 @@ export async function getTodayInHistory(): Promise<TodayInHistory | null> {
         return cache.data;
     }
 
-    // 从 Wikipedia 获取
-    const data = await fetchFromWikipedia();
-    if (data) {
-        return data;
+    // 优先从国内 API 获取（无需翻墙）
+    const chinaData = await fetchFromChinaAPI();
+    if (chinaData) {
+        return chinaData;
+    }
+
+    // 国内 API 失败，尝试 Wikipedia
+    const wikiData = await fetchFromWikipedia();
+    if (wikiData) {
+        return wikiData;
     }
 
     // 返回本地默认数据

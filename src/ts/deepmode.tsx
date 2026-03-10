@@ -1240,7 +1240,7 @@ const DeepMode = (): React.JSX.Element => {
         }
     }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
-    // 历史上的今天按钮功能 - 使用 LLM 生成
+    // 历史上的今天按钮功能 - 优先使用 API，失败时使用 LLM
     const triggerHistoryToday = React.useCallback(async () => {
         if (isResponding || llmState !== 'ready') {
             pushMessage('system', llmState !== 'ready' ? '模型未就绪，请稍后再试。' : '正在处理中...');
@@ -1248,43 +1248,71 @@ const DeepMode = (): React.JSX.Element => {
         }
 
         setIsResponding(true);
-        pushMessage('system', '正在生成历史上的今天...');
+        pushMessage('system', '正在获取历史上的今天...');
 
         try {
-            const today = new Date();
-            const month = today.getMonth() + 1;
-            const day = today.getDate();
+            // 优先从 API 获取历史事件
+            const historyData = await getTodayInHistory();
+            
+            if (historyData && historyData.events.length > 0) {
+                // 随机选择两个不同的事件
+                const event22 = historyData.events[Math.floor(Math.random() * historyData.events.length)];
+                let event33 = historyData.events[Math.floor(Math.random() * historyData.events.length)];
+                // 确保两个事件不同
+                while (event33 === event22 && historyData.events.length > 1) {
+                    event33 = historyData.events[Math.floor(Math.random() * historyData.events.length)];
+                }
 
-            // 22 用活泼的方式讲述历史
-            const reply22 = await requestPersonaJson(
-                '22',
-                `今天是${month}月${day}日。请讲述一个历史上今天发生的有趣事件。要求：1)选择轻松有趣或励志的历史事件；2)用22娘活泼可爱的语气讲述；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"happy|curious|thinking"}`,
-                `今天是${month}月${day}日，历史上有很多有趣的事情发生呢！让我给你讲一个好玩的故事吧~`,
-                'curious',
-            );
+                // 22 讲述历史事件
+                const text22 = formatHistoryForCharacter(event22, '22');
+                emitAction('22', 'curious');
+                emitBubble('22', text22);
+                pushMessage('assistant22', `22（历史上的今天）：${text22}`);
 
-            emitAction('22', reply22.action);
-            emitBubble('22', reply22.text);
-            pushMessage('assistant22', `22（历史上的今天）：${reply22.text}`);
+                // 延迟一下让对话更自然
+                await new Promise((resolve) => setTimeout(resolve, 2000));
 
-            // 延迟一下让对话更自然
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+                // 33 讲述另一个历史事件或评论
+                const text33 = formatHistoryForCharacter(event33, '33');
+                emitAction('33', 'thinking');
+                emitBubble('33', text33);
+                pushMessage('assistant33', `33（历史上的今天）：${text33}`);
+            } else {
+                // API 获取失败，使用 LLM 生成
+                pushMessage('system', '正在生成历史上的今天...');
+                
+                const today = new Date();
+                const month = today.getMonth() + 1;
+                const day = today.getDate();
 
-            // 33 用冷静的方式补充或评论
-            const reply33 = await requestPersonaJson(
-                '33',
-                `今天是${month}月${day}日。请从另一个角度讲述一个历史上今天发生的事件，或者对22刚才讲的内容进行冷静客观的补充/分析。要求：1)选择科技、政治或经济相关的历史事件；2)用33娘冷静理性的语气；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"thinking|calm"}`,
-                `客观来说，${month}月${day}日在历史上确实有一些值得关注的事件。建议从多个维度了解历史。`,
-                'thinking',
-            );
+                const reply22 = await requestPersonaJson(
+                    '22',
+                    `今天是${month}月${day}日。请讲述一个历史上今天发生的有趣事件。要求：1)选择轻松有趣或励志的历史事件；2)用22娘活泼可爱的语气讲述；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"happy|curious|thinking"}`,
+                    `今天是${month}月${day}日，历史上有很多有趣的事情发生呢！让我给你讲一个好玩的故事吧~`,
+                    'curious',
+                );
 
-            emitAction('33', reply33.action);
-            emitBubble('33', reply33.text);
-            pushMessage('assistant33', `33（历史上的今天）：${reply33.text}`);
+                emitAction('22', reply22.action);
+                emitBubble('22', reply22.text);
+                pushMessage('assistant22', `22（历史上的今天）：${reply22.text}`);
+
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+
+                const reply33 = await requestPersonaJson(
+                    '33',
+                    `今天是${month}月${day}日。请从另一个角度讲述一个历史上今天发生的事件。要求：1)选择科技、政治或经济相关的历史事件；2)用33娘冷静理性的语气；3)控制在2-3句话；4)输出JSON格式：{"comment":"讲述内容","action":"thinking|calm"}`,
+                    `客观来说，${month}月${day}日在历史上确实有一些值得关注的事件。`,
+                    'thinking',
+                );
+
+                emitAction('33', reply33.action);
+                emitBubble('33', reply33.text);
+                pushMessage('assistant33', `33（历史上的今天）：${reply33.text}`);
+            }
 
             markInteraction();
         } catch (error) {
-            pushMessage('system', '生成历史内容失败，请稍后重试。');
+            pushMessage('system', '获取历史内容失败，请稍后重试。');
         } finally {
             setIsResponding(false);
         }
