@@ -1654,6 +1654,29 @@ const DeepMode = (): React.JSX.Element => {
                 <div className={`kaguya-deep-drawer ${drawerVisible ? 'kaguya-deep-drawer-visible' : ''}`} ref={panelRef}>
                     {/* 角落按钮 - 绝对定位 */}
                     <div className='kaguya-deep-corner-actions'>
+                        {/* 停止进程按钮 */}
+                        {llmState === 'ready' && (
+                            enginePaused ? (
+                                <button
+                                    type='button'
+                                    className='kaguya-deep-corner-btn kaguya-deep-corner-btn-resume'
+                                    onClick={handleResumeEngine}
+                                    title='恢复进程'
+                                >
+                                    ▶️
+                                </button>
+                            ) : (
+                                <button
+                                    type='button'
+                                    className='kaguya-deep-corner-btn kaguya-deep-corner-btn-pause'
+                                    onClick={handlePauseEngine}
+                                    disabled={isResponding}
+                                    title='停止进程'
+                                >
+                                    ⏸️
+                                </button>
+                            )
+                        )}
                         {/* 纯净模式按钮 */}
                         <button
                             className={`kaguya-deep-pure-btn ${pureMode ? 'kaguya-deep-pure-btn-active' : ''}`}
@@ -1745,24 +1768,6 @@ const DeepMode = (): React.JSX.Element => {
                             >
                                 📰 新闻评价
                             </button>
-                            {enginePaused ? (
-                                <button
-                                    type='button'
-                                    className='kaguya-deep-action-btn kaguya-deep-action-btn-resume'
-                                    onClick={handleResumeEngine}
-                                >
-                                    ▶️ 恢复进程
-                                </button>
-                            ) : (
-                                <button
-                                    type='button'
-                                    className='kaguya-deep-action-btn kaguya-deep-action-btn-pause'
-                                    onClick={handlePauseEngine}
-                                    disabled={llmState !== 'ready'}
-                                >
-                                    ⏸️ 停止进程
-                                </button>
-                            )}
                         </div>
 
                         <div className='kaguya-deep-log'>

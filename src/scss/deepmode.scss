@@ -168,6 +168,54 @@
     z-index: 10;
 }
 
+// 角落按钮通用样式
+.kaguya-deep-corner-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px !important;
+    border: 1px solid rgba(182, 213, 242, 0.32);
+    background: rgba(123, 164, 209, 0.18);
+    color: rgba(229, 241, 255, 0.9) !important;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        background: rgba(140, 180, 220, 0.28);
+        border-color: rgba(200, 230, 255, 0.5);
+        transform: scale(1.05);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    &.kaguya-deep-corner-btn-pause {
+        background: rgba(245, 166, 35, 0.2);
+        border-color: rgba(255, 193, 94, 0.4);
+
+        &:hover:not(:disabled) {
+            background: rgba(245, 166, 35, 0.35);
+            border-color: rgba(255, 193, 94, 0.6);
+        }
+    }
+
+    &.kaguya-deep-corner-btn-resume {
+        background: rgba(76, 217, 100, 0.2);
+        border-color: rgba(126, 232, 148, 0.4);
+
+        &:hover {
+            background: rgba(76, 217, 100, 0.35);
+            border-color: rgba(126, 232, 148, 0.6);
+        }
+    }
+}
+
 // 纯净模式按钮
 .kaguya-deep-pure-btn {
     width: 32px;
