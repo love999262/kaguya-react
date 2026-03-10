@@ -4,6 +4,15 @@ const SHOW_MIN_WIDTH = 1120;
 const LIVE2D_SCRIPT_URL = 'live2d/lib/L2Dwidget.min.js';
 const DRAG_EDGE_VISIBLE_MIN = 52;
 
+// 气泡显示时长配置
+const BUBBLE_DURATION_CONFIG = {
+    baseMs: 2500,        // 基础时长 2.5 秒
+    perCharMs: 180,      // 每字增加 180ms
+    minMs: 4000,         // 最短 4 秒
+    maxMs: 25000,        // 最长 25 秒
+    hoverPause: true,    // 悬停暂停
+};
+
 const MODEL_MAP: Record<'22' | '33', string> = {
     '22': 'live2d/model/bilibili-live/22/index.json',
     '33': 'live2d/model/bilibili-live/33/index.json',
@@ -14,6 +23,13 @@ type OffsetState = Record<ModelId, { x: number; y: number }>;
 type Live2DAction = 'neutral' | 'happy' | 'curious' | 'thinking' | 'calm' | 'surprised';
 type ActionState = Record<ModelId, Live2DAction>;
 type BubbleState = Record<ModelId, string>;
+
+// 气泡状态扩展：包含剩余时间和暂停状态
+type BubbleTimerState = {
+    endTime: number;     // 预计结束时间戳
+    remaining: number;   // 剩余毫秒
+    isPaused: boolean;   // 是否暂停
+};
 
 type DragState = {
     id: ModelId;
@@ -29,6 +45,17 @@ type DragState = {
 
 const clamp = (value: number, min: number, max: number): number => {
     return Math.max(min, Math.min(max, value));
+};
+
+// 计算气泡显示时长（基于文本长度）
+const calculateBubbleDuration = (text: string): number => {
+    // 使用 Array.from 正确处理中文（每个汉字算一个字符）
+    const charCount = Array.from(text).length;
+    const duration = BUBBLE_DURATION_CONFIG.baseMs + charCount * BUBBLE_DURATION_CONFIG.perCharMs;
+    return Math.max(
+        BUBBLE_DURATION_CONFIG.minMs,
+        Math.min(BUBBLE_DURATION_CONFIG.maxMs, duration)
+    );
 };
 
 const buildIframeDoc = (jsonPath: string): string => `<!doctype html>
@@ -101,6 +128,10 @@ const Live2D = (): JSX.Element => {
         '22': '',
         '33': '',
     });
+    // 新增：悬停状态
+    const [hoveredBubble, setHoveredBubble] = React.useState<ModelId | null>(null);
+    // 纯净模式状态
+    const [pureMode, setPureMode] = React.useState<boolean>(false);
 
     const offsetsRef = React.useRef<OffsetState>(offsets);
     const dragRef = React.useRef<DragState | null>(null);
@@ -113,7 +144,12 @@ const Live2D = (): JSX.Element => {
         '22': null,
         '33': null,
     });
-    const bubbleTimerRef = React.useRef<Record<ModelId, number | null>>({
+    // 改造：气泡定时器改为存储结束时间和暂停状态
+    const bubbleTimerStateRef = React.useRef<Record<ModelId, BubbleTimerState | null>>({
+        '22': null,
+        '33': null,
+    });
+    const bubbleTimeoutRef = React.useRef<Record<ModelId, number | null>>({
         '22': null,
         '33': null,
     });
@@ -303,6 +339,97 @@ const Live2D = (): JSX.Element => {
         };
     }, [applyAction]);
 
+    // 改造后的气泡显示逻辑：支持动态时长和悬停暂停
+    const showBubble = React.useCallback((id: ModelId, text: string): void => {
+        if (!text.trim()) return;
+
+        const duration = calculateBubbleDuration(text);
+        const endTime = Date.now() + duration;
+
+        // 清除旧定时器
+        if (bubbleTimeoutRef.current[id]) {
+            window.clearTimeout(bubbleTimeoutRef.current[id]);
+        }
+
+        // 设置新状态
+        setBubbles((prev: BubbleState) => ({ ...prev, [id]: text }));
+        bubbleTimerStateRef.current[id] = {
+            endTime,
+            remaining: duration,
+            isPaused: false,
+        };
+
+        // 设置定时器
+        const scheduleHide = () => {
+            bubbleTimeoutRef.current[id] = window.setTimeout(() => {
+                // 检查是否被暂停
+                const state = bubbleTimerStateRef.current[id];
+                if (state?.isPaused) {
+                    // 如果被暂停，等待恢复后再检查
+                    return;
+                }
+
+                // 检查是否还有剩余时间
+                const now = Date.now();
+                if (state && now < state.endTime) {
+                    // 还有剩余时间，重新设置定时器
+                    scheduleHide();
+                    return;
+                }
+
+                // 时间到了，隐藏气泡
+                setBubbles((prev: BubbleState) => ({ ...prev, [id]: '' }));
+                bubbleTimerStateRef.current[id] = null;
+                bubbleTimeoutRef.current[id] = null;
+            }, duration);
+        };
+
+        scheduleHide();
+    }, []);
+
+    // 处理气泡悬停事件
+    const handleBubbleMouseEnter = React.useCallback((id: ModelId): void => {
+        if (!BUBBLE_DURATION_CONFIG.hoverPause) return;
+
+        setHoveredBubble(id);
+        const state = bubbleTimerStateRef.current[id];
+        if (state) {
+            // 计算剩余时间并暂停
+            const remaining = Math.max(0, state.endTime - Date.now());
+            bubbleTimerStateRef.current[id] = {
+                ...state,
+                remaining,
+                isPaused: true,
+            };
+            // 清除当前定时器
+            if (bubbleTimeoutRef.current[id]) {
+                window.clearTimeout(bubbleTimeoutRef.current[id]);
+                bubbleTimeoutRef.current[id] = null;
+            }
+        }
+    }, []);
+
+    const handleBubbleMouseLeave = React.useCallback((id: ModelId): void => {
+        setHoveredBubble(null);
+        const state = bubbleTimerStateRef.current[id];
+        if (state && state.isPaused) {
+            // 恢复计时，从剩余时间继续
+            const newEndTime = Date.now() + state.remaining;
+            bubbleTimerStateRef.current[id] = {
+                ...state,
+                endTime: newEndTime,
+                isPaused: false,
+            };
+
+            // 重新设置定时器
+            bubbleTimeoutRef.current[id] = window.setTimeout(() => {
+                setBubbles((prev: BubbleState) => ({ ...prev, [id]: '' }));
+                bubbleTimerStateRef.current[id] = null;
+                bubbleTimeoutRef.current[id] = null;
+            }, state.remaining);
+        }
+    }, []);
+
     React.useEffect(() => {
         const onBubble = (event: Event): void => {
             const detail = (event as CustomEvent<{ target?: string; text?: string; }>).detail;
@@ -312,42 +439,46 @@ const Live2D = (): JSX.Element => {
                 return;
             }
 
-            const setBubbleText = (id: ModelId) => {
-                setBubbles((prev: BubbleState) => ({
-                    ...prev,
-                    [id]: text,
-                }));
-
-                const timer = bubbleTimerRef.current[id];
-                if (timer) {
-                    window.clearTimeout(timer);
-                }
-                bubbleTimerRef.current[id] = window.setTimeout(() => {
-                    setBubbles((prev: BubbleState) => ({
-                        ...prev,
-                        [id]: '',
-                    }));
-                    bubbleTimerRef.current[id] = null;
-                }, 11000);
-            };
-
             if (target === '22') {
-                setBubbleText('22');
+                showBubble('22', text);
                 return;
             }
             if (target === '33') {
-                setBubbleText('33');
+                showBubble('33', text);
                 return;
             }
             if (target === 'all') {
-                setBubbleText('22');
-                setBubbleText('33');
+                showBubble('22', text);
+                showBubble('33', text);
             }
         };
 
         window.addEventListener('kaguya:live2d-bubble', onBubble as EventListener);
         return () => {
             window.removeEventListener('kaguya:live2d-bubble', onBubble as EventListener);
+        };
+    }, [showBubble]);
+
+    // 纯净模式事件监听
+    React.useEffect(() => {
+        const onPureMode = (event: Event): void => {
+            const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
+            const enabled = detail?.enabled ?? false;
+
+            setPureMode(enabled);
+
+            if (enabled) {
+                // 进入纯净模式：添加body类名隐藏其他UI元素
+                document.body.classList.add('kaguya-pure-mode');
+            } else {
+                // 退出纯净模式：移除body类名
+                document.body.classList.remove('kaguya-pure-mode');
+            }
+        };
+
+        window.addEventListener('kaguya:pure-mode', onPureMode as EventListener);
+        return () => {
+            window.removeEventListener('kaguya:pure-mode', onPureMode as EventListener);
         };
     }, []);
 
@@ -364,19 +495,20 @@ const Live2D = (): JSX.Element => {
                 window.clearTimeout(timer33);
                 actionTimerRef.current['33'] = null;
             }
-            const bubble22 = bubbleTimerRef.current['22'];
-            const bubble33 = bubbleTimerRef.current['33'];
-            if (bubble22) {
-                window.clearTimeout(bubble22);
-                bubbleTimerRef.current['22'] = null;
-            }
-            if (bubble33) {
-                window.clearTimeout(bubble33);
-                bubbleTimerRef.current['33'] = null;
-            }
+            // 清理气泡定时器
+            ['22', '33'].forEach((id) => {
+                const timer = bubbleTimeoutRef.current[id as ModelId];
+                if (timer) {
+                    window.clearTimeout(timer);
+                    bubbleTimeoutRef.current[id as ModelId] = null;
+                }
+            });
+            // 清理body类名
+            document.body.classList.remove('kaguya-pure-mode');
         };
     }, [clearFrameListeners]);
 
+    // 使用 useMemo 缓存 iframe 文档，防止重新渲染时重新加载
     const docs = React.useMemo(() => {
         return {
             '22': buildIframeDoc(MODEL_MAP['22']),
@@ -384,41 +516,62 @@ const Live2D = (): JSX.Element => {
         };
     }, []);
 
+    // 使用 useMemo 缓存 iframe 元素，防止 pureMode 变化时重新创建
+    const iframe22 = React.useMemo(() => (
+        <iframe
+            ref={frame22Ref}
+            className='kaguya-live2d-frame'
+            sandbox='allow-scripts allow-same-origin'
+            srcDoc={docs['22']}
+            title='live2d-2233-22'
+            onLoad={(): void => bindFrameDrag('22', frame22Ref.current)}
+        />
+    ), [docs['22']]);
+
+    const iframe33 = React.useMemo(() => (
+        <iframe
+            ref={frame33Ref}
+            className='kaguya-live2d-frame'
+            sandbox='allow-scripts allow-same-origin'
+            srcDoc={docs['33']}
+            title='live2d-2233-33'
+            onLoad={(): void => bindFrameDrag('33', frame33Ref.current)}
+        />
+    ), [docs['33']]);
+
     if (!visible) {
         return <></>;
     }
 
     return (
-        <div className='kaguya-live2d-group'>
+        <div className={`kaguya-live2d-group ${pureMode ? 'kaguya-live2d-group-pure' : ''}`}>
             <div
                 ref={shell22Ref}
                 className={`kaguya-live2d-shell kaguya-live2d-shell-22 kaguya-live2d-shell-action-${actions['22']}`}
                 style={{ transform: `translate3d(${offsets['22'].x}px, ${offsets['22'].y}px, 0)` }}
             >
-                <div className={`kaguya-live2d-bubble ${bubbles['22'] ? 'kaguya-live2d-bubble-visible' : ''}`}>{bubbles['22']}</div>
-                <iframe
-                    ref={frame22Ref}
-                    className='kaguya-live2d-frame'
-                    sandbox='allow-scripts allow-same-origin'
-                    srcDoc={docs['22']}
-                    title='live2d-2233-22'
-                    onLoad={(): void => bindFrameDrag('22', frame22Ref.current)}
-                />
+                <div
+                    className={`kaguya-live2d-bubble ${bubbles['22'] ? 'kaguya-live2d-bubble-visible' : ''} ${hoveredBubble === '22' ? 'kaguya-live2d-bubble-paused' : ''}`}
+                    onMouseEnter={() => handleBubbleMouseEnter('22')}
+                    onMouseLeave={() => handleBubbleMouseLeave('22')}
+                >
+                    {bubbles['22']}
+                </div>
+                {iframe22}
             </div>
             <div
                 ref={shell33Ref}
                 className={`kaguya-live2d-shell kaguya-live2d-shell-33 kaguya-live2d-shell-action-${actions['33']}`}
                 style={{ transform: `translate3d(${offsets['33'].x}px, ${offsets['33'].y}px, 0)` }}
             >
-                <div className={`kaguya-live2d-bubble ${bubbles['33'] ? 'kaguya-live2d-bubble-visible' : ''}`}>{bubbles['33']}</div>
-                <iframe
-                    ref={frame33Ref}
-                    className='kaguya-live2d-frame'
-                    sandbox='allow-scripts allow-same-origin'
-                    srcDoc={docs['33']}
-                    title='live2d-2233-33'
-                    onLoad={(): void => bindFrameDrag('33', frame33Ref.current)}
-                />
+                <div
+                    className={`kaguya-live2d-bubble ${bubbles['33'] ? 'kaguya-live2d-bubble-visible' : ''} ${hoveredBubble === '33' ? 'kaguya-live2d-bubble-paused' : ''}`}
+                    onMouseEnter={() => handleBubbleMouseEnter('33')}
+                    onMouseLeave={() => handleBubbleMouseLeave('33')}
+                >
+                    {bubbles['33']}
+                </div>
+                {iframe33}
             </div>
         </div>
     );

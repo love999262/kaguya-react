@@ -122,11 +122,57 @@ async function fetchFromAPI(source: JokeAPISource): Promise<string | null> {
     }
 }
 
+// 笑话缓存
+const JOKE_CACHE_KEY = 'kaguya:joke:cache';
+const JOKE_CACHE_DURATION = 60 * 60 * 1000; // 1小时
+
+interface JokeCache {
+    joke: string;
+    timestamp: number;
+}
+
+// 获取缓存的笑话
+export function getCachedJoke(): string | null {
+    try {
+        const cached = localStorage.getItem(JOKE_CACHE_KEY);
+        if (cached) {
+            const data: JokeCache = JSON.parse(cached);
+            if (Date.now() - data.timestamp < JOKE_CACHE_DURATION) {
+                return data.joke;
+            }
+        }
+    } catch {
+        // 忽略错误
+    }
+    return null;
+}
+
+// 设置笑话缓存
+function setCachedJoke(joke: string): void {
+    try {
+        const data: JokeCache = {
+            joke,
+            timestamp: Date.now(),
+        };
+        localStorage.setItem(JOKE_CACHE_KEY, JSON.stringify(data));
+    } catch {
+        // 忽略错误
+    }
+}
+
 export async function fetchJokeFromAPI(): Promise<string | null> {
+    // 先检查缓存
+    const cached = getCachedJoke();
+    if (cached) {
+        return cached;
+    }
+
     const shuffledSources = shuffleArray(JOKE_API_SOURCES);
     for (let index = 0; index < shuffledSources.length; index++) {
         const joke = await fetchFromAPI(shuffledSources[index]);
         if (joke) {
+            // 缓存新笑话
+            setCachedJoke(joke);
             return joke;
         }
     }

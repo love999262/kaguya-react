@@ -1,8 +1,9 @@
 import * as React from 'react';
 import type { InitProgressReport, MLCEngineInterface, AppConfig, ModelRecord } from '@mlc-ai/web-llm';
-import utils from './utils';
 import { fetchHotNews, filterEntertainmentNews, filterTechNews, type NewsItem } from './newsService';
 import { fetchJokeFromAPI } from './jsonpService';
+import { SkitEngine } from './skit/engine';
+import { getRandomHistoryEvent, formatHistoryForCharacter } from './services/historyToday';
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
@@ -82,7 +83,6 @@ const FALLBACK_MODEL_ID = QWEN25_MODEL_IDS[0]; // 降级到 Qwen2.5-0.5B
 const SEARCH_EVAL_DEBOUNCE_MS = 780;
 const IDLE_INTERVAL_MS = 18000;
 const IDLE_THRESHOLD_MS = 80000;
-const PAGE_HIDDEN_UNLOAD_DELAY_MS = 10 * 60 * 1000;
 const LLM_RETRY_COOLDOWN_MS = 12000;
 const LLM_STRATEGY_STORAGE_KEY = 'kaguya:webllm:strategy';
 const LLM_SOURCE_STORAGE_KEY = 'kaguya:webllm:source';
@@ -383,6 +383,10 @@ const DeepMode = (): React.JSX.Element => {
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         { id: 1, role: 'system', text: '深度交互已就绪：纯文字对话 + 22/33分角色回复。' },
     ]);
+    // 纯净模式状态
+    const [pureMode, setPureMode] = React.useState<boolean>(false);
+    // 抽屉动画状态
+    const [drawerVisible, setDrawerVisible] = React.useState<boolean>(false);
 
     const panelRef = React.useRef<HTMLDivElement | null>(null);
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -406,11 +410,30 @@ const DeepMode = (): React.JSX.Element => {
     const newsCacheRef = React.useRef<NewsItem[]>([]);
     const lastNewsFetchRef = React.useRef<number>(0);
     const newsCommentRunningRef = React.useRef<boolean>(false);
+    const skitEngineRef = React.useRef<SkitEngine | null>(null);
 
     const historyRef = React.useRef<Record<'22' | '33', CoreMessage[]>>({
         '22': [{ role: 'system', content: SYSTEM_PROMPT_22 }],
         '33': [{ role: 'system', content: SYSTEM_PROMPT_33 }],
     });
+
+    // 初始化小剧场引擎
+    React.useEffect(() => {
+        if (!skitEngineRef.current) {
+            skitEngineRef.current = new SkitEngine();
+            skitEngineRef.current.onTurn((turn) => {
+                emitAction(turn.speaker, turn.action as Live2DAction);
+                emitBubble(turn.speaker, turn.content);
+                const roleLabel = turn.speaker === '22' ? 'assistant22' : 'assistant33';
+                pushMessage(roleLabel, `${turn.speaker}（小剧场）：${turn.content}`);
+            });
+        }
+        return () => {
+            if (skitEngineRef.current) {
+                skitEngineRef.current.stop();
+            }
+        };
+    }, []);
 
     const markInteraction = React.useCallback(() => {
         lastInteractionAtRef.current = Date.now();
@@ -829,7 +852,7 @@ const DeepMode = (): React.JSX.Element => {
                     const hint = getWebLLMFailureHint(loadResult.lastErrorText);
                     pushMessage(
                         'system',
-                        `模型加载失败，已回退本地规则回复。${loadResult.lastErrorText ? `（${loadResult.lastErrorText.slice(0, 90)}）` : ''}${hint ? ` ${hint}` : ''}${resolvedModelHubUrl ? ` 请求地址：${resolvedModelHubUrl}` : ''}`,
+                        `模型加载失败，已回退本地规则回复。${loadResult.lastErrorText ? `（${loadResult.lastErrorText.slice(0, 90)}）` : ''}${hint ? ` ${hint}` : ''}`,
                     );
                     return null;
                 }
@@ -934,8 +957,8 @@ const DeepMode = (): React.JSX.Element => {
 
         if (!primaryEngine) {
             const fallbackText = roleTarget === '22'
-                ? `这件事别慌，我和你站一边。先从“${userText}”里最容易的一步开始就好。`
-                : `先客观看待“${userText}”。先确认目标与约束，再执行第一步。`;
+                ? `这件事别慌，我和你站一边。先从"${userText}"里最容易的一步开始就好。`
+                : `先客观看待"${userText}"。先确认目标与约束，再执行第一步。`;
             const fallbackAction = roleTarget === '22' ? 'happy' : 'thinking';
             history.push({ role: 'assistant', content: fallbackText });
             return { text: fallbackText, action: fallbackAction };
@@ -972,7 +995,7 @@ const DeepMode = (): React.JSX.Element => {
         }
 
         const fallbackText = roleTarget === '22'
-            ? `别有压力，这题可以拆开做。先把“${userText}”里最关键的一项处理掉。`
+            ? `别有压力，这题可以拆开做。先把"${userText}"里最关键的一项处理掉。`
             : `结论先给你：这件事可以推进。建议先明确优先级，再按顺序执行。`;
         history.push({ role: 'assistant', content: fallbackText });
         return {
@@ -992,13 +1015,13 @@ const DeepMode = (): React.JSX.Element => {
             requestPersonaJson(
                 '22',
                 `用户正在输入搜索词：${keyword}。请输出1到2句：先给情绪鼓励，再给一个检索建议，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                `这个词很有潜力，放心冲。建议先搜“${keyword} 教程/实测”快速建立判断。`,
+                `这个词很有潜力，放心冲。建议先搜"${keyword} 教程/实测"快速建立判断。`,
                 'curious',
             ),
             requestPersonaJson(
                 '33',
                 `用户正在输入搜索词：${keyword}。请输出1到2句：先给客观判断，再给一个检索策略，并返回 JSON：{"comment":"...","action":"happy|curious|thinking|calm|surprised"}`,
-                `先明确“${keyword}”是资讯、教程还是购买，再按维度筛选结果。`,
+                `先明确"${keyword}"是资讯、教程还是购买，再按维度筛选结果。`,
                 'thinking',
             ),
         ]);
@@ -1217,56 +1240,73 @@ const DeepMode = (): React.JSX.Element => {
         }
     }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
 
-    const triggerJokeAndTsukkomi = React.useCallback(async () => {
-        if (llmState !== 'ready') {
+    // 历史上的今天按钮功能
+    const triggerHistoryToday = React.useCallback(async () => {
+        if (isResponding) {
             return;
         }
 
+        setIsResponding(true);
+        pushMessage('system', '正在获取历史上的今天...');
+
         try {
-            let jokeText: string | null = null;
-            try {
-                jokeText = await fetchJokeFromAPI();
-            } catch {
+            // 获取两个不同的历史事件
+            const event22 = await getRandomHistoryEvent();
+            const event33 = await getRandomHistoryEvent();
+
+            if (event22) {
+                const text22 = formatHistoryForCharacter(event22, '22');
+                emitAction('22', 'curious');
+                emitBubble('22', text22);
+                pushMessage('assistant22', `22（历史上的今天）：${text22}`);
             }
 
-            let joke22: PersonaReply | null = null;
-            if (jokeText) {
-                const comment = jokeText;
-                const action: Live2DAction = 'happy';
-                joke22 = { text: comment, action };
-            } else {
-                joke22 = await requestPersonaJson(
-                    '22',
-                    JOKE_PROMPT_22,
-                    '先来个热身笑话：程序员把闹钟改成 cron，结果周末也准时上班了。',
-                    'happy',
-                );
-            }
-
-            if (joke22) {
-                emitAction('22', joke22.action);
-                emitBubble('22', joke22.text);
-                pushMessage('assistant22', `22：${joke22.text}`);
-            }
-
+            // 延迟一下让对话更自然
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            const tsukkomi33 = await requestPersonaJson(
-                '33',
-                TSUKKOMI_PROMPT_33,
-                '吐槽一句：包袱到了，但逻辑还在排队。',
-                'calm',
-            );
-            if (tsukkomi33) {
-                emitAction('33', tsukkomi33.action);
-                emitBubble('33', tsukkomi33.text);
-                pushMessage('assistant33', `33：${tsukkomi33.text}`);
+            if (event33) {
+                const text33 = formatHistoryForCharacter(event33, '33');
+                emitAction('33', 'thinking');
+                emitBubble('33', text33);
+                pushMessage('assistant33', `33（历史上的今天）：${text33}`);
             }
 
             markInteraction();
-        } catch {
+        } catch (error) {
+            pushMessage('system', '获取历史数据失败，请稍后重试。');
+        } finally {
+            setIsResponding(false);
         }
-    }, [emitAction, emitBubble, llmState, markInteraction, pushMessage, requestPersonaJson]);
+    }, [emitAction, emitBubble, isResponding, markInteraction, pushMessage]);
+
+    // 小剧场按钮功能
+    const triggerSkit = React.useCallback(async () => {
+        if (!skitEngineRef.current || isResponding) {
+            return;
+        }
+
+        const state = skitEngineRef.current.getState();
+        if (state.isRunning) {
+            pushMessage('system', '小剧场正在进行中...');
+            return;
+        }
+
+        setIsResponding(true);
+        pushMessage('system', '小剧场即将开始...');
+
+        try {
+            const success = await skitEngineRef.current.start();
+            if (success) {
+                pushMessage('system', '小剧场开始！');
+            } else {
+                pushMessage('system', '小剧场启动失败。');
+            }
+        } catch (error) {
+            pushMessage('system', '小剧场发生错误。');
+        } finally {
+            setIsResponding(false);
+        }
+    }, [isResponding, pushMessage]);
 
     const handleAssistantReply = React.useCallback(async (userText: string) => {
         const text = userText.trim();
@@ -1318,9 +1358,48 @@ const DeepMode = (): React.JSX.Element => {
         void handleAssistantReply(text);
     }, [draft, handleAssistantReply, isResponding]);
 
-    const togglePanel = React.useCallback(() => {
-        setPanelOpen((prev: boolean) => !prev);
+    // 抽屉开关控制
+    const openPanel = React.useCallback(() => {
+        setPanelOpen(true);
+        // 延迟显示抽屉动画
+        setTimeout(() => {
+            setDrawerVisible(true);
+        }, 10);
     }, []);
+
+    const closePanel = React.useCallback(() => {
+        setDrawerVisible(false);
+        // 等待动画完成后隐藏面板
+        setTimeout(() => {
+            setPanelOpen(false);
+        }, 300);
+    }, []);
+
+    // URL参数检查 - 纯净模式和自动打开面板
+    React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        if (mode === 'ai') {
+            setPureMode(true);
+            // 触发纯净模式事件
+            window.dispatchEvent(new CustomEvent('kaguya:pure-mode', {
+                detail: { enabled: true },
+            }));
+            // 自动打开面板
+            openPanel();
+        }
+    }, [openPanel]);
+
+    // 切换纯净模式
+    const togglePureMode = React.useCallback(() => {
+        const newPureMode = !pureMode;
+        setPureMode(newPureMode);
+        // 触发事件通知其他组件
+        window.dispatchEvent(new CustomEvent('kaguya:pure-mode', {
+            detail: { enabled: newPureMode },
+        }));
+        pushMessage('system', newPureMode ? '已开启纯净模式' : '已退出纯净模式');
+    }, [pureMode, pushMessage]);
 
     const handleModelPreferenceChange = React.useCallback((nextPref: ModelPreference): void => {
         setModelPreference(nextPref);
@@ -1431,7 +1510,7 @@ const DeepMode = (): React.JSX.Element => {
                 if (random < 0.3) {
                     void triggerNewsComment();
                 } else if (random < 0.5) {
-                    void triggerJokeAndTsukkomi();
+                    void triggerSkit();
                 } else {
                     void triggerIdleInteraction();
                 }
@@ -1441,72 +1520,37 @@ const DeepMode = (): React.JSX.Element => {
         return () => {
             window.clearInterval(timer);
         };
-    }, [triggerIdleInteraction, triggerNewsComment, triggerJokeAndTsukkomi]);
+    }, [triggerIdleInteraction, triggerNewsComment, triggerSkit]);
 
-    const wasPageVisibleRef = React.useRef<boolean>(true);
-    const enginesPausedRef = React.useRef<boolean>(false);
-    const hiddenUnloadTimerRef = React.useRef<number | null>(null);
+    const [enginePaused, setEnginePaused] = React.useState<boolean>(false);
 
-    React.useEffect(() => {
-        const unloadEngines = (): void => {
-            if (activeEngineRef.current) {
-                void activeEngineRef.current.unload();
-            }
-            activeEngineRef.current = null;
-            enginesPausedRef.current = true;
-            setLlmState('idle');
-            setActiveModelId('已暂停（页面不可见）');
-        };
+    const handlePauseEngine = React.useCallback((): void => {
+        if (activeEngineRef.current) {
+            void activeEngineRef.current.unload();
+        }
+        activeEngineRef.current = null;
+        setEnginePaused(true);
+        setLlmState('idle');
+        setActiveModelId('已暂停');
+        setLlmProgress('进程已暂停');
+        pushMessage('system', 'WebLLM 进程已暂停。');
+    }, [pushMessage]);
 
-        const clearHiddenUnloadTimer = (): void => {
-            if (hiddenUnloadTimerRef.current !== null) {
-                window.clearTimeout(hiddenUnloadTimerRef.current);
-                hiddenUnloadTimerRef.current = null;
-            }
-        };
-
-        const handleVisibilityChange = (isVisible: boolean): void => {
-            if (isVisible) {
-                clearHiddenUnloadTimer();
-                if (!wasPageVisibleRef.current && enginesPausedRef.current) {
-                    enginesPausedRef.current = false;
-                    setLlmProgress('页面已激活，正在恢复...');
-                    if (panelOpen && storageCheckedRef.current) {
-                        const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
-                        void ensureLLMEngine(nextTargetModel);
-                    }
-                }
-            } else if (!isVisible && wasPageVisibleRef.current && llmState === 'ready' && activeEngineRef.current) {
-                clearHiddenUnloadTimer();
-                hiddenUnloadTimerRef.current = window.setTimeout(() => {
-                    hiddenUnloadTimerRef.current = null;
-                    if (utils.isPageVisible() || !activeEngineRef.current) {
-                        return;
-                    }
-                    unloadEngines();
-                    pushMessage('system', '页面连续 10 分钟不可见，已暂停 WebLLM 以节省内存。');
-                }, PAGE_HIDDEN_UNLOAD_DELAY_MS);
-                pushMessage('system', '页面进入后台：10 分钟内如果未返回，将自动暂停 WebLLM。');
-            }
-            wasPageVisibleRef.current = isVisible;
-        };
-
-        const removeListener = utils.addVisibilityListener(handleVisibilityChange);
-        return () => {
-            clearHiddenUnloadTimer();
-            removeListener();
-        };
-    }, [allModelIds, ensureLLMEngine, llmState, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
+    const handleResumeEngine = React.useCallback((): void => {
+        setEnginePaused(false);
+        setLlmProgress('正在恢复进程...');
+        if (panelOpen && storageCheckedRef.current) {
+            const nextTargetModel = resolveTargetModel(modelPreference, recommendedModelId, new Set(allModelIds));
+            void ensureLLMEngine(nextTargetModel);
+        }
+        pushMessage('system', 'WebLLM 进程恢复中...');
+    }, [allModelIds, ensureLLMEngine, modelPreference, panelOpen, pushMessage, recommendedModelId, resolveTargetModel]);
 
     React.useEffect(() => {
         return () => {
             if (searchDebounceRef.current !== null) {
                 window.clearTimeout(searchDebounceRef.current);
                 searchDebounceRef.current = null;
-            }
-            if (hiddenUnloadTimerRef.current !== null) {
-                window.clearTimeout(hiddenUnloadTimerRef.current);
-                hiddenUnloadTimerRef.current = null;
             }
             if (activeEngineRef.current) {
                 void activeEngineRef.current.unload();
@@ -1539,121 +1583,171 @@ const DeepMode = (): React.JSX.Element => {
     const currentTargetCached = cachedModelIdSet.has(currentTargetModel);
 
     return (
-        <div className='kaguya-deep'>
-            <button
-                className={`kaguya-deep-trigger${panelOpen ? ' kaguya-deep-trigger-active' : ''}`}
-                type='button'
-                onClick={togglePanel}
-                ref={triggerRef}
-                aria-label='Open deep interaction panel'
-                aria-expanded={panelOpen}
-            >
-                <svg viewBox='0 0 24 24' aria-hidden='true'>
-                    <path d='M12 3.5c-4.9 0-8.8 3.3-8.8 7.3 0 2.3 1.3 4.3 3.4 5.6v3.8l3.1-2a10.9 10.9 0 0 0 2.3.3c4.9 0 8.8-3.3 8.8-7.3S16.9 3.5 12 3.5zm-3 7.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm3 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm3 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z' />
-                </svg>
-            </button>
+        <div className={`kaguya-deep ${pureMode ? 'kaguya-deep-pure' : ''}`}>
+            {/* 触发按钮 - 面板打开时隐藏 */}
+            {!panelOpen && (
+                <button
+                    className='kaguya-deep-trigger'
+                    type='button'
+                    onClick={openPanel}
+                    ref={triggerRef}
+                    aria-label='Open deep interaction panel'
+                    aria-expanded={panelOpen}
+                >
+                    <svg viewBox='0 0 24 24' aria-hidden='true'>
+                        <path d='M12 3.5c-4.9 0-8.8 3.3-8.8 7.3 0 2.3 1.3 4.3 3.4 5.6v3.8l3.1-2a10.9 10.9 0 0 0 2.3.3c4.9 0 8.8-3.3 8.8-7.3S16.9 3.5 12 3.5zm-3 7.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm3 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm3 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z' />
+                    </svg>
+                </button>
+            )}
 
-            <div className={`kaguya-deep-panel${panelOpen ? ' kaguya-deep-panel-visible' : ''}`} ref={panelRef}>
-                <div className='kaguya-deep-head'>
-                    <div className='kaguya-deep-title'>深度交互</div>
-                    <button className='kaguya-deep-close' type='button' onClick={() => setPanelOpen(false)} aria-label='Close panel'>
-                        ×
-                    </button>
-                </div>
+            {/* 抽屉面板 */}
+            {panelOpen && (
+                <div className={`kaguya-deep-drawer ${drawerVisible ? 'kaguya-deep-drawer-visible' : ''}`} ref={panelRef}>
+                    {/* 角落按钮 - 绝对定位 */}
+                    <div className='kaguya-deep-corner-actions'>
+                        {/* 纯净模式按钮 */}
+                        <button
+                            className={`kaguya-deep-pure-btn ${pureMode ? 'kaguya-deep-pure-btn-active' : ''}`}
+                            type='button'
+                            onClick={togglePureMode}
+                            title={pureMode ? '退出纯净模式' : '进入纯净模式'}
+                        >
+                            {pureMode ? '👁️' : '👁️‍🗨️'}
+                        </button>
+                        {/* 关闭按钮 */}
+                        <button className='kaguya-deep-close' type='button' onClick={closePanel} aria-label='Close panel'>
+                            ×
+                        </button>
+                    </div>
 
-                <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
-                <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
-                <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
-                <div className='kaguya-deep-meta'>模型地址：{activeModelSource}</div>
-                <div className='kaguya-deep-meta'>模型缓存：{storageText}</div>
-                <div className='kaguya-deep-meta'>{`目标缓存：${currentTargetCached ? '已缓存' : '未缓存'}（${getModelDisplayName(currentTargetModel)}）`}</div>
-                <div className='kaguya-deep-meta'>{`本地缓存模型：${cachedModelCount}/${allModelIds.length || 0}`}</div>
-                <div className='kaguya-deep-meta'>设备评估：{deviceHint}</div>
-                <div className='kaguya-deep-model-row'>
-                    <span className='kaguya-deep-model-label'>模型</span>
-                    <select
-                        className='kaguya-deep-model-all-select'
-                        value={allModelSelectValue}
-                        onChange={handleAllModelSelectChange}
-                    >
-                        <option value='auto'>{`自动（Qwen优先：${getModelDisplayName(recommendedModelId)}${currentTargetCached ? ' [已缓存]' : ''}）`}</option>
-                        {allModelIds.map((modelId) => (
-                            <option key={modelId} value={modelId}>
-                                {`${modelId}${cachedModelIdSet.has(modelId) ? ' [已缓存]' : ''}`}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className='kaguya-deep-targets'>
-                    <button
-                        type='button'
-                        className={`kaguya-deep-target${target === '22' ? ' kaguya-deep-target-active' : ''}`}
-                        onClick={() => setTarget('22')}
-                    >
-                        对22
-                    </button>
-                    <button
-                        type='button'
-                        className={`kaguya-deep-target${target === '33' ? ' kaguya-deep-target-active' : ''}`}
-                        onClick={() => setTarget('33')}
-                    >
-                        对33
-                    </button>
-                    <button
-                        type='button'
-                        className={`kaguya-deep-target${target === 'all' ? ' kaguya-deep-target-active' : ''}`}
-                        onClick={() => setTarget('all')}
-                    >
-                        对全部
-                    </button>
-                </div>
-
-                <div className='kaguya-deep-actions'>
-                    <button
-                        type='button'
-                        className='kaguya-deep-action-btn'
-                        onClick={() => void triggerJokeAndTsukkomi()}
-                        disabled={llmState !== 'ready' || isResponding}
-                    >
-                        🎭 讲笑话+吐槽
-                    </button>
-                    <button
-                        type='button'
-                        className='kaguya-deep-action-btn'
-                        onClick={() => void triggerNewsComment()}
-                        disabled={llmState !== 'ready' || isResponding}
-                    >
-                        📰 新闻评价
-                    </button>
-                </div>
-
-                <div className='kaguya-deep-log'>
-                    {messages.map((msg: ChatMessage) => (
-                        <div key={msg.id} className={`kaguya-deep-line kaguya-deep-line-${msg.role}`}>
-                            {msg.text}
+                    {/* 内容区域 - 可滚动 */}
+                    <div className='kaguya-drawer-content'>
+                        <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
+                        <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
+                        <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
+                        <div className='kaguya-deep-meta'>模型地址：{activeModelSource}</div>
+                        <div className='kaguya-deep-meta'>模型缓存：{storageText}</div>
+                        <div className='kaguya-deep-meta'>{`目标缓存：${currentTargetCached ? '已缓存' : '未缓存'}（${getModelDisplayName(currentTargetModel)}）`}</div>
+                        <div className='kaguya-deep-meta'>{`本地缓存模型：${cachedModelCount}/${allModelIds.length || 0}`}</div>
+                        <div className='kaguya-deep-meta'>设备评估：{deviceHint}</div>
+                        <div className='kaguya-deep-model-row'>
+                            <span className='kaguya-deep-model-label'>模型</span>
+                            <select
+                                className='kaguya-deep-model-all-select'
+                                value={allModelSelectValue}
+                                onChange={handleAllModelSelectChange}
+                            >
+                                <option value='auto'>{`自动（Qwen优先：${getModelDisplayName(recommendedModelId)}${currentTargetCached ? ' [已缓存]' : ''}）`}</option>
+                                {allModelIds.map((modelId) => (
+                                    <option key={modelId} value={modelId}>
+                                        {`${modelId}${cachedModelIdSet.has(modelId) ? ' [已缓存]' : ''}`}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                    ))}
-                </div>
+                        <div className='kaguya-deep-targets'>
+                            <button
+                                type='button'
+                                className={`kaguya-deep-target${target === '22' ? ' kaguya-deep-target-active' : ''}`}
+                                onClick={() => setTarget('22')}
+                            >
+                                对22
+                            </button>
+                            <button
+                                type='button'
+                                className={`kaguya-deep-target${target === '33' ? ' kaguya-deep-target-active' : ''}`}
+                                onClick={() => setTarget('33')}
+                            >
+                                对33
+                            </button>
+                            <button
+                                type='button'
+                                className={`kaguya-deep-target${target === 'all' ? ' kaguya-deep-target-active' : ''}`}
+                                onClick={() => setTarget('all')}
+                            >
+                                对全部
+                            </button>
+                        </div>
 
-                <div className='kaguya-deep-input-wrap'>
-                    <textarea
-                        className='kaguya-deep-input'
-                        placeholder='输入内容，Enter发送，Shift+Enter换行...'
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                            event.stopPropagation();
-                            if (event.key === 'Enter' && !event.shiftKey) {
-                                event.preventDefault();
-                                handleSendText();
-                            }
-                        }}
-                    />
-                    <button className='kaguya-deep-send' type='button' onClick={handleSendText} disabled={isResponding}>
-                        {isResponding ? '...' : '发送'}
-                    </button>
+                        <div className='kaguya-deep-actions'>
+                            {/* 小剧场按钮 */}
+                            <button
+                                type='button'
+                                className='kaguya-deep-action-btn'
+                                onClick={() => void triggerSkit()}
+                                disabled={isResponding}
+                            >
+                                🎭 小剧场
+                            </button>
+                            {/* 历史上的今天按钮 */}
+                            <button
+                                type='button'
+                                className='kaguya-deep-action-btn'
+                                onClick={() => void triggerHistoryToday()}
+                                disabled={isResponding}
+                            >
+                                📜 历史上的今天
+                            </button>
+                            <button
+                                type='button'
+                                className='kaguya-deep-action-btn'
+                                onClick={() => void triggerNewsComment()}
+                                disabled={llmState !== 'ready' || isResponding}
+                            >
+                                📰 新闻评价
+                            </button>
+                            {enginePaused ? (
+                                <button
+                                    type='button'
+                                    className='kaguya-deep-action-btn kaguya-deep-action-btn-resume'
+                                    onClick={handleResumeEngine}
+                                >
+                                    ▶️ 恢复进程
+                                </button>
+                            ) : (
+                                <button
+                                    type='button'
+                                    className='kaguya-deep-action-btn kaguya-deep-action-btn-pause'
+                                    onClick={handlePauseEngine}
+                                    disabled={llmState !== 'ready'}
+                                >
+                                    ⏸️ 停止进程
+                                </button>
+                            )}
+                        </div>
+
+                        <div className='kaguya-deep-log'>
+                            {messages.map((msg: ChatMessage) => (
+                                <div key={msg.id} className={`kaguya-deep-line kaguya-deep-line-${msg.role}`}>
+                                    {msg.text}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 输入区域 - 固定在底部 */}
+                    <div className='kaguya-deep-input-area'>
+                        <div className='kaguya-deep-input-wrap'>
+                            <textarea
+                                className='kaguya-deep-input'
+                                placeholder='输入内容，Enter发送，Shift+Enter换行...'
+                                value={draft}
+                                onChange={(event) => setDraft(event.target.value)}
+                                onKeyDown={(event) => {
+                                    event.stopPropagation();
+                                    if (event.key === 'Enter' && !event.shiftKey) {
+                                        event.preventDefault();
+                                        handleSendText();
+                                    }
+                                }}
+                            />
+                            <button className='kaguya-deep-send' type='button' onClick={handleSendText} disabled={isResponding}>
+                                {isResponding ? '...' : '发送'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

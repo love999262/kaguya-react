@@ -60,13 +60,42 @@
     line-height: 1.35;
     box-shadow: 0 10px 20px rgba(8, 20, 38, 0.28);
     opacity: 0;
-    pointer-events: none;
-    transition: opacity 180ms ease, transform 180ms ease;
+    pointer-events: auto;  // 改为 auto 以支持悬停交互
+    cursor: default;
+    transition: opacity 180ms ease, transform 180ms ease, box-shadow 200ms ease, border-color 200ms ease;
     z-index: 4;
     text-align: center;
     white-space: normal;
     word-break: break-word;
     text-overflow: clip;
+
+    // 悬停效果
+    &:hover {
+        border-color: rgba(200, 230, 255, 0.7);
+        box-shadow: 0 12px 28px rgba(8, 20, 38, 0.4), 0 0 0 1px rgba(150, 200, 255, 0.15) inset;
+    }
+}
+
+// 悬停暂停状态
+.kaguya-live2d-bubble-paused {
+    border-color: rgba(180, 220, 255, 0.8) !important;
+    box-shadow: 0 12px 28px rgba(8, 20, 38, 0.45), 0 0 0 2px rgba(140, 190, 250, 0.25) inset !important;
+
+    // 暂停指示器
+    &::before {
+        content: '⏸';
+        position: absolute;
+        top: -18px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.65rem;
+        color: rgba(200, 230, 255, 0.9);
+        background: rgba(14, 32, 55, 0.95);
+        padding: 2px 6px;
+        border-radius: 8px;
+        border: 1px solid rgba(180, 210, 240, 0.4);
+        opacity: 0.9;
+    }
 }
 
 .kaguya-live2d-bubble::after {

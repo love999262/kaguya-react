@@ -8,6 +8,14 @@
     width: 38px;
 }
 
+// 纯净模式 - 调整位置
+.kaguya-deep-pure {
+    .kaguya-deep-trigger {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(233, 242, 255, 0.5);
+    }
+}
+
 .kaguya-deep-trigger {
     width: 38px;
     height: 38px;
@@ -21,7 +29,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 160ms ease, border-color 160ms ease, transform 150ms ease;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 150ms ease, opacity 300ms ease;
 
     svg {
         width: 18px;
@@ -53,22 +61,94 @@
     }
 }
 
-.kaguya-deep-panel {
-    position: absolute;
-    top: 46px;
+// 抽屉式面板 - 贴右侧
+.kaguya-deep-drawer {
+    position: fixed;
+    top: 0;
     right: 0;
-    width: 330px;
-    border-radius: 14px !important;
-    border: 1px solid rgba(184, 214, 244, 0.32);
-    background: linear-gradient(160deg, rgba(14, 33, 58, 0.92), rgba(9, 24, 44, 0.9));
-    box-shadow: 0 18px 30px rgba(7, 18, 34, 0.36);
-    padding: 12px;
-    backdrop-filter: blur(10px) saturate(120%);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    width: 520px;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh; // 使用动态视口高度，适配移动端浏览器
+    border-radius: 0 !important;
+    border-left: 1px solid rgba(184, 214, 244, 0.32);
+    background: linear-gradient(160deg, rgba(14, 33, 58, 0.98), rgba(9, 24, 44, 0.96));
+    box-shadow: -8px 0 48px rgba(7, 18, 34, 0.55);
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateX(100%);
     pointer-events: none;
-    transition: opacity 170ms ease, transform 170ms ease;
+    transition: opacity 300ms ease, transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1401;
+    
+    // 使用 flex 布局，确保内容正确分布
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; // 防止整体滚动
+
+    // 自定义滚动条
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(12, 28, 50, 0.3);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(140, 180, 220, 0.4);
+        border-radius: 3px;
+
+        &:hover {
+            background: rgba(160, 200, 240, 0.5);
+        }
+    }
+}
+
+// 抽屉可见状态
+.kaguya-deep-drawer-visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+// 抽屉内容容器 - 可滚动区域
+.kaguya-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 16px; // 减少上下内边距
+    padding-top: 40px; // 给顶部按钮留出空间
+    display: flex;
+    flex-direction: column;
+    gap: 2px; // 进一步减少元素间距
+
+    // 自定义滚动条
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(12, 28, 50, 0.3);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(140, 180, 220, 0.4);
+        border-radius: 3px;
+
+        &:hover {
+            background: rgba(160, 200, 240, 0.5);
+        }
+    }
+}
+
+// 扩展模式（覆盖搜索栏区域）
+.kaguya-deep-panel-expanded {
+    width: 680px;
+    right: -80px;
 }
 
 .kaguya-deep-panel-visible {
@@ -77,66 +157,140 @@
     pointer-events: auto;
 }
 
-.kaguya-deep-head {
+// 角落按钮 - 绝对定位在右上角
+.kaguya-deep-corner-actions {
+    position: absolute;
+    top: 8px; // 减少顶部距离
+    right: 12px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
+    gap: 6px; // 减少按钮间距
+    z-index: 10;
 }
 
-.kaguya-deep-title {
-    font-size: 0.93rem;
-    font-weight: 650;
-    color: #edf6ff !important;
-}
-
-.kaguya-deep-close {
-    width: 24px;
-    height: 24px;
-    border-radius: 8px !important;
+// 纯净模式按钮
+.kaguya-deep-pure-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px !important;
     border: 1px solid rgba(182, 213, 242, 0.32);
     background: rgba(123, 164, 209, 0.18);
     color: rgba(229, 241, 255, 0.9) !important;
     font-size: 1rem;
     cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        background: rgba(140, 180, 220, 0.28);
+        border-color: rgba(200, 230, 255, 0.5);
+        transform: scale(1.05);
+    }
+
+    &.kaguya-deep-pure-btn-active {
+        background: rgba(118, 186, 245, 0.42);
+        border-color: rgba(199, 228, 255, 0.72);
+        box-shadow: 0 0 12px rgba(118, 186, 245, 0.3);
+    }
+}
+
+.kaguya-deep-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px !important;
+    border: 1px solid rgba(182, 213, 242, 0.32);
+    background: rgba(123, 164, 209, 0.18);
+    color: rgba(229, 241, 255, 0.9) !important;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        background: rgba(220, 100, 100, 0.35);
+        border-color: rgba(255, 150, 150, 0.5);
+        transform: scale(1.05);
+    }
+}
+
+// 新增：元信息区域网格布局
+.kaguya-deep-meta-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: rgba(12, 28, 50, 0.45);
+    border-radius: 10px;
+    border: 1px solid rgba(140, 180, 220, 0.12);
 }
 
 .kaguya-deep-meta {
-    font-size: 0.76rem;
-    color: rgba(215, 234, 252, 0.84) !important;
-    margin-bottom: 4px;
+    font-size: 0.74rem; // 稍微减小字体
+    color: rgba(215, 234, 252, 0.85) !important;
+    line-height: 1.25; // 减少行高
+    flex-shrink: 0;
+    margin-bottom: 1px; // 减少元信息之间的间距
+
+    // 可折叠的冗长信息
+    &.kaguya-deep-meta-collapsible {
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: background-color 150ms ease;
+        padding: 2px 6px;
+        border-radius: 6px;
+        margin: -2px -6px;
+
+        &:hover {
+            background: rgba(100, 150, 200, 0.2);
+        }
+
+        &.expanded {
+            white-space: normal;
+            word-break: break-all;
+            background: rgba(100, 150, 200, 0.15);
+        }
+    }
 }
 
 .kaguya-deep-model-row {
-    margin-top: 6px;
-    margin-bottom: 8px;
+    margin-top: 4px; // 减少上边距
+    margin-bottom: 4px; // 减少下边距
     display: flex;
     align-items: flex-start;
-    gap: 6px;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .kaguya-deep-model-label {
-    font-size: 0.75rem;
-    color: rgba(210, 231, 252, 0.82) !important;
-    line-height: 24px;
-    min-width: 28px;
+    font-size: 0.78rem;
+    color: rgba(210, 231, 252, 0.85) !important;
+    line-height: 28px;
+    min-width: 36px;
 }
 
 .kaguya-deep-model-switch {
     flex: 1;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 5px;
 }
 
 .kaguya-deep-model-chip {
-    height: 24px;
-    padding: 0 8px;
-    border-radius: 8px !important;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 10px !important;
     border: 1px solid rgba(178, 211, 243, 0.34);
     background: rgba(91, 133, 180, 0.22);
     color: rgba(224, 238, 252, 0.9) !important;
-    font-size: 0.7rem;
+    font-size: 0.74rem;
     cursor: pointer;
     outline: none;
     transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
@@ -160,27 +314,27 @@
 
 .kaguya-deep-model-all {
     margin-top: -2px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .kaguya-deep-model-all-label {
-    min-width: 28px;
-    font-size: 0.74rem;
-    color: rgba(207, 230, 251, 0.82) !important;
+    min-width: 36px;
+    font-size: 0.78rem;
+    color: rgba(207, 230, 251, 0.85) !important;
 }
 
 .kaguya-deep-model-all-select {
     flex: 1;
-    height: 26px;
-    border-radius: 8px !important;
+    height: 30px;
+    border-radius: 10px !important;
     border: 1px solid rgba(174, 208, 242, 0.34);
     background: rgba(77, 116, 160, 0.24);
     color: rgba(232, 244, 255, 0.94) !important;
-    font-size: 0.72rem;
-    padding: 0 8px;
+    font-size: 0.76rem;
+    padding: 0 10px;
     outline: none;
 
     &:focus,
@@ -191,22 +345,28 @@
 }
 
 .kaguya-deep-targets {
-    margin-top: 8px;
-    margin-bottom: 8px;
+    margin-top: 6px;
+    margin-bottom: 6px;
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .kaguya-deep-target {
     flex: 1;
-    height: 28px;
-    border-radius: 9px !important;
+    height: 32px;
+    border-radius: 10px !important;
     border: 1px solid rgba(178, 211, 243, 0.34);
     background: rgba(99, 143, 193, 0.2);
     color: rgba(226, 240, 254, 0.86) !important;
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     cursor: pointer;
     transition: border-color 140ms ease, background-color 140ms ease;
+
+    &:hover {
+        border-color: rgba(190, 220, 250, 0.5);
+        background: rgba(110, 160, 210, 0.28);
+    }
 }
 
 .kaguya-deep-target-active {
@@ -216,26 +376,29 @@
 }
 
 .kaguya-deep-actions {
-    margin-top: 8px;
+    margin-top: 6px;
     margin-bottom: 8px;
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .kaguya-deep-action-btn {
     flex: 1;
-    height: 32px;
+    min-width: 100px;
+    height: 34px;
     border-radius: 10px !important;
     border: 1px solid rgba(178, 211, 243, 0.34);
     background: linear-gradient(145deg, rgba(115, 178, 235, 0.26), rgba(88, 142, 198, 0.22));
     color: rgba(226, 240, 254, 0.86) !important;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     cursor: pointer;
     transition: border-color 140ms ease, background-color 140ms ease, transform 120ms ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     font-weight: 500;
 
     &:hover:not(:disabled) {
@@ -254,27 +417,54 @@
     }
 }
 
+// 聊天区 - 自适应高度
 .kaguya-deep-log {
-    max-height: min(42vh, 260px);
+    flex: 1;
+    min-height: 200px; // 增加最小高度
+    max-height: 55vh; // 增加最大高度
     overflow-y: auto;
     border: 1px solid rgba(172, 206, 240, 0.22);
-    border-radius: 10px !important;
-    padding: 8px;
-    background: rgba(12, 28, 50, 0.36);
+    border-radius: 12px !important;
+    padding: 12px;
+    background: rgba(12, 28, 50, 0.42);
+    font-size: 0.86rem;
+    line-height: 1.5;
+
+    // 自定义滚动条
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(12, 28, 50, 0.3);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(140, 180, 220, 0.4);
+        border-radius: 3px;
+
+        &:hover {
+            background: rgba(160, 200, 240, 0.5);
+        }
+    }
 }
 
 .kaguya-deep-line {
-    font-size: 0.79rem;
-    line-height: 1.43;
-    margin-bottom: 6px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    padding: 4px 0;
 }
 
 .kaguya-deep-line-system {
     color: rgba(173, 214, 247, 0.9) !important;
+    font-style: italic;
 }
 
 .kaguya-deep-line-user {
     color: rgba(245, 251, 255, 0.96) !important;
+    font-weight: 500;
 }
 
 .kaguya-deep-line-assistant {
@@ -289,27 +479,33 @@
     color: rgba(184, 210, 255, 0.95) !important;
 }
 
+// 输入区 - 固定在抽屉底部
+.kaguya-deep-input-area {
+    padding: 16px;
+    padding-top: 8px;
+    background: linear-gradient(160deg, rgba(14, 33, 58, 0.98), rgba(9, 24, 44, 0.96));
+    border-top: 1px solid rgba(140, 180, 220, 0.15);
+    flex-shrink: 0;
+}
+
 .kaguya-deep-input-wrap {
-    margin-top: 8px;
     position: relative;
     width: 100%;
-    overflow: hidden;
-    border-radius: 10px !important;
 }
 
 .kaguya-deep-input {
     display: block;
     width: 100%;
     box-sizing: border-box;
-    min-height: 58px;
-    max-height: 112px;
-    border-radius: 10px !important;
+    min-height: 56px;
+    max-height: 120px;
+    border-radius: 12px !important;
     border: 1px solid rgba(167, 203, 238, 0.34);
     background: rgba(96, 140, 190, 0.18);
     color: #edf6ff !important;
-    padding: 7px 66px 7px 9px;
-    font-size: 0.8rem;
-    line-height: 1.32;
+    padding: 10px 70px 10px 12px;
+    font-size: 0.86rem;
+    line-height: 1.4;
     resize: none;
     overflow-y: auto;
     outline: none;
@@ -323,21 +519,46 @@
         outline: none;
         box-shadow: inset 0 0 0 1px rgba(188, 222, 252, 0.38);
     }
+
+    // 自定义滚动条
+    &::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(12, 28, 50, 0.2);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(140, 180, 220, 0.3);
+        border-radius: 3px;
+    }
 }
 
 .kaguya-deep-send {
     position: absolute;
-    right: 8px;
-    bottom: 7px;
-    width: 48px;
-    height: 27px;
+    right: 10px;
+    bottom: 10px;
+    width: 52px;
+    height: 30px;
     border-radius: 10px !important;
     border: 1px solid rgba(190, 220, 248, 0.46);
     background: linear-gradient(145deg, rgba(76, 165, 242, 0.9), rgba(67, 131, 226, 0.9));
     color: #f3f9ff !important;
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     font-weight: 620;
     cursor: pointer;
+    transition: transform 100ms ease, box-shadow 150ms ease;
+
+    &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(67, 131, 226, 0.4);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+    }
 
     &:disabled {
         opacity: 0.52;
@@ -345,8 +566,145 @@
     }
 }
 
+// 响应式调整
+@media screen and (max-width: 1480px) {
+    .kaguya-deep-drawer {
+        width: 460px;
+    }
+
+    .kaguya-deep-panel-expanded {
+        width: 580px;
+        right: -60px;
+    }
+}
+
 @media screen and (max-width: 1320px) {
     .kaguya-deep {
         display: none;
+    }
+}
+
+// 小屏幕高度适配
+@media screen and (max-height: 700px) {
+    .kaguya-deep-drawer {
+        width: 420px;
+    }
+    
+    .kaguya-drawer-content {
+        padding-top: 48px;
+    }
+    
+    .kaguya-deep-corner-actions {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .kaguya-deep-log {
+        max-height: 50vh; // 小屏幕也保持较大高度
+        min-height: 150px;
+    }
+    
+    .kaguya-deep-input {
+        min-height: 48px;
+        max-height: 80px;
+    }
+    
+    .kaguya-deep-meta {
+        font-size: 0.72rem;
+    }
+    
+    .kaguya-deep-action-btn {
+        height: 30px;
+        font-size: 0.74rem;
+    }
+}
+
+@media screen and (max-height: 500px) {
+    .kaguya-deep-drawer {
+        width: 380px;
+    }
+    
+    .kaguya-drawer-content {
+        padding: 12px;
+        padding-top: 40px;
+        gap: 4px;
+    }
+    
+    .kaguya-deep-corner-actions {
+        top: 8px;
+        right: 8px;
+    }
+    
+    .kaguya-deep-log {
+        max-height: 45vh;
+        min-height: 120px;
+        padding: 8px;
+    }
+    
+    .kaguya-deep-input-area {
+        padding: 12px;
+    }
+    
+    .kaguya-deep-actions {
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .kaguya-deep-targets {
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .kaguya-deep-model-row {
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+}
+
+// 纯净模式下的全局样式
+body.kaguya-pure-mode {
+    // 隐藏搜索栏
+    .kaguya-search,
+    .search-container,
+    .search-box {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 400ms ease;
+    }
+
+    // 隐藏导航
+    .kaguya-nav,
+    .nav-container,
+    .navigation {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 400ms ease;
+    }
+
+    // 隐藏其他UI元素
+    .kaguya-header,
+    .kaguya-footer,
+    .header,
+    .footer {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 400ms ease;
+    }
+
+    // Live2D角色保持可见 - 确保整个组都可见
+    .kaguya-live2d-group {
+        opacity: 1 !important;
+        pointer-events: none !important; // 保持组的 pointer-events: none
+        z-index: 3600 !important; // 确保在最上层
+        
+        // shell 和内部元素保持可交互
+        .kaguya-live2d-shell,
+        .kaguya-live2d-frame,
+        .kaguya-live2d-bubble {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            display: block !important;
+            visibility: visible !important;
+        }
     }
 }
