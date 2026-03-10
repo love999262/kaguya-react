@@ -1436,8 +1436,9 @@ const DeepMode = (): React.JSX.Element => {
     // 键盘快捷键监听 - Shift+\ 切换纯净模式
     React.useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent): void => {
-            // Shift + \ (反斜杠) 触发纯净模式
-            if (event.shiftKey && event.key === '\\') {
+            // 必须同时按住 Shift 和反斜杠键，单独的 \ 不触发
+            // 使用 keyCode 确保精确匹配反斜杠键 (keyCode 220)
+            if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && event.keyCode === 220) {
                 event.preventDefault();
                 togglePureMode();
             }
