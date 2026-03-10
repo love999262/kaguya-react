@@ -2337,21 +2337,26 @@ const DeepMode = (): React.JSX.Element => {
                         />
                     )}
 
-                    {/* 内容区域 - 可滚动 */}
-                    <div className='kaguya-drawer-content'>
-                        {enginePaused && (
-                            <div className='kaguya-deep-paused-banner'>
-                                <span className='kaguya-deep-paused-icon'>⏸️</span>
-                                <span>引擎已暂停</span>
+                    {/* 引擎暂停蒙层 - 覆盖整个内容区域 */}
+                    {enginePaused && (
+                        <div className='kaguya-deep-paused-overlay'>
+                            <div className='kaguya-deep-paused-content'>
+                                <div className='kaguya-deep-paused-icon-large'>⏸️</div>
+                                <div className='kaguya-deep-paused-title'>引擎已暂停</div>
+                                <div className='kaguya-deep-paused-desc'>点击恢复按钮以继续操作</div>
                                 <button
                                     type='button'
-                                    className='kaguya-deep-paused-resume-btn'
+                                    className='kaguya-deep-paused-resume-large-btn'
                                     onClick={handleResumeEngine}
                                 >
-                                    点击恢复
+                                    ▶️ 恢复引擎
                                 </button>
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    {/* 内容区域 - 可滚动 */}
+                    <div className='kaguya-drawer-content'>
                         <div className='kaguya-deep-meta'>模式：纯文字 · WebLLM：{llmText}</div>
                         <div className='kaguya-deep-meta'>WebLLM：{llmProgress}</div>
                         <div className='kaguya-deep-meta'>当前模型：{activeModelId}</div>
