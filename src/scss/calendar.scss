@@ -58,8 +58,8 @@
     &-calendar-weather {
         margin: 0 0 8px;
         min-height: 46px;
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr); // 固定7列，每列等分
         gap: 3px;
         padding: 5px 6px;
         border-radius: 10px !important;
@@ -80,9 +80,6 @@
     }
 
     &-calendar-weather-item {
-        flex: 1 1 calc(14.28% - 3px); // 默认每行7个，等分剩余空间
-        min-width: 28px;
-        max-width: calc(14.28% - 3px);
         min-height: 42px;
         border-radius: 8px !important;
         border: 1px solid rgba(167, 198, 229, 0.2);
@@ -507,13 +504,15 @@
     }
 }
 
-// 响应式天气适配 - 根据日历宽度自动调整每行显示数量
-// 使用flex布局，让天气项自动等分，避免溢出
+// 响应式天气适配 - 根据日历宽度调整grid列数
+// 每行固定数量，每个等分，宁愿少显示也不要参差不齐
 @media screen and (max-width: 1560px) {
-    // 宽度较小时，天气项每行5个
+    // 宽度较小时，每行5个（显示10天）
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
     .#{$kaguya}-calendar-weather-item {
-        flex: 1 1 calc(20% - 2px);
-        max-width: calc(20% - 2px);
         min-height: 38px;
         padding: 2px 1px;
     }
@@ -528,10 +527,12 @@
 }
 
 @media screen and (max-width: 1320px) {
-    // 更窄时，天气项每行4个
+    // 更窄时，每行4个（显示8天）
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
     .#{$kaguya}-calendar-weather-item {
-        flex: 1 1 calc(25% - 2px);
-        max-width: calc(25% - 2px);
         min-height: 34px;
         padding: 2px 1px;
     }
@@ -550,9 +551,8 @@
 }
 
 @media screen and (min-width: 1561px) {
-    // 宽屏时，天气项每行7个（默认）
-    .#{$kaguya}-calendar-weather-item {
-        flex: 1 1 calc(14.28% - 3px);
-        max-width: calc(14.28% - 3px);
+    // 宽屏时，每行7个（显示14天）
+    .#{$kaguya}-calendar-weather {
+        grid-template-columns: repeat(7, 1fr);
     }
 }

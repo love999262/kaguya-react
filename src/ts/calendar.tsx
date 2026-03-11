@@ -284,11 +284,11 @@ class Calendar extends React.Component<Props, StateInterface> {
     private getWeatherDisplayDays(): number {
         const containerWidth = this.calendarRef?.current?.offsetWidth || 312;
         if (containerWidth <= 236) {
-            return 8; // 最窄时展示8天（每行4个）
+            return 8; // 最窄时展示8天（每行4个，共2行）
         } else if (containerWidth <= 286) {
-            return 10; // 较窄时展示10天（每行5个）
+            return 10; // 较窄时展示10天（每行5个，共2行）
         }
-        return 14; // 默认展示14天（每行7个）
+        return 14; // 默认展示14天（每行7个，共2行）
     }
 
     componentDidUpdate(prevProps: Props, prevState: StateInterface) {
