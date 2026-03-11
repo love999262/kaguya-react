@@ -481,12 +481,22 @@ const DeepMode = (): React.JSX.Element => {
         }));
     }, []);
 
-    const pushMessage = React.useCallback((role: MessageRole, text: string) => {
+    const pushMessage = React.useCallback((role: MessageRole, text: string, metadata?: { type?: string; action?: string }) => {
         setMessages((prev: ChatMessage[]) => {
             const next = [...prev, { id: nextIdRef.current, role, text }];
             nextIdRef.current += 1;
             return next.slice(-MAX_MESSAGES);
         });
+
+        // 同时保存到IndexedDB
+        void (async () => {
+            try {
+                const { addDialogueMessage } = await import('./services/memoryService');
+                await addDialogueMessage(role, text, metadata);
+            } catch {
+                // 静默处理存储错误，不影响对话功能
+            }
+        })();
     }, []);
 
     const ensurePersistentStorage = React.useCallback(async (): Promise<StoragePersistenceState> => {

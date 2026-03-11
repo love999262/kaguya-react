@@ -3,7 +3,9 @@
 import { indexedDBCache } from '../utils/indexedDB';
 
 const MEMORY_CACHE_KEY = 'kaguya:character:memory';
+const DIALOGUE_HISTORY_KEY = 'kaguya:dialogue:history';
 const MAX_MEMORY_ITEMS = 200; // 最多存储200条记忆
+const MAX_DIALOGUE_ITEMS = 1000; // 最多存储1000条对话历史
 
 export interface MemoryItem {
     id: string;
@@ -225,18 +227,141 @@ export async function formatMemoriesForPrompt(character: '22' | '33'): Promise<s
     }
 }
 
+// ==================== 对话历史存储 ====================
+
+export interface DialogueMessage {
+    id: string;
+    role: 'user' | 'assistant22' | 'assistant33' | 'system';
+    content: string;
+    timestamp: number;
+    metadata?: {
+        type?: 'weather' | 'news' | 'history' | 'skit' | 'chat' | 'search' | 'nav';
+        action?: string;
+    };
+}
+
+export interface DialogueHistory {
+    messages: DialogueMessage[];
+    lastUpdated: number;
+}
+
+// 获取对话历史
+export async function getDialogueHistory(): Promise<DialogueHistory> {
+    try {
+        const entry = await indexedDBCache.get<DialogueHistory>(DIALOGUE_HISTORY_KEY);
+        if (entry) {
+            return entry.data;
+        }
+    } catch {}
+
+    return {
+        messages: [],
+        lastUpdated: Date.now(),
+    };
+}
+
+// 保存对话历史
+export async function saveDialogueHistory(history: DialogueHistory): Promise<void> {
+    try {
+        await indexedDBCache.set(DIALOGUE_HISTORY_KEY, history);
+    } catch {}
+}
+
+// 添加对话消息
+export async function addDialogueMessage(
+    role: DialogueMessage['role'],
+    content: string,
+    metadata?: DialogueMessage['metadata']
+): Promise<void> {
+    const history = await getDialogueHistory();
+
+    const newMessage: DialogueMessage = {
+        id: `dlg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        role,
+        content,
+        timestamp: Date.now(),
+        metadata,
+    };
+
+    history.messages.push(newMessage);
+
+    // 限制数量，保留最新的
+    if (history.messages.length > MAX_DIALOGUE_ITEMS) {
+        history.messages = history.messages.slice(-MAX_DIALOGUE_ITEMS);
+    }
+
+    history.lastUpdated = Date.now();
+    await saveDialogueHistory(history);
+
+    console.log('[Dialogue] 对话已保存:', role, content.slice(0, 50));
+}
+
+// 获取最近的对话（用于角色上下文）
+export async function getRecentDialogues(limit: number = 20): Promise<DialogueMessage[]> {
+    const history = await getDialogueHistory();
+    return history.messages.slice(-limit);
+}
+
+// 格式化对话历史为角色提示
+export async function formatDialogueHistoryForPrompt(character: '22' | '33', limit: number = 10): Promise<string> {
+    const history = await getDialogueHistory();
+    const recentMessages = history.messages.slice(-limit);
+
+    if (recentMessages.length === 0) {
+        return '';
+    }
+
+    const formatted = recentMessages.map(msg => {
+        let speaker = '';
+        if (msg.role === 'user') speaker = '用户';
+        else if (msg.role === 'assistant22') speaker = '22';
+        else if (msg.role === 'assistant33') speaker = '33';
+        else if (msg.role === 'system') speaker = '系统';
+        return `${speaker}: ${msg.content}`;
+    }).join('\n');
+
+    if (character === '22') {
+        return `\n\n最近的对话记录：\n${formatted}\n\n请结合上下文自然地回复。`;
+    } else {
+        return `\n\n最近的对话记录：\n${formatted}\n\n请基于上下文给出合适的回应。`;
+    }
+}
+
+// 清理旧对话
+export async function cleanupOldDialogues(keepDays: number = 30): Promise<number> {
+    const history = await getDialogueHistory();
+    const cutoff = Date.now() - keepDays * 24 * 60 * 60 * 1000;
+
+    const originalCount = history.messages.length;
+    history.messages = history.messages.filter(m => m.timestamp > cutoff);
+
+    await saveDialogueHistory(history);
+
+    const removed = originalCount - history.messages.length;
+    console.log(`[Dialogue] 清理了 ${removed} 条旧对话`);
+    return removed;
+}
+
+// 导出供缓存管理面板使用
+export async function clearAllDialogues(): Promise<void> {
+    try {
+        await indexedDBCache.remove(DIALOGUE_HISTORY_KEY);
+        console.log('[Dialogue] 所有对话已清除');
+    } catch {}
+}
+
 // 清理旧记忆
 export async function cleanupOldMemories(keepDays: number = 90): Promise<number> {
     const memory = await getCharacterMemory();
     const cutoff = Date.now() - keepDays * 24 * 60 * 60 * 1000;
-    
+
     const originalCount = memory.memories.length;
-    memory.memories = memory.memories.filter(m => 
+    memory.memories = memory.memories.filter(m =>
         m.timestamp > cutoff || m.importance >= 8 // 保留重要记忆
     );
-    
+
     await saveCharacterMemory(memory);
-    
+
     const removed = originalCount - memory.memories.length;
     console.log(`[Memory] 清理了 ${removed} 条旧记忆`);
     return removed;
