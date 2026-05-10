@@ -57,41 +57,30 @@ li {
 }
 
 
-/*定义滚动条高宽及背景 高宽分别对应横竖滚动条的尺寸*/
+/* 全局滚动条 - 参考豆包风格：隐藏轨道，细圆角滑块 */
 
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 4px;
+    height: 4px;
     background: transparent;
 }
 
-
-/*定义滚动条轨道 内阴影+圆角*/
-
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 999px;
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: transparent;
 }
-
-
-/*定义滑块 内阴影+圆角*/
 
 ::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: rgba(233, 238, 245, 0.68);
-    box-shadow: none;
+    background: rgba(180, 190, 210, 0.35);
+    border: none;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(244, 247, 252, 0.82);
+    background: rgba(180, 190, 210, 0.55);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(180, 190, 210, 0.7);
 }
 
 ::selection {
