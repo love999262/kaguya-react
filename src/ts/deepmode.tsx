@@ -2473,7 +2473,7 @@ const DeepMode = (): React.JSX.Element => {
 
     return (
         <div className={`kaguya-deep ${pureMode ? 'kaguya-deep-pure' : ''}`}>
-            {/* 触发按钮 - 面板打开时隐藏 */}
+            {/* 触发按钮 - 暂时隐藏
             {!panelOpen && (
                 <button
                     className='kaguya-deep-trigger'
@@ -2488,6 +2488,7 @@ const DeepMode = (): React.JSX.Element => {
                     </svg>
                 </button>
             )}
+            */}
 
             {/* 抽屉面板 */}
             {panelOpen && (

@@ -23,7 +23,7 @@ class Kaguya extends React.Component <any, any> {
                 <Calendar prefix={this.state.prefix} />
                 <Navigator prefix={this.state.prefix} />
                 <Clock prefix={this.state.prefix} />
-                <Live2D />
+                {/* <Live2D /> */}
                 <DeepMode />
             </div>
         );

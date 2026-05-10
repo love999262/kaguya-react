@@ -1233,6 +1233,7 @@ class Calendar extends React.Component<Props, StateInterface> {
             <div className={`${this.props.prefix}-calendar`} ref={this.calendarRef}>
                 <div className={`${this.props.prefix}-calendar-live-time`}>{liveTimeText}</div>
 
+                {/* 天气区域暂时隐藏
                 <div className={`${this.props.prefix}-calendar-weather`}>
                     {this.state.weatherLoading ? (
                         <div className={`${this.props.prefix}-calendar-weather-loading`}>
@@ -1254,6 +1255,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                 <div className={`${this.props.prefix}-calendar-weather-location`}>
                     {weatherMetaText}
                 </div>
+                */}
 
                 <div className={`${this.props.prefix}-calendar-quick`}>
                     <select
