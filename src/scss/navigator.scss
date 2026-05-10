@@ -99,6 +99,24 @@
                     overflow-y: auto;
                     overflow-x: hidden;
                     pointer-events: auto;
+
+                    // 自定义滚动条 - 知乎风格
+                    &::-webkit-scrollbar {
+                        width: 3px;
+                    }
+
+                    &::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+
+                    &::-webkit-scrollbar-thumb {
+                        background: rgba(140, 180, 220, 0.35);
+                        border-radius: 999px;
+
+                        &:hover {
+                            background: rgba(140, 180, 220, 0.55);
+                        }
+                    }
                     &-searchengine {
                         color: #e7f2ff;
                         font-size: 0.96rem;
@@ -249,6 +267,25 @@
                 z-index: 1200;
                 overflow: hidden;
                 pointer-events: auto;
+
+                // 自定义滚动条 - 知乎风格
+                &::-webkit-scrollbar {
+                    width: 3px;
+                }
+
+                &::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                &::-webkit-scrollbar-thumb {
+                    background: rgba(140, 180, 220, 0.35);
+                    border-radius: 999px;
+
+                    &:hover {
+                        background: rgba(140, 180, 220, 0.55);
+                    }
+                }
+
                 &-list{
                     color: #e7f2ff !important;
                     text-align: left;
@@ -292,6 +329,25 @@
                 z-index: 1200;
                 overflow: hidden;
                 pointer-events: auto;
+
+                // 自定义滚动条 - 知乎风格
+                &::-webkit-scrollbar {
+                    width: 3px;
+                }
+
+                &::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                &::-webkit-scrollbar-thumb {
+                    background: rgba(140, 180, 220, 0.35);
+                    border-radius: 999px;
+
+                    &:hover {
+                        background: rgba(140, 180, 220, 0.55);
+                    }
+                }
+
                 &-list {
                     color: #e7f2ff !important;
                     text-align: left;
