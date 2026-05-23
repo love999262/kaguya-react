@@ -13,4 +13,14 @@ export default defineConfig({
         host: 'localhost',
         port: 4173,
     },
+    build: {
+        sourcemap: false,
+        minify: 'terser',
+        terserOptions: {
+            compress: {
+                drop_console: true,
+                drop_debugger: true,
+            },
+        },
+    },
 });
