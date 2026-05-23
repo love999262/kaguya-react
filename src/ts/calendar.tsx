@@ -1,6 +1,24 @@
 import * as React from 'react';
 import { KaguyaProps as Props } from './kaguya';
 
+// 独立组件：每秒更新一次时间，不触发父组件 Calendar 重新渲染
+const LiveTimeDisplay = (): JSX.Element => {
+    const [now, setNow] = React.useState<string>(() => {
+        const d = new Date();
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    });
+
+    React.useEffect(() => {
+        const timer = window.setInterval(() => {
+            const d = new Date();
+            setNow(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`);
+        }, 1000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    return <div className='kaguya-calendar-live-time'>{now}</div>;
+};
+
 interface HolidayCnDay {
     name: string;
     date: string;
@@ -172,7 +190,6 @@ interface StateInterface {
     displayMonth: Date;
     selectedDate: Date;
     todayKey: string;
-    now: Date;
     quickYear: number;
     quickMonth: number;
     quickDay: number;
@@ -185,6 +202,7 @@ interface StateInterface {
     weatherLocationLabel: string;
     weatherForecastDays: number;
     weatherProviderText: string;
+    weatherDisplayDays: number;
 }
 
 const WEEK_TEXT = ['\u5468\u4e00', '\u5468\u4e8c', '\u5468\u4e09', '\u5468\u56db', '\u5468\u4e94', '\u5468\u516d', '\u5468\u65e5'];
@@ -203,8 +221,6 @@ const SHANGHAI_LOCATION: WeatherLocation = {
 };
 
 class Calendar extends React.Component<Props, StateInterface> {
-    private timer: number | null;
-
     private weatherTimer: number | null;
 
     private resolvedWeatherLocation: WeatherLocation | null;
@@ -225,7 +241,6 @@ class Calendar extends React.Component<Props, StateInterface> {
             displayMonth: new Date(today.getFullYear(), today.getMonth(), 1),
             selectedDate: today,
             todayKey: this.toDateKey(today),
-            now: new Date(),
             quickYear: today.getFullYear(),
             quickMonth: today.getMonth() + 1,
             quickDay: today.getDate(),
@@ -238,36 +253,22 @@ class Calendar extends React.Component<Props, StateInterface> {
             weatherLocationLabel: SHANGHAI_LOCATION.label,
             weatherForecastDays: 0,
             weatherProviderText: 'NMC',
+            weatherDisplayDays: this.getWeatherDisplayDays(),
         };
     }
 
     componentDidMount() {
-        this.timer = window.setInterval(() => {
-            const now = new Date();
-            const nextTodayKey = this.toDateKey(now);
-            this.setState((prevState) => {
-                if (prevState.todayKey !== nextTodayKey) {
-                    return { now, todayKey: nextTodayKey };
-                }
-                return { now, todayKey: prevState.todayKey };
-            });
-        }, 1000);
-
         this.fetchYearHolidays(this.state.displayMonth.getFullYear());
         void this.fetchWeeklyWeather();
         this.weatherTimer = window.setInterval(() => {
             void this.fetchWeeklyWeather();
         }, WEATHER_REFRESH_INTERVAL_MS);
 
-        // 监听窗口大小变化，动态调整天气展示
         window.addEventListener('resize', this.handleResize);
+        this.updateWeatherDisplayDays();
     }
 
     componentWillUnmount() {
-        if (this.timer !== null) {
-            window.clearInterval(this.timer);
-            this.timer = null;
-        }
         if (this.weatherTimer !== null) {
             window.clearInterval(this.weatherTimer);
             this.weatherTimer = null;
@@ -276,8 +277,14 @@ class Calendar extends React.Component<Props, StateInterface> {
     }
 
     private handleResize = (): void => {
-        // 窗口大小变化时，强制重新渲染以应用响应式样式
-        this.forceUpdate();
+        this.updateWeatherDisplayDays();
+    };
+
+    private updateWeatherDisplayDays = (): void => {
+        const nextDays = this.getWeatherDisplayDays();
+        if (nextDays !== this.state.weatherDisplayDays) {
+            this.setState({ weatherDisplayDays: nextDays });
+        }
     };
 
     // 根据容器宽度获取天气展示天数
@@ -1219,19 +1226,17 @@ class Calendar extends React.Component<Props, StateInterface> {
         ].filter((item) => item).join(' ');
         const quickDaysMax = this.getDaysInMonth(this.state.quickYear, this.state.quickMonth);
         const yearOptions = this.getYearOptions();
-        const liveTimeText = this.formatTime(this.state.now);
         const weatherByDate: Record<string, WeeklyWeatherItem> = {};
         this.state.weeklyWeather.forEach((item) => {
             weatherByDate[item.dateKey] = item;
         });
         const weatherProviderCompact = this.compactWeatherProviderText(this.state.weatherProviderText);
-        const weatherDisplayDays = this.getWeatherDisplayDays();
-        const displayedWeather = this.state.weeklyWeather.slice(0, weatherDisplayDays);
+        const displayedWeather = this.state.weeklyWeather.slice(0, this.state.weatherDisplayDays);
         const weatherMetaText = `定位 ${this.state.weatherLocationLabel} · 源 ${weatherProviderCompact} · ${displayedWeather.length}天`;
 
         return (
             <div className={`${this.props.prefix}-calendar`} ref={this.calendarRef}>
-                <div className={`${this.props.prefix}-calendar-live-time`}>{liveTimeText}</div>
+                <LiveTimeDisplay />
 
                 {/* 天气区域暂时隐藏
                 <div className={`${this.props.prefix}-calendar-weather`}>
