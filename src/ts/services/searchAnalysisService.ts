@@ -1,6 +1,5 @@
 // 搜索内容分析服务 - 分析用户搜索行为并学习偏好
-
-import { addMemory, MemoryItem } from './memoryService';
+// AI 功能已暂停，此服务暂时不执行
 
 // 搜索分类定义
 const SEARCH_CATEGORIES = {
@@ -56,74 +55,15 @@ const SEARCH_CATEGORIES = {
     },
 };
 
-// 分析搜索内容
+// AI 功能已暂停，搜索分析服务暂时不执行
 export async function analyzeSearchContent(
     query: string,
     searchEngine: string
 ): Promise<void> {
-    if (!query || query.trim().length < 2) {
-        return;
-    }
-
-    const normalizedQuery = query.toLowerCase().trim();
-
-    // 1. 记录原始搜索行为（包含搜索引擎信息）
-    await addMemory(
-        `用户使用${searchEngine}搜索了"${query}"`,
-        'habit',
-        '搜索行为分析',
-        4
-    );
-
-    // 2. 记录搜索引擎偏好
-    await analyzeSearchEnginePreference(searchEngine, normalizedQuery);
-
-    // 3. 分析搜索类别
-    let matchedCategory: keyof typeof SEARCH_CATEGORIES | null = null;
-    let maxMatchScore = 0;
-
-    for (const [categoryKey, categoryData] of Object.entries(SEARCH_CATEGORIES)) {
-        const matchCount = categoryData.keywords.filter(keyword =>
-            normalizedQuery.includes(keyword.toLowerCase())
-        ).length;
-
-        if (matchCount > 0 && matchCount > maxMatchScore) {
-            maxMatchScore = matchCount;
-            matchedCategory = categoryKey as keyof typeof SEARCH_CATEGORIES;
-        }
-    }
-
-    // 4. 如果匹配到类别，记录用户偏好
-    if (matchedCategory) {
-        const categoryInfo = SEARCH_CATEGORIES[matchedCategory];
-        const categoryNames: Record<string, string> = {
-            tech: '技术/编程',
-            entertainment: '娱乐/影视',
-            news: '新闻资讯',
-            shopping: '购物消费',
-            study: '学习/教育',
-            work: '工作/职场',
-            life: '生活/健康',
-            social: '社交/情感',
-            finance: '金融/理财',
-            tools: '工具/软件',
-        };
-
-        await addMemory(
-            `用户对${categoryNames[matchedCategory]}感兴趣（使用${searchEngine}搜索"${query}"）`,
-            categoryInfo.category,
-            '搜索偏好分析',
-            categoryInfo.importance
-        );
-    }
-
-    // 5. 提取具体兴趣点（更细粒度的分析）
-    await extractSpecificInterests(query, normalizedQuery, searchEngine);
-
-    // 6. 分析搜索意图
-    await analyzeSearchIntent(query, normalizedQuery);
-
-    console.log('[SearchAnalysis] 搜索分析完成:', query, '引擎:', searchEngine);
+    // AI 服务已暂停，跳过分析
+    void query;
+    void searchEngine;
+    return;
 }
 
 // 分析搜索引擎偏好

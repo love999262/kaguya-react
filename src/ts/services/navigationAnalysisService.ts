@@ -1,6 +1,5 @@
 // 导航点击分析服务 - 分析用户导航行为并学习偏好
-
-import { addMemory } from './memoryService';
+// AI 功能已暂停，此服务暂时不执行
 
 // 网站分类定义
 const WEBSITE_CATEGORIES: Record<string, { category: 'preference' | 'habit' | 'emotion'; importance: number; description: string }> = {
@@ -81,62 +80,17 @@ const CATEGORY_TITLE_MAP: Record<string, { type: string; importance: number }> =
     '游戏': { type: 'preference', importance: 7 },
 };
 
-// 分析导航点击
+// AI 功能已暂停，导航分析服务暂时不执行
 export async function analyzeNavigationClick(
     websiteName: string,
     websiteUrl: string,
     categoryTitle: string
 ): Promise<void> {
-    if (!websiteName || !websiteUrl) {
-        return;
-    }
-
-    // 1. 记录点击行为
-    await addMemory(
-        `用户点击了导航链接"${websiteName}"(${categoryTitle})`,
-        'habit',
-        '导航行为分析',
-        4
-    );
-
-    // 2. 根据网站名称分析偏好
-    const matchedSite = Object.entries(WEBSITE_CATEGORIES).find(([key]) =>
-        websiteName.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase().includes(websiteName.toLowerCase())
-    );
-
-    if (matchedSite) {
-        const [siteName, siteInfo] = matchedSite;
-        await addMemory(
-            `用户访问${siteInfo.description}(${siteName})，显示出对${getCategoryDescription(siteInfo.category)}的兴趣`,
-            siteInfo.category,
-            '网站偏好分析',
-            siteInfo.importance
-        );
-    }
-
-    // 3. 根据分类标题分析偏好
-    const matchedCategory = Object.entries(CATEGORY_TITLE_MAP).find(([key]) =>
-        categoryTitle.includes(key)
-    );
-
-    if (matchedCategory) {
-        const [catName, catInfo] = matchedCategory;
-        await addMemory(
-            `用户经常访问"${catName}"类网站，对${catName}内容感兴趣`,
-            catInfo.type as 'preference' | 'habit' | 'emotion',
-            '导航分类偏好分析',
-            catInfo.importance
-        );
-    }
-
-    // 4. 分析URL域名类型
-    await analyzeUrlType(websiteUrl, websiteName);
-
-    // 5. 更新用户行为模式
-    await updateUserBehaviorPattern(websiteName, categoryTitle);
-
-    console.log('[NavigationAnalysis] 导航分析完成:', websiteName, categoryTitle);
+    // AI 服务已暂停，跳过分析
+    void websiteName;
+    void websiteUrl;
+    void categoryTitle;
+    return;
 }
 
 // 分析URL类型

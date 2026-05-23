@@ -1,15 +1,42 @@
 import * as React from 'react';
-import type { InitProgressReport, MLCEngineInterface, AppConfig, ModelRecord } from '@mlc-ai/web-llm';
 import { fetchHotNews, filterEntertainmentNews, filterTechNews, type NewsItem } from './newsService';
-import { fetchJokeFromAPI } from './jsonpService';
-import { SkitEngine } from './skit/engine';
-import { getRandomHistoryEvent, formatHistoryForCharacter } from './services/historyToday';
-import { formatMemoriesForPrompt } from './services/memoryService';
+
+// 以下模块已改为纯动态 import，避免打包进主 bundle
+// import { fetchJokeFromAPI } from './jsonpService';
+// import { SkitEngine } from './skit/engine';
+// import { getRandomHistoryEvent, formatHistoryForCharacter } from './services/historyToday';
+// import { formatMemoriesForPrompt } from './services/memoryService';
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
 type MessageRole = 'system' | 'user' | 'assistant22' | 'assistant33';
 type Live2DAction = 'neutral' | 'happy' | 'curious' | 'thinking' | 'calm' | 'surprised';
+
+// web-llm 类型声明（本地定义，避免静态 import 打包）
+type InitProgressReport = {
+    progress: number;
+    text: string;
+};
+
+interface MLCEngineInterface {
+    unload(): Promise<void>;
+    chat: {
+        completions: {
+            create(options: { messages: { role: string; content: string }[]; max_tokens?: number; temperature?: number }): Promise<any>;
+        };
+    };
+}
+
+type AppConfig = {
+    model_list: ModelRecord[];
+    useIndexedDBCache?: boolean;
+};
+
+type ModelRecord = {
+    model_id: string;
+    model?: string;
+    required_features?: string[];
+};
 
 type ChatMessage = {
     id: number;
@@ -1702,6 +1729,7 @@ const DeepMode = (): React.JSX.Element => {
 
         try {
             // 获取一个笑话作为开场
+            const { fetchJokeFromAPI } = await import('./jsonpService');
             const joke = await fetchJokeFromAPI();
             const jokeContent = joke?.content || '为什么程序员总是分不清圣诞节和万圣节？因为 31 OCT = 25 DEC。';
 

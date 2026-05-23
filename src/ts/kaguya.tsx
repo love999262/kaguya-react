@@ -4,7 +4,9 @@ import Navigator from './navigator';
 import Clock from './clock';
 import Calendar from './calendar';
 import Live2D from './live2d';
-import DeepMode from './deepmode';
+
+// 深度模式面板懒加载，避免 WebLLM 大模块打包进首屏 bundle
+const DeepMode = React.lazy(() => import('./deepmode'));
 interface StateInterface {
     prefix: string;
 }
@@ -24,7 +26,9 @@ class Kaguya extends React.Component <any, any> {
                 <Navigator prefix={this.state.prefix} />
                 <Clock prefix={this.state.prefix} />
                 {/* <Live2D /> */}
-                <DeepMode />
+                <React.Suspense fallback={null}>
+                    <DeepMode />
+                </React.Suspense>
             </div>
         );
     }
