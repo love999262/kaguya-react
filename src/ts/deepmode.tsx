@@ -437,7 +437,7 @@ const DeepMode = (): React.JSX.Element => {
         '33': [{ role: 'system', content: SYSTEM_PROMPT_33 }],
     });
 
-    // 初始化小剧场引擎
+    /* 小剧场引擎初始化已暂停
     React.useEffect(() => {
         if (!skitEngineRef.current) {
             skitEngineRef.current = new SkitEngine();
@@ -454,6 +454,7 @@ const DeepMode = (): React.JSX.Element => {
             }
         };
     }, []);
+    */
 
     const markInteraction = React.useCallback(() => {
         lastInteractionAtRef.current = Date.now();
@@ -1925,6 +1926,7 @@ const DeepMode = (): React.JSX.Element => {
         handleModelPreferenceChange(value === 'auto' ? 'auto' : value);
     }, [handleModelPreferenceChange]);
 
+    /* AI面板初始化已暂停（自动加载模型）
     React.useEffect(() => {
         if (!panelOpen) {
             return;
@@ -1947,7 +1949,9 @@ const DeepMode = (): React.JSX.Element => {
             await ensureLLMEngine(targetModel);
         })();
     }, [allModelIds, detectRecommendedModel, ensureLLMEngine, ensurePersistentStorage, modelPreference, panelOpen, pushMessage, refreshCachedModelIds, resolveTargetModel]);
+    */
 
+    /* AI搜索反馈已暂停
     React.useEffect(() => {
         const onSearchInput = (event: Event): void => {
             const detail = (event as CustomEvent<SearchInputEventDetail>).detail;
@@ -1979,7 +1983,9 @@ const DeepMode = (): React.JSX.Element => {
             }
         };
     }, [handleSearchFeedback]);
+    */
 
+    /* AI搜索提交反馈已暂停
     // 监听搜索提交事件
     React.useEffect(() => {
         const onSearchSubmit = (event: Event): void => {
@@ -1994,7 +2000,9 @@ const DeepMode = (): React.JSX.Element => {
             window.removeEventListener('kaguya:search-submit', onSearchSubmit as EventListener);
         };
     }, [handleSearchSubmit]);
+    */
 
+    /* AI导航点击反馈已暂停
     // 监听导航点击事件
     React.useEffect(() => {
         const onNavClick = (event: Event): void => {
@@ -2009,6 +2017,7 @@ const DeepMode = (): React.JSX.Element => {
             window.removeEventListener('kaguya:nav-click', onNavClick as EventListener);
         };
     }, []);
+    */
 
     // 处理导航点击后的AI反馈（结合用户画像）
     const handleNavClickFeedback = React.useCallback(async (websiteName: string, categoryTitle: string) => {
@@ -2073,6 +2082,7 @@ const DeepMode = (): React.JSX.Element => {
         emitBubble('33', reply33.text);
     }, [activeMode, emitAction, emitBubble, markInteraction, pushMessage, requestPersonaJson]);
 
+    /* AI天气预警反馈已暂停
     React.useEffect(() => {
         const onWeatherAdvisory = (event: Event): void => {
             const detail = (event as CustomEvent<WeatherAdvisoryEventDetail>).detail;
@@ -2084,7 +2094,9 @@ const DeepMode = (): React.JSX.Element => {
             window.removeEventListener('kaguya:weather-advisory', onWeatherAdvisory as EventListener);
         };
     }, [handleWeatherAdvisory]);
+    */
 
+    /* AI天气评论已暂停
     React.useEffect(() => {
         const onTodayWeather = (event: Event): void => {
             const detail = (event as CustomEvent<TodayWeatherEventDetail>).detail;
@@ -2096,7 +2108,9 @@ const DeepMode = (): React.JSX.Element => {
             window.removeEventListener('kaguya:today-weather', onTodayWeather as EventListener);
         };
     }, [handleTodayWeather]);
+    */
 
+    /* AI定时交互已暂停
     React.useEffect(() => {
         const timer = window.setInterval(() => {
             const now = Date.now();
@@ -2123,6 +2137,7 @@ const DeepMode = (): React.JSX.Element => {
             window.clearInterval(timer);
         };
     }, [triggerIdleInteraction, triggerNewsComment, triggerSkit]);
+    */
 
     const [enginePaused, setEnginePaused] = React.useState<boolean>(false);
 
