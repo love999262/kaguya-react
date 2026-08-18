@@ -230,7 +230,7 @@ const WEEK_TEXT_SHORT = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e
 const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 const WEATHER_FORECAST_TARGET_DAYS = 14; // 展示14天
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
-const WEATHER_LOCATION_STORAGE_KEY = 'kaguya:weather-location:v2';
+const WEATHER_LOCATION_STORAGE_KEY = 'kaguya:weather-location:v3';
 const WEATHER_LOCATION_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 
@@ -1507,7 +1507,7 @@ class Calendar extends React.Component<Props, StateInterface> {
 
                 <div className={`${this.props.prefix}-calendar-location`}>
                     <span className={`${this.props.prefix}-calendar-location-text`}>
-                        {`天气定位 ${this.state.weatherLocationLabel}`}
+                        {this.state.weatherLocationLabel}
                     </span>
                     <button
                         className={`${this.props.prefix}-calendar-location-btn${this.state.locationSaved ? '' : ` ${this.props.prefix}-calendar-location-btn-highlight`}${this.state.weatherLocating ? ` ${this.props.prefix}-calendar-location-btn-loading` : ''}`}
