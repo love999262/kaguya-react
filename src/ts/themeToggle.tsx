@@ -55,6 +55,7 @@ const MODE_OPTIONS: ModeOption[] = [
 
 class ThemeToggle extends React.Component<Props, StateInterface> {
     private unsubscribeTheme: (() => void) | null;
+    private itemRefs: Partial<Record<ThemeMode, HTMLButtonElement | null>> = {};
 
     constructor(props: Props, context: any) {
         super(props, context);
@@ -86,7 +87,12 @@ class ThemeToggle extends React.Component<Props, StateInterface> {
         const currentIndex = MODE_OPTIONS.findIndex((option) => option.id === this.state.mode);
         const delta = (event.key === 'ArrowRight' || event.key === 'ArrowDown') ? 1 : -1;
         const nextIndex = (currentIndex + delta + MODE_OPTIONS.length) % MODE_OPTIONS.length;
-        setThemeMode(MODE_OPTIONS[nextIndex].id);
+        const nextId = MODE_OPTIONS[nextIndex].id;
+        setThemeMode(nextId);
+        const nextNode = this.itemRefs[nextId];
+        if (nextNode) {
+            nextNode.focus();
+        }
     };
 
     render(): JSX.Element {
@@ -108,6 +114,7 @@ class ThemeToggle extends React.Component<Props, StateInterface> {
                             aria-checked={isActive}
                             title={option.label}
                             tabIndex={isActive ? 0 : -1}
+                            ref={(node) => { this.itemRefs[option.id] = node; }}
                             className={`${prefix}-theme-toggle-item${isActive ? ` ${prefix}-theme-toggle-item-active` : ''}`}
                             onClick={() => { setThemeMode(option.id); }}
                         >

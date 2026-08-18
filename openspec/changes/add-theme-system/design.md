@@ -11,7 +11,7 @@
 - 全部现有组件迁移到令牌，夜间观感不回归、日间全新但同语言
 
 **Non-Goals:**
-- 不做自定义主题/取色器、不做独立日间壁纸池（已确认用遮罩方案）
+- 不做自定义主题/取色器、不做独立日间壁纸池（已确认复用同一壁纸且不遮罩）
 - 不做按时间段自动切换（跟随系统已覆盖）
 - 不重构组件结构（class 组件保持），仅样式与主题接线
 - 不做主题切换的大型过渡动画（仅 150-250ms 颜色过渡）
@@ -35,13 +35,13 @@ API：`getMode()` / `setMode(mode)` / `getResolved()` / `onChange(cb)`；内部�
 ### 4. 令牌命名与集合
 实施中追加决策：双主题统一 iOS 液态玻璃材质（`--kg-glass-blur: blur(24px) saturate(180%)`，`--kg-shadow` 为"外阴影 + 顶部镜面内高光 + 边缘微光"组合，全部面板 box-shadow 归一到该令牌）；暗色主题为中性烟灰玻璃（非深蓝系）；日间主题边框用白色高光式近无形边缘（`--kg-border: rgba(255,255,255,.55)`），避免灰黑硬边。
 
-前缀 `--kg-`。核心令牌：`--kg-surface`（玻璃面板底）、`--kg-surface-strong`（下拉/弹层）、`--kg-surface-hover`、`--kg-border`、`--kg-border-strong`、`--kg-text`、`--kg-text-muted`、`--kg-text-faint`、`--kg-accent`（#00A1D6 系）、`--kg-accent-soft`、`--kg-shadow`、`--kg-glass-blur`、`--kg-grid-surface`/`--kg-grid-text`（网站表格）、`--kg-overlay`（壁纸遮罩色）。
+前缀 `--kg-`。核心令牌：`--kg-surface`（玻璃面板底）、`--kg-surface-strong`（下拉/弹层）、`--kg-surface-hover`、`--kg-border`、`--kg-border-strong`、`--kg-text`、`--kg-text-muted`、`--kg-text-faint`、`--kg-accent`（#00A1D6 系）、`--kg-accent-soft`、`--kg-shadow`、`--kg-glass-blur`、`--kg-overlay`/`--kg-overlay-filter`（壁纸遮罩钩子，双主题均 transparent/none）。网站表格不设独立令牌，复用 `--kg-surface`/`--kg-surface-soft`/`--kg-border`/`--kg-text`，与日历同风格；分隔线单线绘制（列间 `margin-left: -1px`、单元格仅 `border-top`），无斑马纹。
 夜间值取自现有视觉抽样（面板 rgba(20,30,50,.55) 系、文字 #eef7ff 系）；日间值：白玻璃 rgba(255,255,255,.62)、文字 #1f2937 系，blur 保持。
 理由：命名按用途而非颜色值，避免 `--kg-blue` 式陷阱。
 
-### 5. 壁纸遮罩：`::after` 叠加层
-`.kaguya-img::after` 固定覆盖，`[data-theme='light']` 时 `background: var(--kg-overlay)`（约 rgba(248,250,252,.30)）+ `backdrop-filter: brightness(1.08) saturate(.88)`；夜间透明。
-理由：不改动随机壁纸逻辑（`background.tsx` 零改动）；遮罩随主题纯 CSS 切换。
+### 5. 壁纸处理：`::after` 遮罩钩子保留但默认关闭
+`.kaguya-img::after` 固定覆盖，`background: var(--kg-overlay)` + `filter: var(--kg-overlay-filter)`。目检确认日间在壁纸上盖半透明层会发灰发雾，最终双主题令牌均取 transparent/none，壁纸原样显示，面板可读性靠玻璃模糊与令牌对比度保证。
+理由：保留遮罩钩子便于将来按主题微调壁纸观感；`background.tsx` 零改动。
 
 ### 6. 开关组件 `src/ts/themeToggle.tsx`
 固定右上角（top: 12px; right: 16px），玻璃胶囊内 3 个图标按钮（内联 SVG：太阳/月亮/显示器），`role="radiogroup"` + 子项 `role="radio" aria-checked`，方向键循环、回车激活；`title` 提示"日间/夜间/跟随系统"；当前模式高亮（强调色底）。挂载于 `kaguya.tsx` 根布局。

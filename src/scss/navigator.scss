@@ -399,7 +399,7 @@
                 flex: 1;
                 box-shadow: var(--kg-shadow);
                 background: var(--kg-surface);
-                border: 1px solid var(--kg-border);
+                border: 1px solid var(--kg-line);
                 backdrop-filter: var(--kg-glass-blur);
                 -webkit-backdrop-filter: var(--kg-glass-blur);
                 & + & {
@@ -408,7 +408,7 @@
                 & > * {
                     height: clamp(30px, 3.1vh, 36px);
                     line-height: clamp(30px, 3.1vh, 36px);
-                    border-top: 1px solid var(--kg-border);
+                    border-top: 1px solid var(--kg-line);
                     background: var(--kg-surface-soft);
                     &:first-child {
                         border-top: 0;

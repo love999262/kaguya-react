@@ -231,6 +231,13 @@ const WEATHER_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 const WEATHER_FORECAST_TARGET_DAYS = 14; // 展示14天
 const WEATHER_CACHE_STORAGE_KEY = 'kaguya:weather-cache:v3';
 const WEATHER_LOCATION_STORAGE_KEY = 'kaguya:weather-location:v3';
+
+try {
+    window.localStorage.removeItem('kaguya:weather-location:v1');
+    window.localStorage.removeItem('kaguya:weather-location:v2');
+} catch {
+    // ignore storage issues
+}
 const WEATHER_LOCATION_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const HOLIDAY_CACHE_STORAGE_PREFIX = 'kaguya:holiday:';
 

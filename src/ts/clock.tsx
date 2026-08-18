@@ -29,12 +29,14 @@ class Time extends React.Component <Props, any> {
     dialRef: React.RefObject<HTMLDivElement>;
     digitalRef: React.RefObject<HTMLDivElement>;
     unsubscribeTheme: (() => void) | null;
+    clockTimers: number[];
 
     constructor(props: Props, context: any) {
         super(props, context);
         this.dialRef = React.createRef();
         this.digitalRef = React.createRef();
         this.unsubscribeTheme = null;
+        this.clockTimers = [];
     }
 
     componentDidMount() {
@@ -54,32 +56,52 @@ class Time extends React.Component <Props, any> {
     }
 
     private destroyClock() {
+        this.clockTimers.forEach((timerId) => window.clearInterval(timerId));
+        this.clockTimers = [];
         if (this.dialRef.current) this.dialRef.current.innerHTML = '';
         if (this.digitalRef.current) this.digitalRef.current.innerHTML = '';
+    }
+
+    private createClockWithTrackedTimers(factory: () => void): void {
+        const captured: number[] = [];
+        const originalSetInterval = window.setInterval;
+        window.setInterval = ((handler: any, timeout?: any, ...args: any[]) => {
+            const timerId = originalSetInterval(handler, timeout, ...args);
+            captured.push(timerId);
+            return timerId;
+        }) as typeof window.setInterval;
+        try {
+            factory();
+        } finally {
+            window.setInterval = originalSetInterval;
+        }
+        this.clockTimers.push(...captured);
     }
 
     private renderClock() {
         const themeList = CLOCK_THEMES[getResolvedTheme()];
         const theme = themeList[Math.floor(Math.random() * themeList.length)];
-        new Clock({
-            selector: '.kaguya-dial',
-            type: 'dial',
-            renderType: 'canvas',
-            draggable: false,
-            bgColor: theme.dialBg,
-            color: theme.textColor,
-            dial: { hasTimeLabel: true, hasBorder: false },
-            digital: { fontSize: 12 },
-        });
-        new Clock({
-            selector: '.kaguya-digital',
-            type: 'digital',
-            renderType: 'canvas',
-            draggable: false,
-            color: theme.textColor,
-            bgColor: theme.digitalBg,
-            dial: { hasTimeLabel: true, hasBorder: false },
-            digital: { fontSize: 24 },
+        this.createClockWithTrackedTimers(() => {
+            new Clock({
+                selector: `.${this.props.prefix}-dial`,
+                type: 'dial',
+                renderType: 'canvas',
+                draggable: false,
+                bgColor: theme.dialBg,
+                color: theme.textColor,
+                dial: { hasTimeLabel: true, hasBorder: false },
+                digital: { fontSize: 12 },
+            });
+            new Clock({
+                selector: `.${this.props.prefix}-digital`,
+                type: 'digital',
+                renderType: 'canvas',
+                draggable: false,
+                color: theme.textColor,
+                bgColor: theme.digitalBg,
+                dial: { hasTimeLabel: true, hasBorder: false },
+                digital: { fontSize: 24 },
+            });
         });
     }
 
