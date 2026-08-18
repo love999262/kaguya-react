@@ -451,7 +451,7 @@ class SearchEngle extends React.Component <Props, StateInterface> {
     private fetchBaiduSuggestByJsonp(keyword: string, sourceUrl: (callbackName: string) => string, timeoutMs: number = 2800): Promise<string[]> {
         return new Promise<string[]>((resolve) => {
             const callbackName = `kaguyaBaiduSug_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-            const runtimeWindow = window as Window & Record<string, unknown>;
+            const runtimeWindow = window as unknown as Window & Record<string, unknown>;
             let script: HTMLScriptElement | null = null;
             let timeoutId: number | null = null;
 

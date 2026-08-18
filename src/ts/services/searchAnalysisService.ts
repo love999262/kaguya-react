@@ -1,6 +1,13 @@
 // 搜索内容分析服务 - 分析用户搜索行为并学习偏好
 // AI 功能已暂停，此服务暂时不执行
 
+import type { MemoryItem } from './memoryService';
+
+const addMemory = async (content: string, category: MemoryItem['category'], source: string, importance: number = 5): Promise<void> => {
+    const { addMemory: add } = await import('./memoryService');
+    return add(content, category, source, importance);
+};
+
 // 搜索分类定义
 const SEARCH_CATEGORIES = {
     tech: {

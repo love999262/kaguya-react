@@ -38,7 +38,7 @@ export function throttle<T extends (...args: any[]) => void>(
 
 // 延迟执行（requestIdleCallback 降级）
 export function scheduleIdleTask(callback: () => void): void {
-    if ('requestIdleCallback' in window) {
+    if (typeof window.requestIdleCallback === 'function') {
         window.requestIdleCallback(callback, { timeout: 2000 });
     } else {
         window.setTimeout(callback, 1);

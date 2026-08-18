@@ -115,8 +115,10 @@ async function translateWithWebLLM(
 ): Promise<string | null> {
     try {
         // 检查 WebLLM 是否可用
-        const { getWebLLMInstance } = await import('../deepmode');
-        const webLLM = getWebLLMInstance?.();
+        const { getWebLLMInstance } = (await import('../deepmode')) as {
+            getWebLLMInstance?: () => { isReady?: () => boolean; chat?: (prompt: string) => Promise<string | null> } | null;
+        };
+        const webLLM = getWebLLMInstance?.() ?? null;
 
         if (!webLLM || !webLLM.isReady?.()) {
             return null;

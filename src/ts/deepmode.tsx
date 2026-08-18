@@ -1,11 +1,17 @@
 import * as React from 'react';
 import { fetchHotNews, filterEntertainmentNews, filterTechNews, type NewsItem } from './newsService';
+import type { SkitEngine } from './skit/engine';
 
 // 以下模块已改为纯动态 import，避免打包进主 bundle
 // import { fetchJokeFromAPI } from './jsonpService';
 // import { SkitEngine } from './skit/engine';
 // import { getRandomHistoryEvent, formatHistoryForCharacter } from './services/historyToday';
 // import { formatMemoriesForPrompt } from './services/memoryService';
+
+const formatMemoriesForPrompt = async (character: '22' | '33'): Promise<string> => {
+    const { formatMemoriesForPrompt: format } = await import('./services/memoryService');
+    return format(character);
+};
 
 type TalkTarget = '22' | '33' | 'all';
 type LLMState = 'idle' | 'loading' | 'ready' | 'error' | 'unsupported';
@@ -22,7 +28,7 @@ interface MLCEngineInterface {
     unload(): Promise<void>;
     chat: {
         completions: {
-            create(options: { messages: { role: string; content: string }[]; max_tokens?: number; temperature?: number }): Promise<any>;
+            create(options: { messages: { role: string; content: string }[]; max_tokens?: number; temperature?: number; top_p?: number }): Promise<any>;
         };
     };
 }
@@ -509,7 +515,7 @@ const DeepMode = (): React.JSX.Element => {
         }));
     }, []);
 
-    const pushMessage = React.useCallback((role: MessageRole, text: string, metadata?: { type?: string; action?: string }) => {
+    const pushMessage = React.useCallback((role: MessageRole, text: string, metadata?: { type?: 'search' | 'weather' | 'news' | 'history' | 'skit' | 'chat' | 'nav'; action?: string }) => {
         setMessages((prev: ChatMessage[]) => {
             const next = [...prev, { id: nextIdRef.current, role, text }];
             nextIdRef.current += 1;
@@ -1642,6 +1648,7 @@ const DeepMode = (): React.JSX.Element => {
         pushMessage('system', '正在获取历史上的今天...');
 
         try {
+            const { getTodayInHistory, formatHistoryForCharacter } = await import('./services/historyToday');
             // 优先从 API 获取历史事件
             const historyData = await getTodayInHistory();
             
@@ -1731,7 +1738,7 @@ const DeepMode = (): React.JSX.Element => {
             // 获取一个笑话作为开场
             const { fetchJokeFromAPI } = await import('./jsonpService');
             const joke = await fetchJokeFromAPI();
-            const jokeContent = joke?.content || '为什么程序员总是分不清圣诞节和万圣节？因为 31 OCT = 25 DEC。';
+            const jokeContent = joke || '为什么程序员总是分不清圣诞节和万圣节？因为 31 OCT = 25 DEC。';
 
             // 对话历史记录
             const dialogueHistory: string[] = [];
@@ -2228,6 +2235,7 @@ const DeepMode = (): React.JSX.Element => {
 
     // 获取其他缓存信息
     const getOtherCachesInfo = React.useCallback(async () => {
+        const { indexedDBCache } = await import('./utils/indexedDB');
         const caches = [];
         
         // 历史上的今天缓存
@@ -2268,7 +2276,7 @@ const DeepMode = (): React.JSX.Element => {
         try {
             // 1. 尝试使用 WebLLM 的删除方法
             const webllm = await getWebLLMModule();
-            for (const strategy of STRATEGIES) {
+            for (const strategy of LLM_LOAD_STRATEGIES) {
                 const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
                 try {
                     await webllm.deleteModelAllInfoInCache(modelId, appConfig);
@@ -2312,7 +2320,7 @@ const DeepMode = (): React.JSX.Element => {
             // 4. 等待并验证
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            for (const strategy of STRATEGIES) {
+            for (const strategy of LLM_LOAD_STRATEGIES) {
                 const appConfig = buildAppConfigWithStrategy(webllm.prebuiltAppConfig, strategy);
                 const hasCache = await webllm.hasModelInCache(modelId, appConfig).catch(() => false);
                 if (hasCache) {
@@ -2331,7 +2339,8 @@ const DeepMode = (): React.JSX.Element => {
     const handleClearSelectedCaches = React.useCallback(async (): Promise<void> => {
         setIsClearingCache(true);
         pushMessage('system', '正在清理选中的缓存...');
-        
+        const { indexedDBCache } = await import('./utils/indexedDB');
+
         let clearedModels = 0;
         let clearedOthers = 0;
         const failedModels: string[] = [];
@@ -2797,6 +2806,7 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({
     React.useEffect(() => {
         const checkAvailableCaches = async () => {
             setIsLoading(true);
+            const { indexedDBCache } = await import('./utils/indexedDB');
             const caches: OtherCacheInfo[] = [];
 
             // 检查历史上的今天缓存

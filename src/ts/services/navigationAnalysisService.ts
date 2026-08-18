@@ -1,6 +1,13 @@
 // 导航点击分析服务 - 分析用户导航行为并学习偏好
 // AI 功能已暂停，此服务暂时不执行
 
+import type { MemoryItem } from './memoryService';
+
+const addMemory = async (content: string, category: MemoryItem['category'], source: string, importance: number = 5): Promise<void> => {
+    const { addMemory: add } = await import('./memoryService');
+    return add(content, category, source, importance);
+};
+
 // 网站分类定义
 const WEBSITE_CATEGORIES: Record<string, { category: 'preference' | 'habit' | 'emotion'; importance: number; description: string }> = {
     // 技术相关

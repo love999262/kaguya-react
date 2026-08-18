@@ -117,8 +117,8 @@ export function getTodayMemorialDay(date: Date = new Date()): MemorialDay | null
     const month = date.getMonth() + 1;
     const day = date.getDate();
     
-    const memorialDays: MemorialDay[] = memorialDaysData;
-    
+    const memorialDays = memorialDaysData as MemorialDay[];
+
     // 查找匹配的节日
     const memorial = memorialDays.find(m => {
         if (m.month !== month) return false;
@@ -209,7 +209,7 @@ export function hasSpecialDay(date: Date = new Date()): boolean {
 
 // 获取下一个节日信息
 export function getNextMemorialDay(date: Date = new Date()): { day: MemorialDay; daysUntil: number } | null {
-    const memorialDays: MemorialDay[] = memorialDaysData;
+    const memorialDays = memorialDaysData as MemorialDay[];
     const year = date.getFullYear();
     const currentMonth = date.getMonth() + 1;
     const currentDay = date.getDate();

@@ -177,7 +177,7 @@ export async function getAllRecords<T>(storeName: StoreNames): Promise<T[]> {
 export async function getByIndex<T>(
     storeName: StoreNames,
     indexName: string,
-    value: IDBValidKey
+    value: IDBValidKey | IDBKeyRange
 ): Promise<T[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {

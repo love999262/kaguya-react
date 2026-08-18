@@ -46,8 +46,8 @@ export async function generateTodayTopic(): Promise<SkitTopic | null> {
 export async function generateNewsTopic(): Promise<SkitTopic | null> {
     try {
         // 从 newsService 获取热点
-        const { fetchAllNews } = await import('../newsService');
-        const news = await fetchAllNews();
+        const { fetchHotNews } = await import('../newsService');
+        const news = await fetchHotNews();
 
         if (news && news.length > 0) {
             // 随机选择一条新闻
@@ -55,7 +55,7 @@ export async function generateNewsTopic(): Promise<SkitTopic | null> {
             return {
                 type: 'news',
                 title: randomNews.title,
-                content: randomNews.summary || randomNews.title,
+                content: randomNews.title,
                 source: randomNews.source,
             };
         }
