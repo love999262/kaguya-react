@@ -1,0 +1,50 @@
+@use './global.scss' as *;
+
+.#{$kaguya} {
+    &-theme-toggle {
+        position: fixed;
+        top: 12px;
+        right: 16px;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 999px;
+        background: var(--kg-surface);
+        border: 1px solid var(--kg-border);
+        box-shadow: var(--kg-shadow);
+        backdrop-filter: var(--kg-glass-blur);
+        -webkit-backdrop-filter: var(--kg-glass-blur);
+    }
+
+    &-theme-toggle-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px !important;
+        border: none !important;
+        background: transparent;
+        color: var(--kg-text-muted) !important;
+        cursor: pointer;
+        transition: background-color 160ms ease, color 160ms ease;
+        svg {
+            display: block;
+        }
+        &:hover {
+            color: var(--kg-text) !important;
+            background: var(--kg-surface-hover);
+        }
+        &:focus-visible {
+            outline: 2px solid var(--kg-accent);
+            outline-offset: 1px;
+        }
+    }
+
+    &-theme-toggle-item-active {
+        background: var(--kg-accent-soft);
+        color: var(--kg-accent) !important;
+    }
+}

@@ -1,4 +1,5 @@
 @use './global.scss' as *;
+@use './theme.scss';
 @use './reset.scss';
 @use './app.scss';
 @use './kaguya.scss';
@@ -6,4 +7,5 @@
 @use './clock.scss';
 @use './calendar.scss';
 @use './live2d.scss';
+@use './themeToggle.scss';
 @use './deepmode.scss';

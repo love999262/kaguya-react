@@ -6,9 +6,9 @@
         top: 20px;
         left: 18px;
         right: auto;
-        border: 1px solid rgba(176, 203, 231, 0.48);
+        border: 1px solid var(--kg-border-strong);
         background: transparent;
-        box-shadow: 0 10px 24px rgba(7, 18, 34, 0.28);
+        box-shadow: var(--kg-shadow);
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
     }

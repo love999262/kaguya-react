@@ -4,6 +4,9 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import './scss/index.scss';
 import Kaguya from './ts/kaguya';
+import { initTheme } from './ts/theme';
+
+initTheme();
 
 const rootElement = document.getElementById('kaguya');
 

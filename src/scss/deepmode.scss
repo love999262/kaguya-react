@@ -12,7 +12,7 @@
 .kaguya-deep-pure {
     .kaguya-deep-trigger {
         background: rgba(255, 255, 255, 0.15);
-        border-color: rgba(233, 242, 255, 0.5);
+        border-color: var(--kg-border);
     }
 }
 
@@ -20,9 +20,9 @@
     width: 38px;
     height: 38px;
     border-radius: 12px !important;
-    border: 1px solid rgba(233, 242, 255, 0.34);
+    border: 1px solid var(--kg-border);
     background: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 18px rgba(8, 22, 40, 0.16);
+    box-shadow: var(--kg-shadow);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     cursor: pointer;
@@ -34,16 +34,16 @@
     svg {
         width: 18px;
         height: 18px;
-        fill: rgba(238, 247, 255, 0.72);
+        fill: var(--kg-text-muted);
         transition: fill 160ms ease;
     }
 
     &:hover {
         background: rgba(255, 255, 255, 0.16);
-        border-color: rgba(238, 247, 255, 0.5);
+        border-color: var(--kg-border);
 
         svg {
-            fill: rgba(248, 252, 255, 0.9);
+            fill: var(--kg-text-soft);
         }
     }
 
@@ -53,11 +53,11 @@
 }
 
 .kaguya-deep-trigger-active {
-    background: rgba(118, 186, 245, 0.28);
-    border-color: rgba(199, 228, 255, 0.62);
+    background: var(--kg-accent-soft);
+    border-color: var(--kg-border-strong);
 
     svg {
-        fill: rgba(244, 250, 255, 0.96);
+        fill: var(--kg-text);
     }
 }
 
@@ -71,9 +71,9 @@
     height: 100vh;
     height: 100dvh; // 使用动态视口高度，适配移动端浏览器
     border-radius: 0 !important;
-    border-left: 1px solid rgba(184, 214, 244, 0.32);
-    background: linear-gradient(160deg, rgba(14, 33, 58, 0.98), rgba(9, 24, 44, 0.96));
-    box-shadow: -8px 0 48px rgba(7, 18, 34, 0.55);
+    border-left: 1px solid var(--kg-border);
+    background: linear-gradient(160deg, var(--kg-surface-strong), var(--kg-surface-strong));
+    box-shadow: var(--kg-shadow);
     backdrop-filter: blur(14px) saturate(130%);
     -webkit-backdrop-filter: blur(14px) saturate(130%);
     opacity: 0;
@@ -97,11 +97,11 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: rgba(140, 180, 220, 0.35);
+        background: var(--kg-border);
         border-radius: 999px;
 
         &:hover {
-            background: rgba(140, 180, 220, 0.55);
+            background: var(--kg-border-strong);
         }
     }
 }
@@ -134,11 +134,11 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: rgba(140, 180, 220, 0.35);
+        background: var(--kg-border);
         border-radius: 999px;
 
         &:hover {
-            background: rgba(140, 180, 220, 0.55);
+            background: var(--kg-border-strong);
         }
     }
 }
@@ -150,7 +150,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(10, 25, 45, 0.92);
+    background: var(--kg-surface-strong);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
@@ -184,7 +184,7 @@
 
 .kaguya-deep-paused-desc {
     font-size: 1rem;
-    color: rgba(180, 200, 230, 0.7);
+    color: var(--kg-text-faint);
 }
 
 .kaguya-deep-paused-resume-large-btn {
@@ -237,7 +237,7 @@
 .kaguya-deep-progress-bar {
     width: 100%;
     height: 8px;
-    background: rgba(100, 130, 170, 0.3);
+    background: var(--kg-surface-hover);
     border-radius: 4px;
     overflow: hidden;
     position: relative;
@@ -301,9 +301,9 @@
     width: 32px;
     height: 32px;
     border-radius: 10px !important;
-    border: 1px solid rgba(182, 213, 242, 0.32);
-    background: rgba(123, 164, 209, 0.18);
-    color: rgba(229, 241, 255, 0.9) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-soft) !important;
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
@@ -312,8 +312,8 @@
     justify-content: center;
 
     &:hover {
-        background: rgba(140, 180, 220, 0.28);
-        border-color: rgba(200, 230, 255, 0.5);
+        background: var(--kg-border);
+        border-color: var(--kg-surface-hover);
         transform: scale(1.05);
     }
 
@@ -361,9 +361,9 @@
     width: 32px;
     height: 32px;
     border-radius: 10px !important;
-    border: 1px solid rgba(182, 213, 242, 0.32);
-    background: rgba(123, 164, 209, 0.18);
-    color: rgba(229, 241, 255, 0.9) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-soft) !important;
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
@@ -372,14 +372,14 @@
     justify-content: center;
 
     &:hover {
-        background: rgba(140, 180, 220, 0.28);
-        border-color: rgba(200, 230, 255, 0.5);
+        background: var(--kg-border);
+        border-color: var(--kg-surface-hover);
         transform: scale(1.05);
     }
 
     &.kaguya-deep-pure-btn-active {
-        background: rgba(118, 186, 245, 0.42);
-        border-color: rgba(199, 228, 255, 0.72);
+        background: var(--kg-accent-soft);
+        border-color: var(--kg-border-strong);
         box-shadow: 0 0 12px rgba(118, 186, 245, 0.3);
     }
 }
@@ -388,9 +388,9 @@
     width: 32px;
     height: 32px;
     border-radius: 10px !important;
-    border: 1px solid rgba(182, 213, 242, 0.32);
-    background: rgba(123, 164, 209, 0.18);
-    color: rgba(229, 241, 255, 0.9) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-soft) !important;
     font-size: 1.3rem;
     line-height: 1;
     cursor: pointer;
@@ -413,14 +413,14 @@
     gap: 8px;
     margin-bottom: 12px;
     padding: 10px 12px;
-    background: rgba(12, 28, 50, 0.45);
+    background: var(--kg-surface-soft);
     border-radius: 10px;
-    border: 1px solid rgba(140, 180, 220, 0.12);
+    border: 1px solid var(--kg-border);
 }
 
 .kaguya-deep-meta {
     font-size: 0.74rem; // 稍微减小字体
-    color: rgba(215, 234, 252, 0.85) !important;
+    color: var(--kg-text-faint) !important;
     line-height: 1.25; // 减少行高
     flex-shrink: 0;
     margin-bottom: 1px; // 减少元信息之间的间距
@@ -437,13 +437,13 @@
         margin: -2px -6px;
 
         &:hover {
-            background: rgba(100, 150, 200, 0.2);
+            background: var(--kg-surface-soft);
         }
 
         &.expanded {
             white-space: normal;
             word-break: break-all;
-            background: rgba(100, 150, 200, 0.15);
+            background: var(--kg-surface-soft);
         }
     }
 }
@@ -459,7 +459,7 @@
 
 .kaguya-deep-model-label {
     font-size: 0.78rem;
-    color: rgba(210, 231, 252, 0.85) !important;
+    color: var(--kg-text-faint) !important;
     line-height: 28px;
     min-width: 36px;
 }
@@ -475,24 +475,24 @@
     height: 26px;
     padding: 0 10px;
     border-radius: 10px !important;
-    border: 1px solid rgba(178, 211, 243, 0.34);
-    background: rgba(91, 133, 180, 0.22);
-    color: rgba(224, 238, 252, 0.9) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-soft) !important;
     font-size: 0.74rem;
     cursor: pointer;
     outline: none;
     transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
 
     &:hover {
-        border-color: rgba(196, 224, 249, 0.5);
-        background: rgba(105, 154, 209, 0.3);
+        border-color: var(--kg-border-strong);
+        background: var(--kg-surface-hover);
     }
 }
 
 .kaguya-deep-model-chip-active {
-    border-color: rgba(207, 232, 252, 0.66);
+    border-color: var(--kg-border-strong);
     background: linear-gradient(145deg, rgba(112, 180, 240, 0.46), rgba(87, 145, 209, 0.4));
-    color: rgba(246, 252, 255, 0.98) !important;
+    color: var(--kg-text) !important;
 }
 
 .kaguya-deep-model-chip-cached {
@@ -511,23 +511,23 @@
 .kaguya-deep-model-all-label {
     min-width: 36px;
     font-size: 0.78rem;
-    color: rgba(207, 230, 251, 0.85) !important;
+    color: var(--kg-text-faint) !important;
 }
 
 .kaguya-deep-model-all-select {
     flex: 1;
     height: 30px;
     border-radius: 10px !important;
-    border: 1px solid rgba(174, 208, 242, 0.34);
-    background: rgba(77, 116, 160, 0.24);
-    color: rgba(232, 244, 255, 0.94) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-soft) !important;
     font-size: 0.76rem;
     padding: 0 10px;
     outline: none;
 
     &:focus,
     &:focus-visible {
-        border-color: rgba(199, 226, 250, 0.56);
+        border-color: var(--kg-border-strong);
         box-shadow: 0 0 0 1px rgba(128, 184, 235, 0.28);
     }
 }
@@ -544,23 +544,23 @@
     flex: 1;
     height: 32px;
     border-radius: 10px !important;
-    border: 1px solid rgba(178, 211, 243, 0.34);
-    background: rgba(99, 143, 193, 0.2);
-    color: rgba(226, 240, 254, 0.86) !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-faint) !important;
     font-size: 0.8rem;
     cursor: pointer;
     transition: border-color 140ms ease, background-color 140ms ease;
 
     &:hover {
-        border-color: rgba(190, 220, 250, 0.5);
-        background: rgba(110, 160, 210, 0.28);
+        border-color: var(--kg-border-strong);
+        background: var(--kg-surface-hover);
     }
 }
 
 .kaguya-deep-target-active {
-    border-color: rgba(203, 228, 252, 0.62);
-    background: rgba(115, 184, 246, 0.34);
-    color: rgba(246, 251, 255, 0.96) !important;
+    border-color: var(--kg-border-strong);
+    background: var(--kg-surface-hover);
+    color: var(--kg-text) !important;
 }
 
 .kaguya-deep-actions {
@@ -577,9 +577,9 @@
     min-width: 100px;
     height: 34px;
     border-radius: 10px !important;
-    border: 1px solid rgba(178, 211, 243, 0.34);
+    border: 1px solid var(--kg-border);
     background: linear-gradient(145deg, rgba(115, 178, 235, 0.26), rgba(88, 142, 198, 0.22));
-    color: rgba(226, 240, 254, 0.86) !important;
+    color: var(--kg-text-faint) !important;
     font-size: 0.78rem;
     cursor: pointer;
     transition: border-color 140ms ease, background-color 140ms ease, transform 120ms ease;
@@ -611,10 +611,10 @@
     min-height: 200px; // 增加最小高度
     max-height: 55vh; // 增加最大高度
     overflow-y: auto;
-    border: 1px solid rgba(172, 206, 240, 0.22);
+    border: 1px solid var(--kg-border);
     border-radius: 12px !important;
     padding: 12px;
-    background: rgba(12, 28, 50, 0.42);
+    background: var(--kg-surface-soft);
     font-size: 0.86rem;
     line-height: 1.5;
 
@@ -628,11 +628,11 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: rgba(140, 180, 220, 0.35);
+        background: var(--kg-border);
         border-radius: 999px;
 
         &:hover {
-            background: rgba(140, 180, 220, 0.55);
+            background: var(--kg-border-strong);
         }
     }
 }
@@ -645,33 +645,33 @@
 }
 
 .kaguya-deep-line-system {
-    color: rgba(173, 214, 247, 0.9) !important;
+    color: var(--kg-accent) !important;
     font-style: italic;
 }
 
 .kaguya-deep-line-user {
-    color: rgba(245, 251, 255, 0.96) !important;
+    color: var(--kg-text) !important;
     font-weight: 500;
 }
 
 .kaguya-deep-line-assistant {
-    color: rgba(154, 223, 255, 0.94) !important;
+    color: var(--kg-accent) !important;
 }
 
 .kaguya-deep-line-assistant22 {
-    color: rgba(139, 223, 255, 0.95) !important;
+    color: var(--kg-accent) !important;
 }
 
 .kaguya-deep-line-assistant33 {
-    color: rgba(184, 210, 255, 0.95) !important;
+    color: var(--kg-accent) !important;
 }
 
 // 输入区 - 固定在抽屉底部
 .kaguya-deep-input-area {
     padding: 16px;
     padding-top: 8px;
-    background: linear-gradient(160deg, rgba(14, 33, 58, 0.98), rgba(9, 24, 44, 0.96));
-    border-top: 1px solid rgba(140, 180, 220, 0.15);
+    background: linear-gradient(160deg, var(--kg-surface-strong), var(--kg-surface-strong));
+    border-top: 1px solid var(--kg-border);
     flex-shrink: 0;
 }
 
@@ -687,9 +687,9 @@
     min-height: 56px;
     max-height: 120px;
     border-radius: 12px !important;
-    border: 1px solid rgba(167, 203, 238, 0.34);
-    background: rgba(96, 140, 190, 0.18);
-    color: #edf6ff !important;
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text) !important;
     padding: 10px 70px 10px 12px;
     font-size: 0.86rem;
     line-height: 1.4;
@@ -698,13 +698,13 @@
     outline: none;
 
     &::placeholder {
-        color: rgba(217, 235, 251, 0.58);
+        color: var(--kg-text-muted);
     }
 
     &:focus,
     &:focus-visible {
         outline: none;
-        box-shadow: inset 0 0 0 1px rgba(188, 222, 252, 0.38);
+        box-shadow: inset 0 0 0 1px var(--kg-border-strong);
     }
 
     // 自定义滚动条 - 知乎风格
@@ -717,7 +717,7 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: rgba(140, 180, 220, 0.3);
+        background: var(--kg-border);
         border-radius: 999px;
     }
 }
@@ -729,7 +729,7 @@
     width: 52px;
     height: 30px;
     border-radius: 10px !important;
-    border: 1px solid rgba(190, 220, 248, 0.46);
+    border: 1px solid var(--kg-border-strong);
     background: linear-gradient(145deg, rgba(76, 165, 242, 0.9), rgba(67, 131, 226, 0.9));
     color: #f3f9ff !important;
     font-size: 0.8rem;
@@ -865,13 +865,13 @@
 }
 
 .kaguya-deep-confirm-dialog {
-    background: linear-gradient(160deg, rgba(20, 45, 75, 0.98), rgba(12, 30, 55, 0.96));
+    background: var(--kg-surface-strong);
     border: 1px solid rgba(255, 120, 120, 0.4);
     border-radius: 16px;
     padding: 28px 32px;
     max-width: 420px;
     width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(220, 80, 80, 0.2);
+    box-shadow: var(--kg-shadow), 0 0 30px rgba(220, 80, 80, 0.2);
     animation: slideUp 250ms ease;
 }
 
@@ -884,7 +884,7 @@
 }
 
 .kaguya-deep-confirm-content {
-    color: rgba(230, 240, 255, 0.9);
+    color: var(--kg-text-soft);
     font-size: 1rem;
     line-height: 1.6;
     margin-bottom: 24px;
@@ -900,7 +900,7 @@
 }
 
 .kaguya-deep-confirm-hint {
-    color: rgba(200, 210, 230, 0.7);
+    color: var(--kg-text-muted);
     font-size: 0.9rem;
     padding: 12px;
     background: rgba(220, 80, 80, 0.1);
@@ -930,13 +930,13 @@
 }
 
 .kaguya-deep-confirm-btn-cancel {
-    background: rgba(120, 140, 170, 0.2);
-    border-color: rgba(150, 170, 200, 0.35);
-    color: rgba(220, 230, 255, 0.9);
+    background: var(--kg-surface-soft);
+    border-color: var(--kg-border);
+    color: var(--kg-text-soft);
 
     &:hover:not(:disabled) {
-        background: rgba(140, 160, 190, 0.3);
-        border-color: rgba(170, 190, 220, 0.5);
+        background: var(--kg-surface-hover);
+        border-color: var(--kg-border-strong);
     }
 }
 
@@ -988,15 +988,15 @@
 }
 
 .kaguya-cache-manager-panel {
-    background: linear-gradient(160deg, rgba(18, 40, 70, 0.98), rgba(10, 28, 52, 0.96));
-    border: 1px solid rgba(100, 150, 200, 0.3);
+    background: linear-gradient(160deg, var(--kg-surface-strong), var(--kg-surface-strong));
+    border: 1px solid var(--kg-surface-hover);
     border-radius: 20px;
     width: 100%;
     max-width: 520px;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--kg-shadow);
     animation: slideUp 250ms ease;
     overflow: hidden;
 }
@@ -1006,14 +1006,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
-    border-bottom: 1px solid rgba(100, 150, 200, 0.2);
+    border-bottom: 1px solid var(--kg-surface-soft);
     background: rgba(0, 0, 0, 0.2);
 
     h3 {
         margin: 0;
         font-size: 1.25rem;
         font-weight: 600;
-        color: rgba(230, 245, 255, 0.95);
+        color: var(--kg-text);
     }
 }
 
@@ -1021,9 +1021,9 @@
     width: 32px;
     height: 32px;
     border-radius: 10px !important;
-    border: 1px solid rgba(150, 180, 210, 0.3);
-    background: rgba(80, 120, 160, 0.2);
-    color: rgba(200, 220, 240, 0.8);
+    border: 1px solid var(--kg-border);
+    background: var(--kg-surface-soft);
+    color: var(--kg-text-faint);
     font-size: 1.4rem;
     line-height: 1;
     cursor: pointer;
@@ -1059,11 +1059,11 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: rgba(140, 180, 220, 0.35);
+        background: var(--kg-border);
         border-radius: 999px;
 
         &:hover {
-            background: rgba(140, 180, 220, 0.55);
+            background: var(--kg-border-strong);
         }
     }
 }
@@ -1086,7 +1086,7 @@
         margin: 0;
         font-size: 1rem;
         font-weight: 600;
-        color: rgba(200, 220, 245, 0.9);
+        color: var(--kg-text-faint);
     }
 }
 
@@ -1096,11 +1096,11 @@
     gap: 6px;
     cursor: pointer;
     font-size: 0.85rem;
-    color: rgba(170, 195, 220, 0.8);
+    color: var(--kg-text-muted);
     transition: color 150ms ease;
 
     &:hover {
-        color: rgba(200, 225, 250, 0.95);
+        color: var(--kg-text-soft);
     }
 
     input[type='checkbox'] {
@@ -1121,20 +1121,20 @@
     align-items: flex-start;
     gap: 12px;
     padding: 12px 14px;
-    background: rgba(60, 90, 130, 0.15);
-    border: 1px solid rgba(100, 140, 180, 0.15);
+    background: var(--kg-surface-soft);
+    border: 1px solid var(--kg-border);
     border-radius: 10px;
     cursor: pointer;
     transition: all 150ms ease;
 
     &:hover {
-        background: rgba(70, 105, 150, 0.25);
-        border-color: rgba(120, 165, 210, 0.25);
+        background: var(--kg-surface-hover);
+        border-color: var(--kg-border);
     }
 
     &.kaguya-cache-item-selected {
-        background: rgba(80, 130, 180, 0.25);
-        border-color: rgba(130, 180, 230, 0.4);
+        background: var(--kg-surface-hover);
+        border-color: var(--kg-border-strong);
     }
 
     input[type='checkbox'] {
@@ -1157,35 +1157,35 @@
 .kaguya-cache-item-name {
     font-size: 0.95rem;
     font-weight: 500;
-    color: rgba(220, 235, 255, 0.95);
+    color: var(--kg-text-soft);
     word-break: break-all;
 }
 
 .kaguya-cache-item-desc {
     font-size: 0.8rem;
-    color: rgba(170, 195, 220, 0.75);
+    color: var(--kg-text-muted);
 }
 
 .kaguya-cache-item-meta {
     font-size: 0.75rem;
-    color: rgba(150, 175, 200, 0.65);
+    color: var(--kg-text-muted);
 }
 
 .kaguya-cache-empty {
     padding: 20px;
     text-align: center;
-    color: rgba(150, 175, 200, 0.6);
+    color: var(--kg-text-muted);
     font-size: 0.9rem;
-    background: rgba(40, 60, 90, 0.2);
+    background: var(--kg-surface-soft);
     border-radius: 10px;
-    border: 1px dashed rgba(100, 140, 180, 0.2);
+    border: 1px dashed var(--kg-border);
 }
 
 // 缓存加载状态
 .kaguya-cache-loading {
     padding: 40px 20px;
     text-align: center;
-    color: rgba(150, 175, 200, 0.8);
+    color: var(--kg-text-muted);
     font-size: 0.95rem;
 }
 
@@ -1207,13 +1207,13 @@
 
 .kaguya-cache-empty-text {
     font-size: 1.1rem;
-    color: rgba(180, 200, 230, 0.9);
+    color: var(--kg-text-faint);
     margin-bottom: 8px;
 }
 
 .kaguya-cache-empty-hint {
     font-size: 0.85rem;
-    color: rgba(150, 175, 200, 0.6);
+    color: var(--kg-text-muted);
 }
 
 .kaguya-cache-consequence {
@@ -1233,10 +1233,10 @@
     &.kaguya-cache-consequence-light {
         background: rgba(100, 160, 220, 0.12);
         border-left-color: rgba(120, 180, 240, 0.5);
-        color: rgba(180, 210, 240, 0.9);
+        color: var(--kg-accent);
 
         strong {
-            color: rgba(140, 190, 240, 0.95);
+            color: var(--kg-accent);
         }
     }
 }
@@ -1246,16 +1246,16 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 24px;
-    border-top: 1px solid rgba(100, 150, 200, 0.2);
+    border-top: 1px solid var(--kg-surface-soft);
     background: rgba(0, 0, 0, 0.15);
 }
 
 .kaguya-cache-summary {
     font-size: 0.9rem;
-    color: rgba(170, 195, 220, 0.85);
+    color: var(--kg-text-muted);
 
     strong {
-        color: rgba(230, 245, 255, 0.95);
+        color: var(--kg-text);
         font-size: 1.1rem;
     }
 }
@@ -1281,12 +1281,12 @@
 }
 
 .kaguya-cache-btn-cancel {
-    background: rgba(100, 130, 170, 0.2);
+    background: var(--kg-surface-soft);
     border-color: rgba(130, 160, 200, 0.35);
-    color: rgba(200, 220, 245, 0.9);
+    color: var(--kg-text-faint);
 
     &:hover:not(:disabled) {
-        background: rgba(120, 150, 190, 0.3);
+        background: var(--kg-surface-hover);
         border-color: rgba(150, 180, 220, 0.5);
     }
 }

@@ -15,6 +15,18 @@
         background-size: cover;
         z-index: -99999;
         background-color: $white;
+        &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--kg-overlay);
+            backdrop-filter: var(--kg-overlay-filter);
+            -webkit-backdrop-filter: var(--kg-overlay-filter);
+            pointer-events: none;
+        }
     }
     &-video {
         position: fixed;

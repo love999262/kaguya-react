@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { KaguyaProps as Props } from './kaguya';
 import Clock from 'kaguya-clock';
+import { getResolvedTheme, onThemeChange } from './theme';
+import type { ResolvedTheme } from './theme';
 
 interface ClockTheme {
     dialBg: string;
@@ -8,28 +10,46 @@ interface ClockTheme {
     textColor: string;
 }
 
-const THEMES: ClockTheme[] = [
-    { dialBg: 'rgba(14, 34, 59, 0.92)', digitalBg: 'rgba(14, 34, 59, 0.9)', textColor: 'rgba(236, 245, 255, 0.98)' },
-    { dialBg: 'rgba(22, 41, 70, 0.92)', digitalBg: 'rgba(19, 38, 66, 0.9)', textColor: 'rgba(229, 250, 255, 0.98)' },
-    { dialBg: 'rgba(27, 36, 64, 0.92)', digitalBg: 'rgba(24, 33, 62, 0.9)', textColor: 'rgba(241, 236, 255, 0.98)' },
-    { dialBg: 'rgba(21, 44, 56, 0.92)', digitalBg: 'rgba(17, 39, 51, 0.9)', textColor: 'rgba(230, 253, 247, 0.98)' },
-];
+const CLOCK_THEMES: Record<ResolvedTheme, ClockTheme[]> = {
+    dark: [
+        { dialBg: 'rgba(28, 30, 34, 0.55)', digitalBg: 'rgba(28, 30, 34, 0.5)', textColor: 'rgba(242, 244, 248, 0.98)' },
+        { dialBg: 'rgba(34, 36, 40, 0.55)', digitalBg: 'rgba(34, 36, 40, 0.5)', textColor: 'rgba(240, 242, 246, 0.98)' },
+        { dialBg: 'rgba(24, 26, 30, 0.55)', digitalBg: 'rgba(24, 26, 30, 0.5)', textColor: 'rgba(244, 246, 250, 0.98)' },
+        { dialBg: 'rgba(30, 32, 36, 0.55)', digitalBg: 'rgba(30, 32, 36, 0.5)', textColor: 'rgba(242, 244, 248, 0.98)' },
+    ],
+    light: [
+        { dialBg: 'rgba(255, 255, 255, 0.55)', digitalBg: 'rgba(255, 255, 255, 0.5)', textColor: 'rgba(28, 43, 64, 0.96)' },
+        { dialBg: 'rgba(246, 250, 255, 0.55)', digitalBg: 'rgba(244, 249, 255, 0.86)', textColor: 'rgba(31, 47, 69, 0.96)' },
+        { dialBg: 'rgba(250, 248, 255, 0.55)', digitalBg: 'rgba(248, 246, 255, 0.86)', textColor: 'rgba(40, 36, 66, 0.96)' },
+        { dialBg: 'rgba(244, 252, 250, 0.55)', digitalBg: 'rgba(240, 250, 247, 0.86)', textColor: 'rgba(28, 58, 52, 0.96)' },
+    ],
+};
 
 class Time extends React.Component <Props, any> {
     dialRef: React.RefObject<HTMLDivElement>;
     digitalRef: React.RefObject<HTMLDivElement>;
+    unsubscribeTheme: (() => void) | null;
 
     constructor(props: Props, context: any) {
         super(props, context);
         this.dialRef = React.createRef();
         this.digitalRef = React.createRef();
+        this.unsubscribeTheme = null;
     }
-    
+
     componentDidMount() {
         this.renderClock();
+        this.unsubscribeTheme = onThemeChange(() => {
+            this.destroyClock();
+            this.renderClock();
+        });
     }
 
     componentWillUnmount() {
+        if (this.unsubscribeTheme) {
+            this.unsubscribeTheme();
+            this.unsubscribeTheme = null;
+        }
         this.destroyClock();
     }
 
@@ -39,13 +59,15 @@ class Time extends React.Component <Props, any> {
     }
 
     private renderClock() {
-        const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+        const themeList = CLOCK_THEMES[getResolvedTheme()];
+        const theme = themeList[Math.floor(Math.random() * themeList.length)];
         new Clock({
             selector: '.kaguya-dial',
             type: 'dial',
             renderType: 'canvas',
             draggable: false,
             bgColor: theme.dialBg,
+            color: theme.textColor,
             dial: { hasTimeLabel: true, hasBorder: false },
             digital: { fontSize: 12 },
         });

@@ -3,6 +3,7 @@ import Background from './background';
 import Navigator from './navigator';
 import Clock from './clock';
 import Calendar from './calendar';
+import ThemeToggle from './themeToggle';
 import Live2D from './live2d';
 
 // 深度模式面板懒加载，避免 WebLLM 大模块打包进首屏 bundle
@@ -22,6 +23,7 @@ class Kaguya extends React.Component <any, any> {
         return (
             <div className='kaguya'>
                 <Background prefix={this.state.prefix} />
+                <ThemeToggle prefix={this.state.prefix} />
                 <Calendar prefix={this.state.prefix} />
                 <Navigator prefix={this.state.prefix} />
                 <Clock prefix={this.state.prefix} />
