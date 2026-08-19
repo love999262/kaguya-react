@@ -1503,7 +1503,7 @@ class Calendar extends React.Component<Props, StateInterface> {
                                     className={`${this.props.prefix}-calendar-day`}
                                     title={titleText}
                                     onClick={() => {
-                                        const nextDate = this.stripTime(date);
+                                        const nextDate = isSelected && !isToday ? this.stripTime(new Date()) : this.stripTime(date);
                                         this.setState({
                                             selectedDate: nextDate,
                                             quickYear: nextDate.getFullYear(),

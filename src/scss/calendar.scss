@@ -363,17 +363,26 @@
         }
     }
 
-    &-calendar-cell-today {
+    &-calendar-cell-selected {
         .#{$kaguya}-calendar-day {
-            border-color: var(--kg-border-strong);
-            box-shadow: inset 0 0 0 1px var(--kg-accent-soft);
+            background: var(--kg-selected-bg);
+            border-color: var(--kg-accent);
+        }
+        .#{$kaguya}-calendar-day-number {
+            color: var(--kg-accent) !important;
+            font-weight: 700;
         }
     }
 
-    &-calendar-cell-selected {
+    &-calendar-cell-today {
         .#{$kaguya}-calendar-day {
-            background: var(--kg-surface-hover);
-            border-color: var(--kg-border-strong);
+            border-color: var(--kg-accent);
+            background: var(--kg-today-bg);
+            box-shadow: inset 0 0 0 1px var(--kg-accent-soft);
+        }
+        .#{$kaguya}-calendar-day-number {
+            color: var(--kg-on-accent) !important;
+            font-weight: 800;
         }
     }
 
