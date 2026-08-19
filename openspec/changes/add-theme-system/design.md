@@ -39,9 +39,9 @@ API：`getMode()` / `setMode(mode)` / `getResolved()` / `onChange(cb)`；内部�
 夜间值取自现有视觉抽样（面板 rgba(20,30,50,.55) 系、文字 #eef7ff 系）；日间值：白玻璃 rgba(255,255,255,.62)、文字 #1f2937 系，blur 保持。
 理由：命名按用途而非颜色值，避免 `--kg-blue` 式陷阱。
 
-### 5. 壁纸处理：`::after` 遮罩钩子保留但默认关闭
-`.kaguya-img::after` 固定覆盖，`background: var(--kg-overlay)` + `filter: var(--kg-overlay-filter)`。目检确认日间在壁纸上盖半透明层会发灰发雾，最终双主题令牌均取 transparent/none，壁纸原样显示，面板可读性靠玻璃模糊与令牌对比度保证。
-理由：保留遮罩钩子便于将来按主题微调壁纸观感；`background.tsx` 零改动。
+### 5. 壁纸处理：`::after` 遮罩按主题取值
+`.kaguya-img::after` 固定覆盖，`background: var(--kg-overlay)` + `backdrop-filter: var(--kg-overlay-filter)`。画布底色统一为黑（根容器 opacity .85 透出）后，日间无遮罩会显黄昏感，最终日间取白色系半透明提亮（rgba(246,249,252,.45) + brightness(1.12) saturate(.9)）呈标准日间观感；夜间保持 transparent/none。
+理由：遮罩随主题纯 CSS 切换；`background.tsx` 零改动。
 
 ### 6. 开关组件 `src/ts/themeToggle.tsx`
 固定右上角（top: 12px; right: 16px），玻璃胶囊内 3 个图标按钮（内联 SVG：太阳/月亮/显示器），`role="radiogroup"` + 子项 `role="radio" aria-checked`，方向键循环、回车激活；`title` 提示"日间/夜间/跟随系统"；当前模式高亮（强调色底）。挂载于 `kaguya.tsx` 根布局。

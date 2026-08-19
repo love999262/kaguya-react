@@ -13,7 +13,7 @@
 
 ## 3. 背景与根布局
 
-- [x] 3.1 `kaguya.scss`：根容器背景色改令牌；`.kaguya-img::after` 日间遮罩（var(--kg-overlay) + filter），夜间透明；最终日间不遮盖壁纸（overlay 为 transparent）
+- [x] 3.1 `kaguya.scss`：`.kaguya-img::after` 遮罩按主题取值（var(--kg-overlay) + backdrop-filter）；日间白色系提亮遮罩呈标准日间观感，夜间 transparent/none；画布底色统一黑色消除透亮
 - [x] 3.2 验证按 ` 键切换壁纸后遮罩保持
 
 ## 4. Navigator（搜索栏/建议/网站表格）
