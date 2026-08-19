@@ -1015,19 +1015,27 @@ class Calendar extends React.Component<Props, StateInterface> {
         }
     }
 
-    private fetchGeolocationCoordinates(): Promise<{ latitude: number; longitude: number; } | null> {
+    private fetchGeolocationCoordinates(): Promise<{ latitude: number; longitude: number; } | { error: 'denied' | 'timeout' | 'unavailable' }> {
         return new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(
                 (position: GeolocationPosition) => {
                     const { latitude, longitude } = position.coords;
                     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-                        resolve(null);
+                        resolve({ error: 'unavailable' });
                         return;
                     }
                     resolve({ latitude, longitude });
                 },
-                () => {
-                    resolve(null);
+                (error: GeolocationPositionError) => {
+                    if (error.code === error.PERMISSION_DENIED) {
+                        resolve({ error: 'denied' });
+                        return;
+                    }
+                    if (error.code === error.TIMEOUT) {
+                        resolve({ error: 'timeout' });
+                        return;
+                    }
+                    resolve({ error: 'unavailable' });
                 },
                 {
                     enableHighAccuracy: false,
@@ -1077,7 +1085,7 @@ class Calendar extends React.Component<Props, StateInterface> {
             return SHANGHAI_LOCATION;
         }
         const coordinates = await this.fetchGeolocationCoordinates();
-        if (!coordinates) {
+        if ('error' in coordinates) {
             this.resolvedWeatherLocation = SHANGHAI_LOCATION;
             return SHANGHAI_LOCATION;
         }
@@ -1095,8 +1103,13 @@ class Calendar extends React.Component<Props, StateInterface> {
         }
         this.setState({ weatherLocating: true, locationNotice: '' });
         const coordinates = await this.fetchGeolocationCoordinates();
-        if (!coordinates) {
-            this.setState({ weatherLocating: false, locationNotice: '定位失败，请检查浏览器位置权限后重试' });
+        if ('error' in coordinates) {
+            const notices: Record<'denied' | 'timeout' | 'unavailable', string> = {
+                denied: '位置权限被拒绝，请在浏览器站点设置中允许后重试',
+                timeout: '定位超时，网络或定位服务较慢，请稍后重试',
+                unavailable: '无法获取位置，请检查浏览器位置服务后重试',
+            };
+            this.setState({ weatherLocating: false, locationNotice: notices[coordinates.error] });
             return;
         }
         const location = await this.buildWeatherLocation(coordinates);
